@@ -44,6 +44,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('doctor/consultation/call/accept-patient-request/{id}', [\App\Http\Controllers\Doctor\ConsultationController::class, 'acceptPatientOnlineCall'])->name('doctor.consultation.accept_patient_call');
         Route::get('doctor/consultation/pending-online-requests', [\App\Http\Controllers\Doctor\ConsultationController::class, 'getPendingOnlineRequests'])->name('doctor.consultation.pending_online_requests');
         Route::post('doctor/consultation/pickup-pending/{id}', [\App\Http\Controllers\Doctor\ConsultationController::class, 'pickupPendingRequest'])->name('doctor.consultation.pickup_pending');
+        Route::post('doctor/consultation/finish-pending/{id}', [\App\Http\Controllers\Doctor\ConsultationController::class, 'finishPendingRequest'])->name('doctor.consultation.finish_pending');
         Route::post('doctor/consultation/call/reject/{id}', [\App\Http\Controllers\Doctor\ConsultationController::class, 'rejectIncomingCall'])->name('doctor.consultation.reject_call');
     });
 

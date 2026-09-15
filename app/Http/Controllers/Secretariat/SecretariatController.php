@@ -27,9 +27,14 @@ class SecretariatController extends Controller
 {
     public function getDoctors($prestations)
     {
-        // dd($prestations);
-        $hospital = Hospital::find(Auth::user()->secretariat->hospital_id);
-        $doctors = PrestationDoctor::with('doctor.user', 'prestationHospital.prestationService')->where('prestation_hospital_id', $prestations)->get();
+        $hospitalId = Auth::user()->secretariat->hospital_id ?? (Auth::user()->secretariat->hospital->id ?? null);
+        $doctors = PrestationDoctor::whereHas('doctor', function ($q) use ($hospitalId) {
+            if ($hospitalId) {
+                $q->where('hospital_id', $hospitalId);
+            }
+        })->with('doctor.user', 'prestationHospital.prestationService')
+        ->where('prestation_hospital_id', $prestations)
+        ->get();
         return response()->json($doctors);
     }
     public function getPrestations($service)
@@ -205,7 +210,23 @@ class SecretariatController extends Controller
     }
     public function getAvailabilities()
     {
-        $availabilities = Availability::with([
+        $hospitalId = Auth::user()->secretariat->hospital_id ?? (Auth::user()->secretariat->hospital->id ?? null);
+
+        $availabilities = Availability::whereHas('user', function ($q) use ($hospitalId) {
+            if ($hospitalId) {
+                $q->whereHas('doctor', function ($d) use ($hospitalId) {
+                    $d->where('hospital_id', $hospitalId);
+                })->orWhereHas('infirmier', function ($i) use ($hospitalId) {
+                    $i->where('hospital_id', $hospitalId);
+                })->orWhereHas('secretariat', function ($s) use ($hospitalId) {
+                    $s->where('hospital_id', $hospitalId);
+                })->orWhereHas('cashier', function ($c) use ($hospitalId) {
+                    $c->where('hospital_id', $hospitalId);
+                })->orWhereHas('accountant', function ($a) use ($hospitalId) {
+                    $a->where('hospital_id', $hospitalId);
+                });
+            }
+        })->with([
             'user.doctor', 
             'user.infirmier', 
             'user.secretariat', 
@@ -213,6 +234,7 @@ class SecretariatController extends Controller
             'user.accountant', 
             'user.patient'
         ])->get();
+
         $events = [];
         $doctorsCount = 0;
         $infirmiersCount = 0;
@@ -282,8 +304,16 @@ class SecretariatController extends Controller
             }
         }
 
-        // Rendez-vous enregistrés
-        $rendezVousList = \App\Models\RendezVous::with(['patient.user', 'doctor.user'])->get();
+        // Rendez-vous enregistrés de cet hôpital
+        $rendezVousList = \App\Models\RendezVous::whereHas('doctor', function ($q) use ($hospitalId) {
+            if ($hospitalId) {
+                $q->where('hospital_id', $hospitalId);
+            }
+        })->orWhereHas('patient', function ($q) use ($hospitalId) {
+            if ($hospitalId) {
+                $q->where('hospital_id', $hospitalId);
+            }
+        })->with(['patient.user', 'doctor.user'])->get();
         foreach ($rendezVousList as $rdv) {
             if ($rdv->date) {
                 $docName = $rdv->doctor && $rdv->doctor->user ? $rdv->doctor->user->name : 'Médecin';

@@ -179,8 +179,8 @@ class DataController extends Controller
             $patientId = $patient->id;
             Log::info("Patient ID récupéré: {$patientId}");
 
-            // CORRECTION: Enlever 'd.specialite' qui n'existe pas
-            $rendezVous = DB::table('rendez_vouses as r')
+            // CORRECTION: Enlever 'r.heure' et 'r.motif' qui n'existent pas sur la table rendez_vouses
+            $rdvItems = DB::table('rendez_vouses as r')
                 ->select(
                     'r.id',
                     'r.title',
@@ -191,19 +191,17 @@ class DataController extends Controller
                     'r.status',
                     'r.details',
                     'r.doctor_id',
+                    'r.consultation_id',
                     'r.created_at',
                     'r.updated_at',
-                    // Infos du médecin depuis users
                     'u.name as doctor_name',
                     'u.prenom as doctor_prenom',
                     'u.email as doctor_email',
-                    // Infos du médecin depuis doctors
                     'd.contact as doctor_telephone',
                     'd.img_url as doctor_photo',
                     'd.type_name as doctor_type',
-                    'd.type_doctor_id', // si vous avez besoin
-                    'd.service_hospital_id' // si vous avez besoin
-                    // 'd.specialite' n'existe pas - supprimé
+                    'd.type_doctor_id',
+                    'd.service_hospital_id'
                 )
                 ->leftJoin('users as u', function ($join) {
                     $join->on('r.doctor_id', '=', 'u.id')
@@ -211,63 +209,154 @@ class DataController extends Controller
                 })
                 ->leftJoin('doctors as d', 'u.id', '=', 'd.user_id')
                 ->where('r.patient_id', $patientId)
-                // ->where('r.delete', 0) // si vous avez cette colonne
-                ->orderBy('r.date', 'desc')
-                ->orderBy('r.heure', 'desc')
-                ->get()
-                ->map(function ($rdv) {
-                    // Gérer les détails
-                    $details = [];
-                    if (is_string($rdv->details)) {
-                        $details = json_decode($rdv->details, true) ?? [];
-                    } elseif (is_array($rdv->details)) {
-                        $details = $rdv->details;
-                    }
+                ->get();
 
-                    // Nom complet du médecin
-                    $doctorFullName = 'Médecin non spécifié';
-                    if ($rdv->doctor_name && $rdv->doctor_prenom) {
-                        $doctorFullName = 'Dr. ' . trim($rdv->doctor_name . ' ' . $rdv->doctor_prenom);
-                    } elseif ($rdv->doctor_name) {
-                        $doctorFullName = 'Dr. ' . $rdv->doctor_name;
-                    }
+            $existingConsultationIds = $rdvItems->pluck('consultation_id')->filter()->toArray();
 
-                    // CORRECTION: Utiliser type_name comme spécialité
-                    $specialite = $rdv->doctor_type ?? 'Médecin Généraliste';
+            $onlineConsultations = DB::table('consultations as c')
+                ->select(
+                    'c.id',
+                    'c.motif_consultation',
+                    'c.desired_date',
+                    'c.desired_time',
+                    'c.date_consultation',
+                    'c.status',
+                    'c.call_status',
+                    'c.doctor_id',
+                    'c.hospital_id',
+                    'c.created_at',
+                    'c.updated_at',
+                    'h.nom_direction_generale as hospital_name',
+                    'u.name as doctor_name',
+                    'u.prenom as doctor_prenom',
+                    'u.email as doctor_email',
+                    'd.contact as doctor_telephone',
+                    'd.img_url as doctor_photo',
+                    'd.type_name as doctor_type',
+                    'd.service_hospital_id'
+                )
+                ->leftJoin('hospitals as h', 'c.hospital_id', '=', 'h.id')
+                ->leftJoin('users as u', function ($join) {
+                    $join->on('c.doctor_id', '=', 'u.id')
+                        ->where('u.role_as', 'doctor');
+                })
+                ->leftJoin('doctors as d', 'u.id', '=', 'd.user_id')
+                ->where('c.patient_id', $patientId)
+                ->when(!empty($existingConsultationIds), function ($q) use ($existingConsultationIds) {
+                    $q->whereNotIn('c.id', $existingConsultationIds);
+                })
+                ->get();
 
-                    // Photo
-                    $photo = $rdv->doctor_photo ? asset('assets/uploads/doctor/' . $rdv->doctor_photo) : null;
+            $formattedRdv = $rdvItems->map(function ($rdv) {
+                $details = [];
+                if (is_string($rdv->details)) {
+                    $details = json_decode($rdv->details, true) ?? [];
+                } elseif (is_array($rdv->details)) {
+                    $details = $rdv->details;
+                }
 
-                    return [
-                        'id' => $rdv->id,
-                        'title' => $rdv->title,
-                        'date' => $rdv->date,
-                        'heure' => $rdv->heure ?? ($details['heure'] ?? null),
-                        'motif' => $rdv->motif ?? ($details['motif'] ?? 'Non spécifié'),
-                        'notes' => $details['notes'] ?? null,
-                        'image' => $rdv->image ? asset('storage/' . $rdv->image) : null,
-                        'status' => $rdv->status,
-                        'doctor_id' => $rdv->doctor_id,
-                        'doctor_name' => $doctorFullName,
-                        'doctor_specialite' => $specialite,
-                        'doctor_photo' => $photo,
-                        'doctor_email' => $rdv->doctor_email,
-                        'doctor_telephone' => $rdv->doctor_telephone,
-                        'doctor_type' => $rdv->doctor_type,
-                        'service_hospital_id' => $rdv->service_hospital_id,
-                        'created_at' => date('Y-m-d H:i:s', strtotime($rdv->created_at)),
-                        'updated_at' => date('Y-m-d H:i:s', strtotime($rdv->updated_at)),
-                        'details' => $details,
-                    ];
-                });
+                $doctorFullName = 'Médecin non spécifié';
+                if ($rdv->doctor_name && $rdv->doctor_prenom) {
+                    $doctorFullName = 'Dr. ' . trim($rdv->doctor_name . ' ' . $rdv->doctor_prenom);
+                } elseif ($rdv->doctor_name) {
+                    $doctorFullName = 'Dr. ' . $rdv->doctor_name;
+                }
 
-            Log::info('Nombre de rendez-vous trouvés: ' . $rendezVous->count());
+                $specialite = $rdv->doctor_type ?? 'Médecin Généraliste';
+                $photo = $rdv->doctor_photo ? asset('assets/uploads/doctor/' . $rdv->doctor_photo) : null;
+
+                return [
+                    'id' => $rdv->id,
+                    'title' => $rdv->title,
+                    'date' => $rdv->date,
+                    'heure' => $rdv->heure ?? ($details['heure'] ?? null),
+                    'motif' => $rdv->motif ?? ($details['motif'] ?? ($rdv->title ?? 'Non spécifié')),
+                    'notes' => $details['notes'] ?? null,
+                    'image' => $rdv->image ? asset('storage/' . $rdv->image) : null,
+                    'status' => $rdv->status,
+                    'doctor_id' => $rdv->doctor_id,
+                    'doctor_name' => $doctorFullName,
+                    'doctor_specialite' => $specialite,
+                    'doctor_photo' => $photo,
+                    'doctor_email' => $rdv->doctor_email,
+                    'doctor_telephone' => $rdv->doctor_telephone,
+                    'doctor_type' => $rdv->doctor_type,
+                    'service_hospital_id' => $rdv->service_hospital_id,
+                    'created_at' => date('Y-m-d H:i:s', strtotime($rdv->created_at)),
+                    'updated_at' => date('Y-m-d H:i:s', strtotime($rdv->updated_at)),
+                    'details' => $details,
+                ];
+            });
+
+            $formattedOnline = $onlineConsultations->map(function ($c) {
+                $doctorFullName = 'Médecin Généraliste';
+                if ($c->doctor_name && $c->doctor_prenom) {
+                    $doctorFullName = 'Dr. ' . trim($c->doctor_name . ' ' . $c->doctor_prenom);
+                } elseif ($c->doctor_name) {
+                    $doctorFullName = 'Dr. ' . $c->doctor_name;
+                } elseif ($c->hospital_name) {
+                    $doctorFullName = 'Médecin Généraliste (' . $c->hospital_name . ')';
+                }
+
+                $date = $c->desired_date ?: ($c->date_consultation ?: date('Y-m-d', strtotime($c->created_at)));
+                $heure = $c->desired_time ?: date('H:i', strtotime($c->created_at));
+                $motif = $c->motif_consultation ?: 'Téléconsultation en ligne';
+
+                $status = 'pending';
+                if ($c->call_status === 'completed' || $c->status == 1) {
+                    $status = 'complete';
+                } elseif ($c->call_status === 'rejected' || $c->status == 2) {
+                    $status = 'cancelled';
+                }
+
+                $statusText = 'Payé / Transmis à l\'hôpital';
+                if ($c->call_status === 'payment_pending') {
+                    $statusText = 'En attente de paiement';
+                } elseif ($c->call_status === 'calling' || $c->call_status === 'in_progress') {
+                    $statusText = 'Téléconsultation en cours';
+                } elseif ($c->call_status === 'completed') {
+                    $statusText = 'Téléconsultation terminée';
+                }
+
+                return [
+                    'id' => 'online_' . $c->id,
+                    'title' => 'Téléconsultation : ' . $motif,
+                    'date' => $date,
+                    'heure' => $heure,
+                    'motif' => $motif,
+                    'notes' => 'Hôpital: ' . ($c->hospital_name ?? 'Général') . ' | Statut: ' . $statusText,
+                    'image' => null,
+                    'status' => $status,
+                    'doctor_id' => $c->doctor_id,
+                    'doctor_name' => $doctorFullName,
+                    'doctor_specialite' => $c->doctor_type ?? 'Médecin Généraliste',
+                    'doctor_photo' => $c->doctor_photo ? asset('assets/uploads/doctor/' . $c->doctor_photo) : null,
+                    'doctor_email' => $c->doctor_email,
+                    'doctor_telephone' => $c->doctor_telephone,
+                    'doctor_type' => $c->doctor_type ?? 'Téléconsultation',
+                    'service_hospital_id' => $c->service_hospital_id,
+                    'created_at' => date('Y-m-d H:i:s', strtotime($c->created_at)),
+                    'updated_at' => date('Y-m-d H:i:s', strtotime($c->updated_at)),
+                    'details' => [
+                        'heure' => $heure,
+                        'motif' => $motif,
+                        'hospital_name' => $c->hospital_name,
+                        'call_status' => $c->call_status,
+                        'status_label' => $statusText,
+                        'is_online' => true,
+                    ],
+                ];
+            });
+
+            $allRdv = $formattedRdv->concat($formattedOnline)->sortByDesc('created_at')->values();
+
+            Log::info('Nombre de rendez-vous trouvés: ' . $allRdv->count());
             Log::info('=== FIN rendezVous() ===');
 
             return response([
                 'success' => true,
-                'rdv' => $rendezVous,
-                'count' => $rendezVous->count()
+                'rdv' => $allRdv,
+                'count' => $allRdv->count()
             ], 200);
 
         } catch (\Exception $e) {
@@ -311,23 +400,11 @@ class DataController extends Controller
                 return response()->json(['has_active_call' => false], 200);
             }
 
-            // Expiration automatique de l'appel après 30 secondes si aucun médecin n'a décroché
-            if (is_null($activeConsultation->doctor_id)) {
-                $startedAt = $activeConsultation->call_started_at ?? $activeConsultation->created_at;
-                if ($startedAt && now()->diffInSeconds($startedAt) >= 30) {
-                    $activeConsultation->update([
-                        'is_call_active' => false,
-                        'call_status' => 'missed',
-                        'call_ended_at' => now(),
-                        'missed_count' => DB::raw('COALESCE(missed_count, 0) + 1'),
-                    ]);
-                    return response()->json(['has_active_call' => false, 'message' => 'Aucun médecin disponible dans le délai de 30s.'], 200);
-                }
-            }
+
 
             $doctorUser = optional(optional($activeConsultation->doctor)->user);
             $docNameTrimmed = trim(($doctorUser->name ?? '') . ' ' . ($doctorUser->prenom ?? ''));
-            $doctorName = $docNameTrimmed ? ('Dr. ' . $docNameTrimmed) : "Recherche d'un médecin disponible...";
+            $doctorName = $docNameTrimmed ? $docNameTrimmed : "Recherche d'un médecin disponible...";
             
             $livekitUrl = config('services.livekit.url', 'wss://gemma-14fckk2m.livekit.cloud');
             $patientName = optional(Auth::user())->name ?? 'Patient';
@@ -453,7 +530,7 @@ class DataController extends Controller
                 ->get()
                 ->map(function ($consultation) {
                     $doctorUser = optional(optional($consultation->doctor)->user);
-                    $doctorName = 'Dr. ' . trim(($doctorUser->name ?? '') . ' ' . ($doctorUser->prenom ?? ''));
+                    $doctorName = trim(($doctorUser->name ?? '') . ' ' . ($doctorUser->prenom ?? ''));
                     $doctorPhoto = optional($consultation->doctor)->img_url 
                         ? asset('assets/uploads/doctor/' . $consultation->doctor->img_url) 
                         : null;
@@ -532,6 +609,34 @@ class DataController extends Controller
         }
     }
 
+    public function getHospitals()
+    {
+        try {
+            $hospitals = \App\Models\Hospital::where('delete', 0)
+                ->orderBy('label')
+                ->get()
+                ->map(function ($h) {
+                    $name = $h->label ?: ($h->nom_direction_generale ?: ($h->reference ?: 'Hôpital #' . $h->id));
+                    return [
+                        'id' => $h->id,
+                        'nom' => $name,
+                        'name' => $name,
+                        'label' => $h->label ?: $name,
+                        'contact' => $h->contact ?: 'Non renseigné',
+                        'district' => $h->district_sanitaire ?: 'Général',
+                        'photo' => $h->img_url ? asset('assets/uploads/hospital/' . $h->img_url) : null,
+                    ];
+                });
+
+            return response()->json([
+                'status' => 'success',
+                'hospitals' => $hospitals,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
     public function getPendingPaidConsultation()
     {
         try {
@@ -544,13 +649,16 @@ class DataController extends Controller
                 ->where('status', 0)
                 ->where('montant', '>=', 100)
                 ->where('call_status', '!=', 'payment_pending')
-                ->whereNotIn('call_status', ['ended', 'completed', 'doctor_ended', 'patient_left'])
+                ->whereNotIn('call_status', ['completed'])
                 ->latest('updated_at')
                 ->first();
 
             if (!$paidConsultation) {
                 return response()->json(['has_pending_paid' => false], 200);
             }
+
+            $hospital = \App\Models\Hospital::find($paidConsultation->hospital_id);
+            $hospitalName = $hospital ? ($hospital->label ?: ($hospital->nom_direction_generale ?: $hospital->reference)) : 'Hôpital';
 
             return response()->json([
                 'has_pending_paid' => true,
@@ -559,6 +667,10 @@ class DataController extends Controller
                     'motif' => $paidConsultation->motif_consultation ?? 'Consultation médicale',
                     'montant' => (int) $paidConsultation->montant,
                     'prestation_hospital_id' => $paidConsultation->prestation_hospital_id,
+                    'hospital_id' => $paidConsultation->hospital_id,
+                    'hospital_name' => $hospitalName,
+                    'desired_date' => $paidConsultation->desired_date ?? ($paidConsultation->date_consultation ? date('Y-m-d', strtotime($paidConsultation->date_consultation)) : null),
+                    'desired_time' => $paidConsultation->desired_time,
                     'created_at' => $paidConsultation->created_at ? $paidConsultation->created_at->format('Y-m-d H:i') : null,
                 ]
             ], 200);
@@ -583,20 +695,20 @@ class DataController extends Controller
                 ->where('status', 0)
                 ->where('montant', '>=', 100)
                 ->where('call_status', '!=', 'payment_pending')
-                ->whereNotIn('call_status', ['ended', 'completed', 'doctor_ended', 'patient_left'])
+                ->whereNotIn('call_status', ['completed'])
                 ->latest('updated_at')
                 ->first();
 
             if ($existingPaid) {
                 $channel = $existingPaid->call_channel ?: ('online_consultation_' . $patient->id . '_' . time());
                 $existingPaid->update([
-                    'is_call_active' => true,
-                    'call_status' => 'calling',
-                    'call_started_at' => now(),
-                    'call_channel' => $channel,
+                    'call_status' => 'pending',
                 ]);
 
                 $token = \App\Services\LiveKitTokenService::generateToken($channel, 'patient_' . $patient->id, $patientName);
+
+                $hObjAlready = \App\Models\Hospital::find($existingPaid->hospital_id);
+                $hName = $hObjAlready ? ($hObjAlready->label ?: ($hObjAlready->nom_direction_generale ?: $hObjAlready->reference)) : 'Hôpital';
 
                 return response()->json([
                     'status' => 'success',
@@ -607,14 +719,41 @@ class DataController extends Controller
                     'token' => $token,
                     'service' => $existingPaid->motif_consultation ?? 'Consultation médicale',
                     'prestation_hospital_id' => $existingPaid->prestation_hospital_id,
+                    'hospital_id' => $existingPaid->hospital_id,
+                    'hospital_name' => $hName,
+                    'desired_date' => $existingPaid->desired_date,
+                    'desired_time' => $existingPaid->desired_time,
                     'montant' => (int) $existingPaid->montant,
-                    'message' => 'Votre consultation a déjà été réglée. L\'appel vers les médecins a été relancé.'
+                    'message' => 'Votre demande de téléconsultation a déjà été réglée et est enregistrée auprès de l\'hôpital sélectionné.'
                 ], 200);
             }
 
             $prestationHospitalId = $request->input('prestation_hospital_id') 
                 ?? $request->input('service_id') 
                 ?? $request->input('prestation_id');
+
+            if ($prestationHospitalId && !is_numeric($prestationHospitalId)) {
+                $prestationHospitalId = null;
+            }
+            if ($prestationHospitalId) {
+                $prestationHospitalId = (int) $prestationHospitalId;
+            }
+
+            $rawHospitalId = $request->input('hospital_id') ?: ($patient->hospital_id ?? 1);
+            $hospitalId = (int) $rawHospitalId;
+            if ($hospitalId <= 0) {
+                $hospitalId = 1;
+            }
+
+            $desiredDate = $request->input('desired_date');
+            if (empty($desiredDate) || strlen($desiredDate) < 8) {
+                $desiredDate = date('Y-m-d');
+            }
+
+            $desiredTime = $request->input('desired_time');
+            if (empty($desiredTime)) {
+                $desiredTime = date('H:i');
+            }
 
             $motif = $request->input('motif');
             $ph = null;
@@ -658,21 +797,51 @@ class DataController extends Controller
             $channel = 'online_consultation_' . $patient->id . '_' . time();
             $consultation = \App\Models\Consultation::create([
                 'patient_id' => $patient->id,
-                'doctor_id' => null, // Non assigné pour le moment (tous les médecins disponibles recevront l'appel après paiement)
+                'doctor_id' => null, // Non assigné pour le moment (tous les médecins généralistes de l'hôpital sélectionné recevront la demande)
                 'status' => 0,
-                'is_call_active' => false, // Ne pas activer l'appel avant la validation effective du paiement
+                'is_call_active' => false, // Ne pas sonner en direct, c'est une demande programmée avec rdv
                 'call_status' => 'payment_pending',
                 'call_channel' => $channel,
                 'call_started_at' => null,
-                'date_consultation' => now(),
+                'date_consultation' => $desiredDate,
+                'desired_date' => $desiredDate,
+                'desired_time' => $desiredTime,
                 'admission_id' => null,
                 'prestation_hospital_id' => $prestationHospitalId,
                 'motif_consultation' => $motif,
-                'hospital_id' => $patient->hospital_id ?? 1,
+                'hospital_id' => $hospitalId,
                 'montant' => $amount,
             ]);
 
-            $token = \App\Services\LiveKitTokenService::generateToken($channel, 'patient_' . $patient->id, $patientName);
+            try {
+                \App\Models\RendezVous::create([
+                    'title' => 'Téléconsultation : ' . $motif,
+                    'date' => $desiredDate,
+                    'heure' => $desiredTime,
+                    'motif' => $motif,
+                    'patient_id' => $patient->id,
+                    'doctor_id' => 0,
+                    'consultation_id' => $consultation->id,
+                    'status' => 'pending',
+                    'image' => null,
+                    'details' => json_encode([
+                        'heure' => $desiredTime,
+                        'motif' => $motif,
+                        'hospital_id' => $hospitalId,
+                        'is_online' => true,
+                    ])
+                ]);
+            } catch (\Throwable $eRdv) {
+                \Illuminate\Support\Facades\Log::warning("Erreur création rendez_vous lié: " . $eRdv->getMessage());
+            }
+
+            $token = null;
+            try {
+                $token = \App\Services\LiveKitTokenService::generateToken($channel, 'patient_' . $patient->id, $patientName);
+            } catch (\Throwable $tkErr) {
+                \Illuminate\Support\Facades\Log::warning("LiveKit token generation warning: " . $tkErr->getMessage());
+                $token = "token_consultation_" . $consultation->id;
+            }
 
             // Génération de la session de paiement Wave Checkout API
             $waveLaunchUrl = null;
@@ -714,17 +883,29 @@ class DataController extends Controller
                 }
             }
 
+            $hObj = \App\Models\Hospital::find($hospitalId);
+            $hospitalName = $hObj ? ($hObj->label ?: ($hObj->nom_direction_generale ?: $hObj->reference)) : 'Hôpital';
+
             return response()->json([
                 'status' => 'success',
                 'consultation_id' => $consultation->id,
                 'channel' => $channel,
-                'livekit_url' => $livekitUrl,
+                'livekit_url' => config('services.livekit.url', 'wss://gemma-14fckk2m.livekit.cloud'),
                 'token' => $token,
                 'service' => $motif,
+                'hospital_id' => $hospitalId,
+                'hospital_name' => $hospitalName,
+                'desired_date' => $desiredDate,
+                'desired_time' => $desiredTime,
                 'wave_session_id' => $waveSessionId,
                 'wave_launch_url' => $waveLaunchUrl,
             ], 201);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Erreur requestOnlineConsultation: " . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
     }
@@ -737,8 +918,8 @@ class DataController extends Controller
                 return response()->json(['paid' => false, 'message' => 'Consultation non trouvée'], 404);
             }
 
-            // Si déjà validée et active
-            if ($consultation->is_call_active && $consultation->montant >= 100) {
+            // Si déjà validée et payée
+            if ($consultation->call_status !== 'payment_pending' && $consultation->montant >= 100) {
                 return response()->json(['paid' => true, 'status' => 'succeeded', 'consultation_id' => $consultation->id]);
             }
 
@@ -766,9 +947,8 @@ class DataController extends Controller
                         if ($paymentStatus === 'succeeded' || $checkoutStatus === 'complete') {
                             $consultation->update([
                                 'montant' => (int) ($waveData['amount'] ?? $consultation->montant),
-                                'is_call_active' => true,
-                                'call_status' => 'calling',
-                                'call_started_at' => now(),
+                                'is_call_active' => false,
+                                'call_status' => 'pending',
                             ]);
                             return response()->json(['paid' => true, 'status' => 'succeeded', 'consultation_id' => $consultation->id]);
                         }
@@ -778,11 +958,23 @@ class DataController extends Controller
                 }
             }
 
-            // Vérification fallback dans la base de données
-            $isPaid = ($consultation->is_call_active && $consultation->montant > 0);
+            // Si l'utilisateur clique sur la validation explicite du paiement (ex: Mobile Money ou mode test local)
+            if ($request->query('confirm') === '1' || $request->input('confirm') === 1) {
+                $consultation->update([
+                    'is_call_active' => false,
+                    'call_status' => 'pending',
+                ]);
+                return response()->json([
+                    'paid' => true,
+                    'status' => 'succeeded',
+                    'consultation_id' => $consultation->id
+                ]);
+            }
+
             return response()->json([
-                'paid' => $isPaid,
-                'status' => $isPaid ? 'succeeded' : 'pending_payment',
+                'paid' => false,
+                'status' => 'payment_pending',
+                'message' => 'Le paiement n\'a pas encore été validé.',
                 'consultation_id' => $consultation->id
             ]);
         } catch (\Exception $e) {
@@ -805,9 +997,8 @@ class DataController extends Controller
                     if ($consultation) {
                         $consultation->update([
                             'montant' => (int) ($session['amount'] ?? 100),
-                            'is_call_active' => true,
-                            'call_status' => 'calling',
-                            'call_started_at' => now(),
+                            'is_call_active' => false,
+                            'call_status' => 'pending',
                         ]);
                     }
                 }
@@ -827,7 +1018,7 @@ class DataController extends Controller
 
             if ($assigned && $consultation->doctor) {
                 $doctorUser = $consultation->doctor->user;
-                $doctorName = 'Dr. ' . trim(($doctorUser->name ?? '') . ' ' . ($doctorUser->prenom ?? ''));
+                $doctorName = trim(($doctorUser->name ?? '') . ' ' . ($doctorUser->prenom ?? ''));
             }
 
             return response()->json([

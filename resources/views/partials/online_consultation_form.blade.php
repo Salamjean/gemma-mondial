@@ -1254,6 +1254,9 @@
                 } else {
                     alert("Consultation enregistrée avec succès !");
                 }
+                if (typeof loadPendingOnlineRequests === 'function') {
+                    loadPendingOnlineRequests();
+                }
             } else {
                 throw new Error("Erreur serveur code: " + res.status);
             }

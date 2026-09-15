@@ -575,6 +575,10 @@
 
         $('#doctorVideoCallModal').modal('hide');
         
+        if (typeof loadPendingOnlineRequests === 'function') {
+            loadPendingOnlineRequests();
+        }
+        
         const remoteContainer = document.getElementById("remote-video-container");
         if (remoteContainer) {
             remoteContainer.innerHTML = `

@@ -78,7 +78,7 @@ class PatientRepository
             ->where('patient_id', Auth::user()->patient->id)
             ->where(function ($query) {
                 $query->where('status', 1)
-                      ->orWhere('call_status', 'completed')
+                      ->orWhereIn('call_status', ['pending', 'payment_pending', 'calling', 'in_progress', 'completed', 'doctor_ended', 'ended'])
                       ->orWhereNotNull('issue_consultation_id')
                       ->orWhereHas('registre');
             })

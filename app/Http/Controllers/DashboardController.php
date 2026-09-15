@@ -93,7 +93,21 @@ class DashboardController extends Controller
             $todayDayOfWeek = Carbon::now()->dayOfWeek;
             $todayDayOfWeekIso = Carbon::now()->dayOfWeekIso;
 
-            $availabilities = \App\Models\Availability::with([
+            $availabilities = \App\Models\Availability::whereHas('user', function ($q) use ($hospitalId) {
+                if ($hospitalId) {
+                    $q->whereHas('doctor', function ($d) use ($hospitalId) {
+                        $d->where('hospital_id', $hospitalId);
+                    })->orWhereHas('infirmier', function ($i) use ($hospitalId) {
+                        $i->where('hospital_id', $hospitalId);
+                    })->orWhereHas('secretariat', function ($s) use ($hospitalId) {
+                        $s->where('hospital_id', $hospitalId);
+                    })->orWhereHas('cashier', function ($c) use ($hospitalId) {
+                        $c->where('hospital_id', $hospitalId);
+                    })->orWhereHas('accountant', function ($a) use ($hospitalId) {
+                        $a->where('hospital_id', $hospitalId);
+                    });
+                }
+            })->with([
                 'user.doctor', 
                 'user.infirmier', 
                 'user.secretariat', 

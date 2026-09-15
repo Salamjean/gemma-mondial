@@ -49,6 +49,7 @@ Route::prefix('v1/patient')->group(
             Route::get('rdv', [DataController::class, 'rendezVous']);
             Route::get('doctors', [DataController::class, 'getDoctors']);
             Route::get('services', [DataController::class, 'getServices']);
+            Route::get('hospitals', [DataController::class, 'getHospitals']);
             Route::get('pending-paid-consultation', [DataController::class, 'getPendingPaidConsultation']);
             Route::get('active-call', [DataController::class, 'checkActiveCall']);
             Route::post('accept-call', [DataController::class, 'acceptCall']);

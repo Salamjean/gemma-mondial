@@ -30,24 +30,23 @@
             <table class="table table-hover align-middle mb-0" id="pendingOnlineTable">
                 <thead style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
                     <tr class="fs-12 text-uppercase text-secondary fw-bold">
-                        <th class="ps-4 py-3" style="min-width: 200px;">Patient</th>
-                        <th class="py-3" style="min-width: 170px;">Motif / Prestation</th>
-                        <th class="py-3" style="min-width: 140px;">Heure de la demande</th>
-                        <th class="py-3 text-center" style="min-width: 150px;">Appels en absence</th>
-                        <th class="py-3 text-center" style="min-width: 130px;">Statut</th>
-                        <th class="pe-4 py-3 text-end" style="min-width: 180px;">Action</th>
+                        <th class="ps-4 py-3" style="min-width: 180px;">Patient</th>
+                        <th class="py-3" style="min-width: 160px;">Date & Heure souhaitées</th>
+                        <th class="py-3" style="min-width: 150px;">Motif / Prestation</th>
+                        <th class="py-3 text-center" style="min-width: 120px;">Statut</th>
+                        <th class="pe-4 py-3 text-end" style="min-width: 160px;">Action</th>
                     </tr>
                 </thead>
                 <tbody id="pendingOnlineList">
                     <!-- État initial sans demandes -->
                     <tr id="noPendingRow">
-                        <td colspan="6" class="text-center py-4 px-3">
+                        <td colspan="5" class="text-center py-4 px-3">
                             <div class="py-3">
                                 <div class="mx-auto mb-3 d-flex align-items-center justify-content-center rounded-circle" style="width: 54px; height: 54px; background: rgba(13, 148, 136, 0.1); color: #0d9488;">
                                     <i class="fa-solid fa-video-slash fs-22"></i>
                                 </div>
                                 <h6 class="fw-bold text-dark mb-1 fs-14">Aucune demande de téléconsultation en attente</h6>
-                                <p class="text-muted fs-12 mb-3 max-w-400 mx-auto">Les appels vidéo lancés par les patients apparaîtront ici automatiquement avec notifications.</p>
+                                <p class="text-muted fs-12 mb-3 max-w-400 mx-auto">Les demandes de téléconsultation réglées par les patients de votre hôpital apparaîtront ici automatiquement.</p>
                                 <span class="d-inline-flex align-items-center gap-2 px-3 py-1.5 rounded-pill fs-11 text-muted bg-white border shadow-sm">
                                     <span class="spinner-grow spinner-grow-sm text-teal" style="width: 8px; height: 8px; color: #0d9488;" role="status"></span>
                                     Écoute des demandes en temps réel...
@@ -208,13 +207,13 @@ async function loadPendingOnlineRequests() {
                 if (list.length === 0) {
                     container.innerHTML = `
                         <tr id="noPendingRow">
-                            <td colspan="6" class="text-center py-4 px-3">
+                            <td colspan="5" class="text-center py-4 px-3">
                                 <div class="py-3">
                                     <div class="mx-auto mb-3 d-flex align-items-center justify-content-center rounded-circle" style="width: 54px; height: 54px; background: rgba(13, 148, 136, 0.1); color: #0d9488;">
                                         <i class="fa-solid fa-video-slash fs-22"></i>
                                     </div>
                                     <h6 class="fw-bold text-dark mb-1 fs-14">Aucune demande de téléconsultation en attente</h6>
-                                    <p class="text-muted fs-12 mb-3 max-w-400 mx-auto">Les appels vidéo lancés par les patients apparaîtront ici automatiquement avec notifications.</p>
+                                    <p class="text-muted fs-12 mb-3 max-w-400 mx-auto">Les demandes de téléconsultation réglées par les patients de votre hôpital apparaîtront ici automatiquement.</p>
                                     <span class="d-inline-flex align-items-center gap-2 px-3 py-1.5 rounded-pill fs-11 text-muted bg-white border shadow-sm">
                                         <span class="spinner-grow spinner-grow-sm text-teal" style="width: 8px; height: 8px; color: #0d9488;" role="status"></span>
                                         Écoute des demandes en temps réel...
@@ -238,31 +237,25 @@ async function loadPendingOnlineRequests() {
                         ? `<span class="badge bg-success text-white px-3 py-1.5 rounded-pill fs-11 fw-semibold shadow-xs">
                             <i class="fa-solid fa-headset me-1"></i> En cours
                            </span>`
-                        : (req.call_status === 'missed' || !req.is_call_active)
-                            ? `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1.5 rounded-pill fs-11 fw-semibold shadow-xs" style="background: rgba(239, 68, 68, 0.12); color: #dc2626;">
-                                <i class="fa-solid fa-phone-slash me-1"></i> Appel en absence
-                               </span>`
-                            : `<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-1.5 rounded-pill fs-11 fw-semibold shadow-xs" style="background: rgba(245, 158, 11, 0.12); color: #d97706;">
-                                <i class="fa-solid fa-phone-volume animate__animated animate__headShake animate__infinite me-1"></i> En direct
-                               </span>`;
+                        : `<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1.5 rounded-pill fs-11 fw-semibold shadow-xs" style="background: rgba(13, 148, 136, 0.12); color: #0d9488;">
+                            <i class="fa-solid fa-clock me-1"></i> Payé / En attente
+                           </span>`;
 
                     const btnHtml = req.is_taken_by_me
-                        ? `<button type="button" onclick="pickupPendingCall(${req.id})" class="btn btn-pickup-call btn-sm rounded-pill px-3.5 py-1.5 fw-bold shadow-sm d-inline-flex align-items-center gap-1.5">
-                            <i class="fa-solid fa-video fs-13"></i>
-                            <span>Rejoindre l'appel</span>
-                           </button>`
+                        ? `<div class="d-inline-flex gap-2 align-items-center">
+                            <button type="button" onclick="pickupPendingCall(${req.id})" class="btn btn-pickup-call btn-sm rounded-pill px-3 py-1.5 fw-bold shadow-sm d-inline-flex align-items-center gap-1.5">
+                                <i class="fa-solid fa-video fs-13"></i>
+                                <span>Rejoindre</span>
+                            </button>
+                            <button type="button" onclick="finishPendingCall(${req.id})" class="btn btn-outline-danger btn-sm rounded-pill px-3 py-1.5 fw-bold shadow-sm d-inline-flex align-items-center gap-1.5" title="Marquer la consultation comme terminée">
+                                <i class="fa-solid fa-circle-check fs-13"></i>
+                                <span>Terminer</span>
+                            </button>
+                           </div>`
                         : `<button type="button" onclick="pickupPendingCall(${req.id})" class="btn btn-pickup-call btn-sm rounded-pill px-3.5 py-1.5 fw-bold shadow-sm d-inline-flex align-items-center gap-1.5">
-                            <i class="fa-solid fa-video fs-13"></i>
-                            <span>Prendre en charge</span>
+                            <i class="fa-solid fa-phone-volume fs-13"></i>
+                            <span>Appeler le patient</span>
                            </button>`;
-
-                    const missedCellHtml = (req.patient_missed_count && req.patient_missed_count > 0)
-                        ? `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1.5 rounded-pill fs-12 fw-bold shadow-xs">
-                            <i class="fa-solid fa-phone-slash me-1"></i> ${req.patient_missed_count} manqué(s)
-                           </span>`
-                        : `<span class="badge bg-light text-muted border px-2.5 py-1 rounded-pill fs-11">
-                            Aucun
-                           </span>`;
 
                     html += `
                         <tr>
@@ -275,16 +268,13 @@ async function loadPendingOnlineRequests() {
                                     </div>
                                 </div>
                             </td>
+                            <td class="py-3 text-dark fs-13 fw-semibold">
+                                <i class="fa-regular fa-calendar-check me-1 text-teal" style="color: #0d9488;"></i> ${req.desired_date || ''} à ${req.desired_time || ''}
+                            </td>
                             <td class="py-3">
                                 <span class="badge bg-teal-subtle text-teal-800 fw-medium px-2.5 py-1.5 rounded-8 fs-12" style="background: rgba(13, 148, 136, 0.1); color: #0f766e;">
                                     <i class="fa-solid fa-stethoscope me-1"></i> ${req.motif || 'Téléconsultation'}
                                 </span>
-                            </td>
-                            <td class="py-3 text-muted fs-13">
-                                <i class="fa-regular fa-clock me-1 text-teal" style="color: #0d9488;"></i> ${req.time_formatted || req.created_at}
-                            </td>
-                            <td class="py-3 text-center">
-                                ${missedCellHtml}
                             </td>
                             <td class="py-3 text-center">
                                 ${statusHtml}
@@ -326,6 +316,32 @@ async function pickupPendingCall(consultationId) {
         }
     } catch (e) {
         console.error("Erreur prise en charge:", e);
+    }
+}
+
+async function finishPendingCall(consultationId) {
+    if (!confirm("Voulez-vous vraiment marquer cette téléconsultation comme terminée ?")) {
+        return;
+    }
+    stopDoctorRingtone();
+    try {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        const res = await fetch(`/doctor/consultation/finish-pending/${consultationId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            }
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            loadPendingOnlineRequests();
+        } else {
+            alert(data.message || 'Erreur lors de la clôture.');
+            loadPendingOnlineRequests();
+        }
+    } catch (e) {
+        console.error("Erreur clôture consultation:", e);
     }
 }
 

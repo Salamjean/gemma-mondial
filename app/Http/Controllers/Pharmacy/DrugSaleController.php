@@ -28,8 +28,12 @@ class DrugSaleController extends Controller
     public function history()
     {
         $hospitalId = Auth::user()->pharmacy->hospital_id;
-        $payments = DrugSale::whereDate('created_at', '<', date('Y-m-d'))->orWhere('status', 'success')->with('careRequested')
-            ->where('hospital_id', $hospitalId)
+        $payments = DrugSale::where('hospital_id', $hospitalId)
+            ->where(function ($q) {
+                $q->whereDate('created_at', '<', date('Y-m-d'))
+                  ->orWhere('status', 'success');
+            })
+            ->with('careRequested')
             ->get();
 
         return view('users.pharmacist.sale.history', compact('payments'));

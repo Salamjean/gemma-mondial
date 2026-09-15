@@ -618,6 +618,11 @@ class ConsultationController extends Controller
     {
         if (!$doctor || !$consultation) return false;
 
+        // Filtrer strictement par hôpital : s'assurer que la demande correspond à l'hôpital du médecin
+        if ($consultation->hospital_id && $doctor->hospital_id && (int)$consultation->hospital_id !== (int)$doctor->hospital_id) {
+            return false;
+        }
+
         $typeName = strtolower(trim($doctor->type_name ?? ''));
         $docServiceName = strtolower(trim(optional(optional($doctor->serviceHospital)->service)->libelle ?? ''));
 
@@ -790,7 +795,7 @@ class ConsultationController extends Controller
             })
             ->where('status', 0)
             ->where('montant', '>=', 100)
-            ->whereNotIn('call_status', ['ended', 'completed', 'doctor_ended', 'patient_left'])
+            ->whereNotIn('call_status', ['completed'])
             ->with(['patient.user', 'prestationHospital.prestationService.service', 'prestationHospital.serviceHospital.service'])
             ->latest('updated_at')
             ->get()
@@ -846,6 +851,9 @@ class ConsultationController extends Controller
                     $patientMissedCount = $currentMissedCount + $pastMissed + $currentIgnoredCount;
                 }
 
+                $hObj = \App\Models\Hospital::find($c->hospital_id);
+                $hName = $hObj ? ($hObj->label ?: ($hObj->nom_direction_generale ?: $hObj->reference)) : 'Hôpital';
+
                 return [
                     'id' => $c->id,
                     'patient_name' => $name,
@@ -853,6 +861,9 @@ class ConsultationController extends Controller
                     'patient_code' => optional($c->patient)->code_patient ?? '',
                     'patient_photo' => ($pUser && $pUser->photo) ? asset('storage/'.$pUser->photo) : null,
                     'motif' => optional(optional($c->prestationHospital)->prestationService)->libelle ?? $c->motif_consultation ?? 'Téléconsultation en ligne',
+                    'hospital_name' => $hName,
+                    'desired_date' => $c->desired_date ? date('d/m/Y', strtotime($c->desired_date)) : ($c->date_consultation ? date('d/m/Y', strtotime($c->date_consultation)) : 'Aujourd\'hui'),
+                    'desired_time' => $c->desired_time ?: ($c->created_at ? $c->created_at->format('H:i') : ''),
                     'created_at' => $c->created_at ? $c->created_at->format('d/m/Y H:i') : '',
                     'time_formatted' => $c->created_at ? $c->created_at->format('H:i') : '',
                     'is_call_active' => (bool)$c->is_call_active,
@@ -899,6 +910,37 @@ class ConsultationController extends Controller
         }
 
         return $this->acceptPatientOnlineCall($request, $id);
+    }
+
+    public function finishPendingRequest(Request $request, $id)
+    {
+        $doctorUser = auth()->user();
+        if (!$doctorUser || !$doctorUser->doctor) {
+            return response()->json(['status' => 'error', 'message' => 'Non autorisé'], 403);
+        }
+
+        $consultation = Consultation::where('id', $id)->first();
+        if (!$consultation) {
+            return response()->json(['status' => 'error', 'message' => 'Demande introuvable.'], 404);
+        }
+
+        $consultation->update([
+            'status' => 1,
+            'is_call_active' => false,
+            'call_status' => 'completed',
+            'call_ended_at' => now(),
+        ]);
+
+        // Mettre à jour aussi le rendez-vous lié si existant
+        \App\Models\RendezVous::where('consultation_id', $consultation->id)->update([
+            'status' => 'complete',
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'La téléconsultation a été marquée comme terminée avec succès.',
+            'consultation_id' => $consultation->id
+        ]);
     }
 
     public function rejectIncomingCall(Request $request, $id)

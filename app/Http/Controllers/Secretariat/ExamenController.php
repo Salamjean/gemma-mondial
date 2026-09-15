@@ -40,14 +40,34 @@ class ExamenController extends Controller
     }
     public function make()
     {
+        $secretaire = Secretaire::where('user_id', auth()->user()->id)->first();
+        $hospitalId = $secretaire ? $secretaire->hospital_id : null;
 
-        $secretaryUsers = User::where('role_as', 'secretariat')->get();
+        $secretaryUsers = User::whereHas('secretariat', function ($q) use ($hospitalId) {
+            if ($hospitalId) {
+                $q->where('hospital_id', $hospitalId);
+            }
+        })->where('role_as', 'secretariat')->get();
+
         $type_consultations = TypeExamen::get();
         $departements = Departement::get();
         $issue_consultations = IssueConsultation::get();
         $type_assurances = TypeAssurance::get();
-        $patients = Patient::with('user')->get();
-        $doctors = Doctor::with('user')->get();
+
+        $patients = Patient::where(function ($q) use ($hospitalId) {
+            if ($hospitalId) {
+                $q->where('hospital_id', $hospitalId)
+                  ->orWhereHas('passage', function ($pq) use ($hospitalId) {
+                      $pq->where('hospital_id', $hospitalId);
+                  });
+            }
+        })->with('user')->get();
+
+        $doctors = Doctor::where(function ($q) use ($hospitalId) {
+            if ($hospitalId) {
+                $q->where('hospital_id', $hospitalId);
+            }
+        })->with('user')->get();
 
         return view('users.secretariat.examen.make', compact('type_consultations', 'departements', 'issue_consultations', 'type_assurances', 'patients', 'doctors', 'secretaryUsers'));
     }
