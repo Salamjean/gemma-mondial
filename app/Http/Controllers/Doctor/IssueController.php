@@ -73,24 +73,41 @@ class IssueController extends Controller
     {
 
         $request->validate([
-            'infirmier_id' => 'required',
-            'bed' => 'required|integer',
-            'quantity' => 'required|array',
-            'quantity.*' => 'integer',
-            'drug' => 'required|array',
-            'drug.*' => 'integer',
+            'infirmier_id' => 'nullable',
+            'bed' => 'nullable|integer',
+            'quantity' => 'nullable|array',
+            'quantity.*' => 'nullable|integer',
+            'drug' => 'required|array|min:1',
+            'drug.*' => 'required',
+        ], [
+            'drug.required' => 'Veuillez ajouter au moins un protocole thérapeutique avant d\'enregistrer.',
+            'drug.min' => 'Veuillez ajouter au moins un protocole thérapeutique avant d\'enregistrer.',
+            'drug.*.required' => 'Veuillez sélectionner le produit pour chaque protocole.',
         ]);
 
         try {
 
             $consultation = Consultation::find($consultation);
 
-            $bed = Bed::find($request->bed);
-            if ($bed->status_occupied == 'occupied')
-                return redirect()->back()->with('warning', 'Bed of the bedroom is occupied.');
+            $bed = null;
+            if ($request->bed) {
+                $bed = Bed::find($request->bed);
+                if ($bed && $bed->status_occupied == 'occupied')
+                    return redirect()->back()->with('warning', 'Bed of the bedroom is occupied.');
 
-            $bed->status_occupied = 'occupied';
-            $bed->save();
+                if ($bed) {
+                    $bed->status_occupied = 'occupied';
+                    $bed->save();
+                }
+            }
+
+            if ($registre = Registre::where('consultation_id', $consultation->id)->first()) {
+                $registre->issue_consultation = "Hospitalisation";
+                $registre->save();
+            }
+
+            $consultation->status = 1;
+            $consultation->save();
 
             if ($hospitalisation = Hospitalisation::where('consultation_id', $consultation->id)->first()) {
 
@@ -144,20 +161,22 @@ class IssueController extends Controller
             }
 
             if ($hospitalisationDay = DayHospitalisation::where('hospitalisation_id', $hospitalisation->id)->whereDate('day', date('Y-m-d'))->first()) {
-
-                $hospitalisationDay->infirmier_id = $request->infirmier_id;
-                $hospitalisationDay->bed_id = $bed->id;
-                $hospitalisationDay->price = $bed->price;
+                if ($request->infirmier_id) {
+                    $hospitalisationDay->infirmier_id = $request->infirmier_id;
+                }
+                if ($bed) {
+                    $hospitalisationDay->bed_id = $bed->id;
+                    $hospitalisationDay->price = $bed->price;
+                }
                 $hospitalisationDay->save();
             } else {
-
                 $hospitalisationDay = new DayHospitalisation();
                 $hospitalisationDay->hospitalisation_id = $hospitalisation->id;
                 $hospitalisationDay->doctor_id = $hospitalisation->doctor_id;
-                $hospitalisationDay->infirmier_id = $request->infirmier_id;
+                $hospitalisationDay->infirmier_id = $request->infirmier_id ?? null;
                 $hospitalisationDay->day = date('Y-m-d');
-                $hospitalisationDay->bed_id = $bed->id;
-                $hospitalisationDay->price = $bed->price;
+                $hospitalisationDay->bed_id = $bed ? $bed->id : null;
+                $hospitalisationDay->price = $bed ? $bed->price : 0;
                 $hospitalisationDay->save();
             }
 
@@ -209,7 +228,11 @@ class IssueController extends Controller
                 }
             }
 
-            return redirect()->route('doctor.hospitalisation.in_progress')->with('success', 'Patient mis sous observations dans votre service.');
+            if ($bed) {
+                return redirect()->route('doctor.hospitalisation.in_progress')->with('success', 'Patient mis sous observations dans votre service.');
+            } else {
+                return redirect()->route('doctor.hospitalisation.pending_room')->with('success', 'Patient mis en hospitalisation (En attente d\'attribution de chambre).');
+            }
         } catch (\Throwable $err) {
             dd($err);
         }

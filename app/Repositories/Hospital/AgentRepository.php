@@ -224,11 +224,26 @@ class AgentRepository
             $infirmier->img_url = uploadImage($request->image, 'infirmier');
         $infirmier->user_id = $user->id;
         $infirmier->hospital_id = Auth::user()->hospital->id;
-        $infirmier->service_hospital_id = $request->service ?? null;
+
+        $serviceIds = [];
+        if ($request->has('services') && is_array($request->services)) {
+            $serviceIds = array_filter($request->services);
+        } elseif ($request->filled('service')) {
+            $serviceIds = [$request->service];
+        }
+
+        $infirmier->service_hospital_id = !empty($serviceIds) ? $serviceIds[0] : null;
         $infirmier->matricule = 'INF' . $request->matricule;
         $infirmier->contact = $request->contact;
         $infirmier->address = $request->address;
         $infirmier->save();
+
+        foreach ($serviceIds as $srvId) {
+            \App\Models\ServiceInfirmier::create([
+                'infirmier_id' => $infirmier->id,
+                'service_hospital_id' => $srvId,
+            ]);
+        }
 
         //save availability
         $planning = new Availability();

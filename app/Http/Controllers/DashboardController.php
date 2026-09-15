@@ -72,10 +72,63 @@ class DashboardController extends Controller
         if ($this->userAuth()['user']['role_as'] == 'secretariat') {
 
             $today = Carbon::today();
+            $hospitalId = Auth::user()->secretariat->hospital_id ?? (Auth::user()->secretariat->hospital->id ?? null);
 
-            $admissions = Admission::orderByDESC("created_at")->where('secretaire_id', Auth::user()->secretariat->id)->where('hospital_id', Auth::user()->secretariat->hospital->id)->with('patient.user', 'doctor.user')->whereDate('created_at', $today)->get();
+            $admissions = Admission::orderByDESC("created_at")
+                ->where('secretaire_id', Auth::user()->secretariat->id)
+                ->where('hospital_id', $hospitalId)
+                ->with('patient.user', 'doctor.user')
+                ->whereDate('created_at', $today)
+                ->get();
 
-            return view('dashboard.index', compact('admissions'));
+            $totalPatients = Patient::where('hospital_id', $hospitalId)->count();
+            $todayAdmissionsCount = $admissions->count();
+            $totalAdmissionsCount = Admission::where('hospital_id', $hospitalId)->count();
+            $monthPatientsCount = Patient::where('hospital_id', $hospitalId)
+                ->whereMonth('created_at', Carbon::now()->month)
+                ->whereYear('created_at', Carbon::now()->year)
+                ->count();
+
+            // Personnel disponible aujourd'hui
+            $todayDayOfWeek = Carbon::now()->dayOfWeek;
+            $todayDayOfWeekIso = Carbon::now()->dayOfWeekIso;
+
+            $availabilities = \App\Models\Availability::with([
+                'user.doctor', 
+                'user.infirmier', 
+                'user.secretariat', 
+                'user.cashier', 
+                'user.accountant', 
+                'user.patient'
+            ])->get();
+            $todayAvailablePersonnel = [];
+
+            foreach ($availabilities as $avail) {
+                if (!$avail->user) continue;
+                $days = json_decode($avail->days) ?? [];
+                $startTimes = json_decode($avail->hour_start) ?? [];
+                $endTimes = json_decode($avail->hour_end) ?? [];
+
+                foreach ($days as $idx => $dNum) {
+                    if ($dNum == $todayDayOfWeek || $dNum == $todayDayOfWeekIso) {
+                        $todayAvailablePersonnel[] = [
+                            'id' => $avail->user->id,
+                            'name' => trim(($avail->user->name ?? '') . ' ' . ($avail->user->prenom ?? '')),
+                            'role' => $avail->user->role_as ?? 'Personnel',
+                            'telephone' => $avail->user->telephone ?: 'Non renseigné',
+                            'hour_start' => $startTimes[$idx] ?? '08:00',
+                            'hour_end' => $endTimes[$idx] ?? '17:00',
+                        ];
+                        break;
+                    }
+                }
+            }
+
+            return view('dashboard.index', compact(
+                'admissions', 'today', 'totalPatients', 
+                'todayAdmissionsCount', 'totalAdmissionsCount', 
+                'monthPatientsCount', 'todayAvailablePersonnel'
+            ));
         }
 
         if ($this->userAuth()['user']['role_as'] == 'accountant') {

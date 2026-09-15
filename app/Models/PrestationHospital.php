@@ -12,6 +12,8 @@ class PrestationHospital extends Model
 {
     use HasFactory;
 
+    protected $guarded = [];
+
     public function serviceHospital(): BelongsTo
     {
         return $this->belongsTo(ServiceHospital::class, 'service_hospital_id', 'id');

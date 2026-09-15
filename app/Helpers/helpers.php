@@ -51,11 +51,17 @@ function rdvImageGenerator()
 
 function noOrdreHospitalisation()
 {
-    return Consultation::where('doctor_id', Auth::user()->doctor->id)->whereDate('created_at', Carbon::today())->count();
+    if (Auth::check() && optional(Auth::user())->doctor) {
+        return Consultation::where('doctor_id', Auth::user()->doctor->id)->whereDate('created_at', Carbon::today())->count();
+    }
+    return Consultation::whereDate('created_at', Carbon::today())->count();
 }
 function noOrdreConsultation()
 {
-    return Consultation::where('doctor_id', Auth::user()->doctor->id)->whereDate('created_at', Carbon::today())->count();
+    if (Auth::check() && optional(Auth::user())->doctor) {
+        return Consultation::where('doctor_id', Auth::user()->doctor->id)->whereDate('created_at', Carbon::today())->count();
+    }
+    return Consultation::whereDate('created_at', Carbon::today())->count();
 }
 
 function noDossierHospitalisation()
@@ -150,10 +156,19 @@ function moisFr($date)
 }
 function iconsLoad()
 {
-    $data["path"] = "assets/iconFavicon";
-    $data['logo'] = 'assets/iconFavicon/logo.png';
-    $data['favicon'] = 'assets/iconFavicon/favicon.ico';
-    $data['loading'] = 'assets/iconFavicon/loading.png';
+    $path = "assets/iconFavicon";
+    $data["path"] = $path;
+    $data['logo'] = "$path/logo.png";
+    $data['loading'] = "$path/loading.png";
+
+    $favFile = "$path/favicon.ico";
+    foreach (['png', 'ico', 'jpg', 'jpeg', 'svg'] as $ext) {
+        if (file_exists(public_path("$path/favicon.$ext"))) {
+            $favFile = "$path/favicon.$ext";
+            break;
+        }
+    }
+    $data['favicon'] = $favFile;
 
     return $data;
 }
@@ -193,12 +208,22 @@ function countNaiss($date)
     return $count + 1;
 }
 
+function getUserHospitalId()
+{
+    if (!Auth::check()) return '';
+    $user = Auth::user();
+    if ($user->doctor && isset($user->doctor->hospital_id)) return $user->doctor->hospital_id;
+    if ($user->infirmier && isset($user->infirmier->hospital_id)) return $user->infirmier->hospital_id;
+    if ($user->secretariat && isset($user->secretariat->hospital_id)) return $user->secretariat->hospital_id;
+    if (isset($user->hospital_id)) return $user->hospital_id;
+    return '';
+}
+
 function codeRegistre($code, $id)
 {
-
     $consultation = Consultation::where('patient_id', $id)->get();
     $count = $consultation->count() + 1;
-    $code = "RE" . substr($code, 2) . Auth::user()->doctor->hospital_id . $count;
+    $code = "RE" . substr($code, 2) . getUserHospitalId() . $count;
 
     return $code;
 }
@@ -207,12 +232,7 @@ function codeOrdonnance($code, $id)
 {
     $consultation = Consultation::where('patient_id', $id)->get();
     $count = $consultation->count() + 1;
-
-    if (Auth::user()->doctor)
-        $code = "ORD" . substr($code, 2) . Auth::user()->doctor->hospital_id . $count;
-    else
-        $code = "ORD" . substr($code, 2) . Auth::user()->infirmier->hospital_id . $count;
-
+    $code = "ORD" . substr($code, 2) . getUserHospitalId() . $count;
 
     return $code;
 }
@@ -221,25 +241,15 @@ function codeBulletin($code, $id)
 {
     $consultation = Consultation::where('patient_id', $id)->get();
     $count = $consultation->count() + 1;
-
-    if (Auth::user()->doctor)
-        $code = "BE" . substr($code, 2) . Auth::user()->doctor->hospital_id . $count;
-    else
-        $code = "BE" . substr($code, 2) . Auth::user()->infirmier->hospital_id . $count;
+    $code = "BE" . substr($code, 2) . getUserHospitalId() . $count;
 
     return $code;
 }
 function codeExamen($code, $id)
 {
-
-
     $consultation = Consultation::where('patient_id', $id)->get();
     $count = $consultation->count() + 1;
-
-    if (Auth::user()->doctor)
-        $code = "EX" . substr($code, 2) . Auth::user()->doctor->hospital_id . $count;
-    else
-        $code = "EX" . substr($code, 2) . Auth::user()->infirmier->hospital_id . $count;
+    $code = "EX" . substr($code, 2) . getUserHospitalId() . $count;
 
     return $code;
 }
@@ -248,11 +258,7 @@ function codeArret($code, $id)
 {
     $consultation = Consultation::where('patient_id', $id)->get();
     $count = $consultation->count() + 1;
-
-    if (Auth::user()->doctor)
-        $code = "ART" . substr($code, 2) . Auth::user()->doctor->hospital_id . $count;
-    else
-        $code = "ART" . substr($code, 2) . Auth::user()->infirmier->hospital_id . $count;
+    $code = "ART" . substr($code, 2) . getUserHospitalId() . $count;
 
     return $code;
 }
@@ -261,19 +267,16 @@ function codeTraitement($code, $id)
 {
     $consultation = Consultation::where('patient_id', $id)->get();
     $count = $consultation->count() + 1;
-
-    $code = "TRAIT" . substr($code, 2) . Auth::user()->doctor->hospital_id . $count;
+    $code = "TRAIT" . substr($code, 2) . getUserHospitalId() . $count;
 
     return $code;
 }
 
 function codeHospitalisation($code, $id)
 {
-
     $consultation = Consultation::where('patient_id', $id)->get();
     $count = $consultation->count() + 1;
-
-    $code = "HOSP" . substr($code, 2) . Auth::user()->doctor->hospital_id . $count;
+    $code = "HOSP" . substr($code, 2) . getUserHospitalId() . $count;
 
     return $code;
 }
@@ -282,8 +285,7 @@ function codeObservation($code, $id)
 {
     $consultation = Consultation::where('patient_id', $id)->get();
     $count = $consultation->count() + 1;
-
-    $code = "OBS" . substr($code, 2) . Auth::user()->doctor->hospital_id . $count;
+    $code = "OBS" . substr($code, 2) . getUserHospitalId() . $count;
 
     return $code;
 }
@@ -531,10 +533,15 @@ function saveImage($image, $path)
 
 function uploadImage($image, $path)
 {
+    $uploadDirectory = public_path('assets/uploads/' . $path . '/');
+    if (!file_exists($uploadDirectory)) {
+        mkdir($uploadDirectory, 0755, true);
+    }
+
     $file = $image;
     $ext = $file->getClientOriginalExtension();
     $filename = time() . '.' . $ext;
-    $file->move('public/assets/uploads/' . $path . '/', $filename);
+    $file->move($uploadDirectory, $filename);
 
     return $filename;
 }
@@ -550,11 +557,10 @@ function deleteUploadImage($image, $link)
 
     // Supprimer l'ancienne image si elle existe
     $oldImagePath = $uploadDirectory . $image;
-    if (file_exists($oldImagePath)) {
+    if ($image && file_exists($oldImagePath)) {
         unlink($oldImagePath);
     }
 
-    // Utiliser l'objet UploadedFile de Laravel
     if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
         return false;
     }
@@ -574,8 +580,9 @@ function deleteUploadImage($image, $link)
 
 function deleteImage($image, $link)
 {
-    $path = "assets/uploads/$link/$image";
-    if (File::exists($path)) {
+    $path = public_path("assets/uploads/$link/$image");
+    if(File::exists($path))
+    {
         File::delete($path);
     }
 }

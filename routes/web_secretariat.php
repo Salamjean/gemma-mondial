@@ -33,6 +33,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('services', [SecretariatController::class, 'getServices'])->name('services');
             // Liste des services de l'hopital //
             Route::get('hopital/services', [SecretariatController::class, 'getHopitalServices'])->name('hopitalservices');
+            Route::get('medecins', [SecretariatController::class, 'getMedecins'])->name('medecins');
             Route::get('listepatients', [SecretariatController::class, 'listePatients'])->name('listepatients');
             Route::get('search', [SecretariatController::class, 'searchPatient'])->name('searchPatient');
             Route::get('search/patient', [PatientController::class, 'searchPatients'])->name('searchPatients');
@@ -53,6 +54,9 @@ Route::middleware(['auth'])->group(function () {
                 Route::get('search/patient/codeassurance/{data}', [PatientController::class, 'searchPatientByNoAssurance'])->name('searchnoassurance');
                 Route::get('add', [PatientController::class, 'add'])->name('add');
                 Route::get('detail/{id}', [PatientController::class, 'detail'])->name('detail');
+                Route::get('dossier_medical/{id}', [PatientController::class, 'dossierMedical'])->name('dossier_medical');
+                Route::get('parcours/{id}', [PatientController::class, 'parcoursIntervention'])->name('parcours');
+                Route::get('edit/{id}', [PatientController::class, 'edit'])->name('edit');
                 Route::get('create', [PatientController::class, 'create'])->name('create');
                 Route::post('addpatient', [PatientController::class, 'addPatient'])->name('addpatient');
                 Route::put('updatepatient/{id}', [PatientController::class, 'updatePatient'])->name('updatepatient');

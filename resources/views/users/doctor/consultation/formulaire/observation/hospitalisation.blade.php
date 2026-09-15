@@ -129,42 +129,99 @@
                                     @elseif($age >= 50 )
                                     <input type="radio" id="50ans+" value="50ans+" name="tranche_age" checked>
                                     <label for="50ans+" class="me-30">50ans et plus</label>
-                                    @else
-                                    <label class="me-30">Age non trouvé</label>
-                                    @endif
-                                </div>
+                </div>
+
+                <div class="col-md-4">
+                    <img class="w-100 align-content-center" src="{{ asset('assets/images/logo.png') }}" style="max-height: 100px" alt="logo de la clinique"/>
+                </div>
+
+            </div>
+
+            <div class="row border-2 border-danger">
+                <div class="col-md-12 p-10 bg-warning-light">
+                    <h4><b>IDENTITE DU PATIENT</b></h4>
+                </div>
+                <div class="col-md-12 p-10">
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="form-label"> <b>Nom : </b> </label>
+                                <input class="form-control" type="text" id="nom" name="nom" value="{{ $patient->user->name ?? '' }}" readonly>
                             </div>
                         </div>
-                        <div class="col-md-5">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="form-label"> <b>Prénom(s) : </b> </label>
+                                <input class="form-control" type="text"  id="prenom" name="prenom" value="{{ $patient->user->prenom ?? '' }}" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="form-label"> <b>Date de naissance : </b> </label>
+                                <input class="form-control" type="text"  id="birth_date" name="birth_date" value="{{ $patient->birth_date ?? '' }}" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="form-label"> <b>Age : </b> </label>
+
+                                <input class="form-control" type="text"  id="age" name="age" value="{{ $age }}" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="form-label"> <b>Genre : </b> </label>
+                                <input class="form-control" type="text"  id="genre" name="genre" value="{{ $patient->gender ?? '' }}" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="form-label"> <b>Profession: </b> </label>
+                                <input class="form-control" type="text"  id="profession" name="profession" value="{{ $patient->profession ?? '' }}" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="form-label"> <b>Nationalité : </b> </label>
+                                <input class="form-control" type="text"  id="nationalite" name="nationalite" value="{{ $patient->nationality->name ?? '' }}" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
                             <div class="form-group">
                                 <label class="form-label"> <b>Cel : </b> </label>
-                                <input class="form-control" type="text"  id="telephone" name="telephone" placeholder="N° téléphone" value="{{ $consultation->patient->telephone }}" readonly>
+                                <input class="form-control" type="text"  id="telephone" name="telephone" placeholder="N° téléphone" value="{{ $patient->telephone ?? '' }}" readonly>
                             </div>
                         </div>
-                        @if ($consultation->admission->patient->conatct2 != '')
+                        @if (!empty($patient->contact2))
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label class="form-label"> <b>Cel2 : </b> </label>
-                                <input class="form-control" type="text"  id="contact2" name="contact2" placeholder="N° téléphone 2" value="{{ $consultation->patient->contact2 }}" readonly>
+                                <input class="form-control" type="text"  id="contact2" name="contact2" placeholder="N° téléphone 2" value="{{ $patient->contact2 }}" readonly>
                             </div>
                         </div>
                         @endif
 
                     </div>
                     <div class="row">
-                        @if($consultation->admission->patient->habitualResidence->name != '')
+                        @if(!empty($patient->habitualResidence->name))
                         <div class="col-md-4">
                             <label class="form-label">Résidence habituelle :</label>
-                            <input class="form-control" type="text"  id="residence_habituelle" placeholder="Résidence habituelle" name="residence_habituelle" value="{{ $consultation->patient->habitualResidence->name }}" readonly>
+                            <input class="form-control" type="text"  id="residence_habituelle" placeholder="Résidence habituelle" name="residence_habituelle" value="{{ $patient->habitualResidence->name }}" readonly>
                         </div>
                         @endif
                         <div class="col-md-4">
                             <label class="form-label">Résidence actuelle :</label>
-                            <input class="form-control" type="text"  id="residence_actuelle" placeholder="Résidence habituelle" name="residence_actuelle" value="{{ $consultation->patient->habitualResidence->name }}" readonly>
+                            <input class="form-control" type="text"  id="residence_actuelle" placeholder="Résidence habituelle" name="residence_actuelle" value="{{ $patient->residenceActuelle->name ?? '' }}" readonly>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Status conjugal :</label>
-                            <input class="form-control" type="text"  id="situation_matrimoniale" name="situation_matrimoniale" value="{{ $consultation->patient->situation_matrimoniale }}" readonly>
+                            <input class="form-control" type="text"  id="situation_matrimoniale" name="situation_matrimoniale" value="{{ $patient->situation_matrimoniale ?? '' }}" readonly>
                         </div>
                     </div>
                     <br/>
@@ -172,14 +229,14 @@
                         <div class="form-group">
                             <label for="fonction" class="form-label"> <b>Protection sociale : </b>
                             </label>
-                            @if($consultation->admission->type_assurance_id != "")
+                            @if(optional($consultation->admission)->type_assurance_id != "")
                                 <div class="row">
                                     <div class="col-md-4">
-                                        <input type="text" class="form-control" value="{{ $consultation->admission->typeAssurance->libelle }}" readonly>
+                                        <input type="text" class="form-control" value="{{ optional($consultation->admission->typeAssurance)->libelle }}" readonly>
 
                                     </div>
                                     <div class="col-md-8">
-                                        <input type="text" class="form-control" value="{{ $consultation->admission->no_assurance }}" readonly>
+                                        <input type="text" class="form-control" value="{{ optional($consultation->admission)->no_assurance }}" readonly>
                                     </div>
                                 </div>
                             @else

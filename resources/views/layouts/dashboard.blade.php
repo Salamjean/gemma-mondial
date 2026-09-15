@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="">
     <meta name="author" content="">
-    <link rel="icon" href="{{ asset(iconsLoad()['favicon']) }}">
+    <link rel="icon" href="{{ asset(iconsLoad()['favicon']) }}?v={{ time() }}">
 
     <title>{{ $title }}</title>
 
@@ -22,6 +22,7 @@
 
     <script src="https://kit.fontawesome.com/111032cd6f.js" crossorigin="anonymous"></script>
     <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
 
     <!-- Toast notification -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
@@ -39,20 +40,20 @@
 
 </head>
 
-<body class="hold-transition light-skin sidebar-mini theme-info fixed bg-s">
+<body class="hold-transition light-skin theme-info bg-s {{ request()->has('embed') ? 'is-embedded-form' : 'sidebar-mini fixed' }}">
 
     <div class="wrapper">
-        <!-- Header menu & header navbar -->
-        @include('partials._header')
-        <!-- And Header menu & header navbar -->
-
-        <!-- Dashbord Menu -->
-        @include('partials._menu')
-        <!-- And Dashbord Menu -->
+        @if(!request()->has('embed'))
+            <!-- Header menu & header navbar -->
+            @include('partials._header')
+            <!-- Dashbord Menu -->
+            @include('partials._menu')
+        @endif
 
         <!-- Content Wrapper. Contains page content -->
-        <div class="content-wrapper bg-s">
+        <div class="content-wrapper bg-s" style="{{ request()->has('embed') ? 'margin-left:0 !important; margin-top:0 !important; padding:15px !important;' : '' }}">
             <div class="container-full">
+                @if(!request()->has('embed'))
                 <!-- Content Header (Page header) -->
                 <div class="content-header">
                     <div class="d-flex align-items-center">
@@ -72,6 +73,7 @@
 
                     </div>
                 </div>
+                @endif
                 <!-- Main content -->
                 <section class="content">
                     @yield('content')
@@ -80,9 +82,11 @@
         </div>
         <!-- And Content Wrapper. Contains page content -->
 
-        <!-- Start Page-Footer -->
-        @include('partials._footer')
-        <!-- End Page-Footer -->
+        @if(!request()->has('embed'))
+            <!-- Start Page-Footer -->
+            @include('partials._footer')
+            <!-- End Page-Footer -->
+        @endif
 
     </div>
     <style>
@@ -96,6 +100,74 @@
 
         .danger {
             color: red;
+        }
+
+        /* ===== MODE EMBED PROPRE POUR L'IFRAME DU FORMULAIRE ===== */
+        body.is-embedded-form {
+            background: #f4f6f9 !important;
+            background-image: none !important;
+            min-height: 100% !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+        }
+
+        body.is-embedded-form .main-header,
+        body.is-embedded-form .main-sidebar,
+        body.is-embedded-form .main-footer,
+        body.is-embedded-form .content-header,
+        body.is-embedded-form footer {
+            display: none !important;
+        }
+
+        body.is-embedded-form .wrapper {
+            background: #f4f6f9 !important;
+            background-image: none !important;
+            min-height: 100% !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            float: none !important;
+            overflow: visible !important;
+        }
+
+        body.is-embedded-form .content-wrapper {
+            margin-left: 0 !important;
+            margin-top: 0 !important;
+            margin-right: 0 !important;
+            padding: 10px 15px 50px 15px !important;
+            background: #f4f6f9 !important;
+            background-image: none !important;
+            min-height: 100vh !important;
+            border-radius: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            overflow: visible !important;
+        }
+
+        body.is-embedded-form .container,
+        body.is-embedded-form .container-full,
+        body.is-embedded-form .container-fluid,
+        body.is-embedded-form section.content {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding-left: 5px !important;
+            padding-right: 5px !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Alléger les gros paddings fixes du template pour que tout tienne bien sur l'écran partagé */
+        body.is-embedded-form .pe-105, body.is-embedded-form .ps-105 {
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+        }
+        body.is-embedded-form .pe-60, body.is-embedded-form .ps-60,
+        body.is-embedded-form .px-60, body.is-embedded-form .px-100,
+        body.is-embedded-form .pe-50, body.is-embedded-form .ps-50,
+        body.is-embedded-form .pe-40, body.is-embedded-form .ps-40 {
+            padding-left: 10px !important;
+            padding-right: 10px !important;
         }
     </style>
 
@@ -135,8 +207,24 @@
     <!-- Personnal script -->
     <script src="{{ asset('assets/src/js/pages/calendar.js') }}"></script>
 
+    @if(!request()->has('embed') && auth()->check() && auth()->user()->role_as === 'doctor')
+        @include('partials.doctor_video_modal')
+        @include('partials.doctor_incoming_call_modal')
+    @endif
+
     @stack('js')
 
 
-    <!-- Toast script -->
+    <script>
+        if (window.self !== window.top) {
+            document.body.classList.add('is-embedded-form');
+            var els = document.querySelectorAll('.main-header, .main-sidebar, .content-header, footer');
+            els.forEach(function(el) { el.style.setProperty('display', 'none', 'important'); });
+            var cw = document.querySelector('.content-wrapper');
+            if (cw) {
+                cw.style.setProperty('margin-left', '0', 'important');
+                cw.style.setProperty('padding-top', '10px', 'important');
+            }
+        }
+    </script>
 </body>

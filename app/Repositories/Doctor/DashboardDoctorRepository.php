@@ -73,7 +73,9 @@ class DashboardDoctorRepository
 
         $consultation = Consultation::select(DB::raw('DATE_FORMAT(created_at, "%Y-%m") AS month'), DB::raw('COUNT(*) as count'))
             ->where('doctor_id', $this->doctorId)
-            ->where('status_inf', 1)
+            ->where(function ($q) {
+                $q->where('status_inf', 1)->orWhere('status', 1);
+            })
             ->where('hospital_id', $this->hospitalId)
             ->whereIn(DB::raw('DATE_FORMAT(created_at, "%Y-%m")'), $moisC)
             ->groupBy('month')

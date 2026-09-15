@@ -27,15 +27,21 @@ class SettingController extends Controller
 
     public function uploadLogo($name, $image)
     {
-        $path = iconsLoad()["path"] . "/$image";
-
-        if(File::exists($path)){
-            File::delete($path);
+        $pathDir = public_path("assets/iconFavicon");
+        if (!File::exists($pathDir)) {
+            File::makeDirectory($pathDir, 0755, true);
         }
-        $file = $image;
-        $ext = $file -> getClientOriginalExtension();
-        $filename = $name . '.'. $ext;
-        $file->move(iconsLoad()["path"] . '/',$filename);
+
+        foreach (['ico', 'png', 'jpg', 'jpeg', 'svg'] as $ext) {
+            $oldFile = $pathDir . '/' . $name . '.' . $ext;
+            if (File::exists($oldFile)) {
+                File::delete($oldFile);
+            }
+        }
+
+        $ext = strtolower($image->getClientOriginalExtension());
+        $filename = $name . '.' . $ext;
+        $image->move($pathDir, $filename);
 
         return "success";
     }

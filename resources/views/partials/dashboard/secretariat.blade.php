@@ -1,73 +1,298 @@
-<div class="row">
+<style>
+    .dashboard-kpi-card {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid #f1f5f9;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .dashboard-kpi-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    }
+    .kpi-icon-box {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        margin-right: 15px;
+    }
+    .big-action-card {
+        background: #ffffff;
+        border-radius: 20px;
+        border: 1px solid #e2e8f0;
+        padding: 28px;
+        text-decoration: none !important;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.03);
+        height: 100%;
+        cursor: pointer;
+    }
+    .big-action-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 20px 35px rgba(37, 99, 235, 0.12);
+        border-color: #3b82f6;
+    }
+    .big-action-card .card-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 26px;
+        margin-bottom: 20px;
+        transition: transform 0.3s ease;
+    }
+    .big-action-card:hover .card-icon {
+        transform: scale(1.1);
+    }
+    .big-action-card-primary .card-icon {
+        background: #eff6ff;
+        color: #2563eb;
+    }
+    .big-action-card-success .card-icon {
+        background: #ecfdf5;
+        color: #059669;
+    }
+    .big-action-card-info .card-icon {
+        background: #f0f9ff;
+        color: #0284c7;
+    }
+    .big-action-card-warning .card-icon {
+        background: #fffbeb;
+        color: #d97706;
+    }
+</style>
+
+<!-- Section Statistiques KPI du Secrétariat -->
+<div class="row mb-25">
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="dashboard-kpi-card d-flex align-items-center">
+            <div class="kpi-icon-box bg-primary-light text-primary">
+                <i class="fa-solid fa-users"></i>
+            </div>
+            <div>
+                <h3 class="fw-bold mb-0 text-dark">{{ $totalPatients ?? \App\Models\Patient::count() }}</h3>
+                <span class="text-muted fs-13 fw-semibold">Total Patients Enregistrés</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="dashboard-kpi-card d-flex align-items-center">
+            <div class="kpi-icon-box bg-success-light text-success">
+                <i class="fa-solid fa-hospital-user"></i>
+            </div>
+            <div>
+                <h3 class="fw-bold mb-0 text-dark">{{ $todayAdmissionsCount ?? 0 }}</h3>
+                <span class="text-muted fs-13 fw-semibold">Admissions Aujourd'hui</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="dashboard-kpi-card d-flex align-items-center">
+            <div class="kpi-icon-box bg-info-light text-info">
+                <i class="fa-solid fa-user-plus"></i>
+            </div>
+            <div>
+                <h3 class="fw-bold mb-0 text-dark">{{ $monthPatientsCount ?? 0 }}</h3>
+                <span class="text-muted fs-13 fw-semibold">Inscrits Ce Mois</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="dashboard-kpi-card d-flex align-items-center">
+            <div class="kpi-icon-box bg-warning-light text-warning">
+                <i class="fa-solid fa-file-medical"></i>
+            </div>
+            <div>
+                <h3 class="fw-bold mb-0 text-dark">{{ $totalAdmissionsCount ?? 0 }}</h3>
+                <span class="text-muted fs-13 fw-semibold">Historique Admissions</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Section Grandes Cartes d'Actions (Redirection au Clic) -->
+<div class="row mb-30">
+    <!-- Carte 1 : Enregistrer un Nouveau Patient -->
+    <div class="col-xl-6 col-lg-6 mb-4">
+        <a href="{{ route('secretariat.patient.create') }}" class="big-action-card big-action-card-primary">
+            <div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="card-icon">
+                        <i class="fa-solid fa-user-plus"></i>
+                    </div>
+                    <span class="badge bg-primary-light text-primary fw-bold px-3 py-2 rounded-pill fs-12">Action Rapide</span>
+                </div>
+                <h3 class="fw-bold text-dark mb-10 fs-22">Enregistrer un Nouveau Patient</h3>
+                <p class="text-muted mb-0 fs-15">
+                    Ouvrez un nouveau dossier médical pour un patient en renseignant son état civil, ses pièces justificatives et contacts d'urgence.
+                </p>
+            </div>
+            <div class="mt-25 d-flex align-items-center text-primary fw-bold fs-15">
+                <span>Créer un Dossier Patient</span>
+                <i class="fa-solid fa-arrow-right ms-2"></i>
+            </div>
+        </a>
+    </div>
+
+    <!-- Carte 2 : Rechercher / Vérifier un Patient -->
+    <div class="col-xl-6 col-lg-6 mb-4">
+        <a href="{{ route('secretariat.search_hospitalisation') }}" class="big-action-card big-action-card-success">
+            <div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="card-icon">
+                        <i class="fa-solid fa-magnifying-glass-location"></i>
+                    </div>
+                    <span class="badge bg-success-light text-success fw-bold px-3 py-2 rounded-pill fs-12">Page de Recherche</span>
+                </div>
+                <h3 class="fw-bold text-dark mb-10 fs-22">Rechercher / Vérifier un Patient</h3>
+                <p class="text-muted mb-0 fs-15">
+                    Accédez à la page dédiée de recherche pour consulter un dossier, vérifier le statut d'hospitalisation ou accéder à la fiche du patient.
+                </p>
+            </div>
+            <div class="mt-25 d-flex align-items-center text-success fw-bold fs-15">
+                <span>Accéder à la Recherche</span>
+                <i class="fa-solid fa-arrow-right ms-2"></i>
+            </div>
+        </a>
+    </div>
+
+<!-- Longue Carte Centrèe : Registre des Patients & Disponibilités du Personnel du Jour -->
+<div class="row mb-30">
     <div class="col-12">
-        <!-- Recherche patient -->
-        <div class="box bb-3 border-danger">
-            <div class="box-header with-border">
-                <div>
-                    <h4 class="box-title fw-bold fs-28">Enregistrement d'un nouveau patient</h4>
-                    <h6 class="box-subtitle">Avant d'enregistrer un nouveau patient, vous pouvez vérifier si le patient
-                        est déjà enregistré et faire la mise à jour .</h6>
-                    <div class="float-end">
-                        <a href="{{ route('secretariat.patient.create')}}">
-                            <button class="btn btn-primary"><i class="fa fa-plus-circle" aria-hidden="true"></i>&nbsp;&nbsp;Ajouter un nouveau</button>
+        <div class="card border-0 shadow-sm rounded-20 p-25 bg-white">
+            <div class="row align-items-center g-4">
+
+                <!-- Espace Gauche : Compteur & Actions Rapides -->
+                <div class="col-lg-4 col-md-5 border-end pe-md-4">
+                    <div class="p-20 rounded-16 bg-light text-center mb-20 border">
+                        <span class="text-muted fs-12 uppercase fw-bold d-block mb-1">Personnel Disponible Aujourd'hui</span>
+                        <h1 class="fw-bold text-primary display-4 mb-0">{{ count($todayAvailablePersonnel ?? []) }}</h1>
+                        <span class="badge bg-success-light text-success fw-bold px-3 py-1 rounded-pill mt-2 fs-13">
+                            <i class="fa-solid fa-circle me-1" style="font-size: 8px;"></i> De Garde / En Service
+                        </span>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <a href="{{ route('secretariat.availabilities') }}" class="btn btn-warning fw-semibold rounded-12 p-12 text-start d-flex align-items-center justify-content-between shadow-sm">
+                            <span><i class="fa-solid fa-calendar-days me-2"></i> Agenda & Planning Général</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </a>
+                        <a href="{{ route('secretariat.patient.list') }}" class="btn btn-info fw-semibold rounded-12 p-12 text-start d-flex align-items-center justify-content-between text-white shadow-sm">
+                            <span><i class="fa-solid fa-folder-tree me-2"></i> Registre Complet des Patients</span>
+                            <i class="fa-solid fa-arrow-right"></i>
                         </a>
                     </div>
                 </div>
 
-                <div class="guide w-full mt-10">
-                    <span class="fw-bold">Note </span><span class="text-danger">*</span>
-                    <ul>
-                        <li>Pour <span class="fw-bold">Enregister</span> un nouveau patient appuyer sur le bouton "
-                            <span class="fw-bold">Ajouter un nouveau</span> " </li>
-                        <li>Pour faire une mise à jour des informations du patient, utiliser le formulaire ci-dessous en
-                            renseignant le N° de <span class="fw-bold">Dossier Médical (DM)</span> ou le <span
-                                class="fw-bold">Nom et le prénom(s)</span> ou encore le <span class="fw-bold">N°
-                                assurance</span> du patient .</li>
-                    </ul>
+                <!-- Zone Droite : Liste du Personnel Disponible en Scroll Vertical -->
+                <div class="col-lg-8 col-md-7 ps-md-4">
+                    <div class="d-flex align-items-center justify-content-between mb-15">
+                        <h4 class="fw-bold text-dark mb-0 fs-18">
+                            <i class="fa-solid fa-user-doctor text-primary me-2"></i> Personnels Médicaux Disponibles Ce Jour
+                        </h4>
+                        <span class="text-muted fs-13"><i class="fa-solid fa-scroll me-1 text-info"></i> Défilement vertical</span>
+                    </div>
+
+                    <!-- Scroll Vertical Container -->
+                    <div class="personnel-scroll-container" style="max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                        @if(isset($todayAvailablePersonnel) && count($todayAvailablePersonnel) > 0)
+                            <div class="row g-2">
+                                @foreach($todayAvailablePersonnel as $person)
+                                    @php
+                                        $roleName = strtolower($person['role'] ?? '');
+                                        $isDoctor = str_contains($roleName, 'doctor') || str_contains($roleName, 'medecin');
+                                        $isInfirmier = str_contains($roleName, 'infirmier');
+                                        $badgeBg = $isDoctor ? 'bg-primary-light text-primary' : ($isInfirmier ? 'bg-success-light text-success' : 'bg-warning-light text-warning');
+                                        $iconClass = $isDoctor ? 'fa-user-doctor text-primary' : ($isInfirmier ? 'fa-user-nurse text-success' : 'fa-user-gear text-warning');
+                                    @endphp
+                                    <div class="col-12">
+                                        <div class="p-12 border rounded-12 bg-light d-flex align-items-center justify-content-between hover-shadow transition-all">
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-circle-sm me-3 d-flex align-items-center justify-content-center rounded-circle bg-white shadow-sm" style="width: 42px; height: 42px; font-size: 18px;">
+                                                    <i class="fa-solid {{ $iconClass }}"></i>
+                                                </div>
+                                                <div>
+                                                    <h5 class="fw-bold text-dark mb-1 fs-15">{{ $person['name'] }}</h5>
+                                                    <span class="badge {{ $badgeBg }} fw-semibold fs-12">{{ ucfirst($person['role']) }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-white text-dark border fw-bold px-3 py-1 rounded-pill d-block mb-1 fs-13">
+                                                    <i class="fa-regular fa-clock me-1 text-primary"></i> {{ $person['hour_start'] }} - {{ $person['hour_end'] }}
+                                                </span>
+                                                <span class="text-muted fs-12 fw-semibold"><i class="fa-solid fa-phone me-1 text-success"></i> {{ $person['telephone'] }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="p-30 text-center text-muted bg-light rounded-16">
+                                <i class="fa-solid fa-user-clock fs-32 mb-10 text-muted d-block"></i>
+                                <span class="fw-semibold fs-15">Aucun membre du personnel enregistré comme disponible aujourd'hui.</span>
+                            </div>
+                        @endif
+                    </div>
                 </div>
+
             </div>
         </div>
-        <div class="p-40 p-search">
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <div class="input-group mb-3">
-                            <input type="search" class="form-control h-50" min="10" max="10" autofocus
+    </div>
+</div>
+
+<!-- Modal Recherche & Affectation Directe Patient -->
+<div class="modal fade" id="searchPatientDashboardModal" tabindex="-1" aria-labelledby="searchPatientDashboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-20">
+            <div class="modal-header border-0 bg-light p-20 rounded-top-20">
+                <h4 class="modal-title fw-bold text-dark" id="searchPatientDashboardModalLabel">
+                    <i class="fa-solid fa-magnifying-glass text-primary me-2"></i> Rechercher un Patient & Effectuer une Affectation
+                </h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-25" style="max-height: 80vh; overflow-y: auto;">
+                
+                <!-- Formulaire de recherche -->
+                <div class="p-20 bg-light rounded-16 mb-20 border">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark fs-13">N° de Téléphone</label>
+                            <input type="search" class="form-control h-45" min="10" max="10" autofocus
                                 data-inputmask="'mask': ['9999999999', '99 99 99 99 99']" data-mask=""
                                 id="no_telephone" name="no_telephone" placeholder="Ex: 0707000000">
                         </div>
-                    </div>
-                </div>
-                <div class="col-md-8">
-                    <div class="row">
-                        <div class="col-md-5">
-                            <div class="form-group">
-                                <div class="input-group mb-3">
-                                    <input type="search" name="fullname" id="fullname" placeholder="Nom et Prénom(s)"
-                                        class="form-control h-50" oninput="convertToUppercase()">
-                                </div>
-                            </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark fs-13">Nom & Prénom(s)</label>
+                            <input type="search" name="fullname" id="fullname" placeholder="Nom et Prénom(s)"
+                                class="form-control h-45" oninput="convertToUppercase()">
                         </div>
-                        <div class="col-md-5">
-                            <div class="form-group">
-                                <div class="input-group mb-3">
-                                    <input type="text" name="birth_date" id="birth_date" class="form-control h-50"
-                                        data-inputmask="'alias': 'dd/mm/yyyy'" data-mask="" placeholder="dd/mm/yyyy">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="form-group">
-                                <div class="input-group mb-3">
-                                    <button type="button" id="search-button" class="btn btn-dark h-50"><i class="fa fa-search" aria-hidden="true"></i>&nbsp;&nbsp;Rechercher</button>
-                                </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark fs-13">Date de Naissance</label>
+                            <div class="input-group">
+                                <input type="text" name="birth_date" id="birth_date" class="form-control h-45"
+                                    data-inputmask="'alias': 'dd/mm/yyyy'" data-mask="" placeholder="dd/mm/yyyy">
+                                <button type="button" id="search-button" class="btn btn-primary h-45 px-20 font-bold">
+                                    <i class="fa-solid fa-search me-1"></i> Rechercher
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-        <div id="resultat-recherche-patient"></div>
+
+                <div id="resultat-recherche-patient"></div>
 
         <div id="update-form" style="display: none;">
             
@@ -149,45 +374,6 @@
                                                     class="form-control" data-inputmask="'alias': 'dd/mm/yyyy'"
                                                     data-mask="">
 
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="form-group">
-                                            <label for="telephone" class="form-label"> <b>Téléphone : <span
-                                                        class="danger">*</span></b> </label>
-                                            <div class="d-flex">
-                                                <span class="form-control w-80 text-center align-center"
-                                                    style="border-top-right-radius: 0; border-bottom-right-radius: 0;">+225</span>
-                                                <input type="text"
-                                                    style="border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: none;"
-                                                    min="10" max="10" name="telephone" id="telephone"
-                                                    class="form-control" autofocus placeholder="0101010101"
-                                                    data-inputmask="'mask': ['9999999999', '99 99 99 99 99']"
-                                                    data-mask="">
-                                            </div>
-                                        </div>
-
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="form-group">
-                                            <label for="contact2" class="form-label"> <b>N° Téléphone 2 : </b>
-                                            </label>
-                                            <div class="d-flex">
-                                                <span class="form-control w-80 text-center align-center"
-                                                    style="border-top-right-radius: 0; border-bottom-right-radius: 0;">+225</span>
-                                                <input type="text"
-                                                    style="border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: none;"
-                                                    min="10" max="10" name="contact2_up"
-                                                    id="contact2_up" class="form-control" autocomplete="contact2"
-                                                    autofocus placeholder="0707000000"
-                                                    data-inputmask="'mask': ['9999999999', '99 99 99 99 99']"
-                                                    data-mask="">
-
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
                                 <br />
                                 <div class="row">
                                     <div class="col-md-4">
@@ -502,15 +688,11 @@
                             </div>
                         </div>
                     </div>
-                </form>
+            </div>
+            <div class="modal-footer border-0 bg-light rounded-bottom-20">
+                <button type="button" class="btn btn-secondary px-20 rounded-10 fw-semibold" data-bs-dismiss="modal">Fermer</button>
             </div>
         </div>
-{{--         <div id="addPatient" style="display: none;">
-        
-                @include('users.secretariat.patient._inc.add')
-            </div> --}}
-
-
     </div>
 </div>
 
@@ -659,50 +841,49 @@
 
                         } else if (patients.length === 1) {
                             var patient = patients[0];
+                            var userName = (patient.user && patient.user.name) ? patient.user.name : '';
+                            var userPrenom = (patient.user && patient.user.prenom) ? patient.user.prenom : '';
+                            var userEmail = (patient.user && patient.user.email) ? patient.user.email : '';
+                            var resHabituelleName = (patient.residence_habituelle && patient.residence_habituelle.name) ? patient.residence_habituelle.name : '';
+                            var resActuelleName = (patient.residence_actuelle && patient.residence_actuelle.name) ? patient.residence_actuelle.name : '';
+                            var lieuNaissanceName = (patient.lieu_naissance && patient.lieu_naissance.name) ? patient.lieu_naissance.name : '';
+
                             // Remplir le formulaire avec les informations du patient
                             $('#patient_id').val(patient.id);
-                            $('#name_up').val(patient.user.name);
-                            $('#prenom_up').val(patient.user.prenom);
-                            $('#pays_up').val(patient.country);
-                            $('#email_up').val(patient.user.email);
-                            $('#code_patient').val(patient.code_patient);
-                            $('#birth_date_up').val(patient.birth_date);
-                            $('#numero_identite_up').val(patient.numero_identite);
-                            $('#gender_up').val(patient.gender);
-                            $('#telephone').val(patient.telephone);
-                            $('#contact2_up').val(patient.contact2);
-                            $('#profession_up').val(patient.profession);
-                            $('#type_piece_up').val(patient.type_piece);
-                            $('#residence_habituelle_up').val(patient.residence_habituelle
-                                .name);
-                            $('#residence_actuelle_up').val(patient.residence_actuelle
-                            .name);
-                            $('#situation_matrimoniale_up').val(patient
-                                .situation_matrimoniale);
-                            $('#address_up').val(patient.address);
-                            $('#ethnie_up').val(patient.ethnie);
-                            $('#lieu_naissance_up').val(patient.lieu_naissance.name);
-                            $('#nbre_enfant_up').val(patient.nbre_enfant);
-                            $('#nom_personne_cas_urgence_up').val(patient
-                                .nom_personne_cas_urgence);
-                            $('#telephone_personne_cas_urgence_up').val(patient
-                                .telephone_personne_cas_urgence);
-                            $('#lien_personne_cas_urgence_up').val(patient
-                                .lien_personne_cas_urgence);
+                            $('#name_up').val(userName);
+                            $('#prenom_up').val(userPrenom);
+                            $('#pays_up').val(patient.country || '');
+                            $('#email_up').val(userEmail);
+                            $('#code_patient').val(patient.code_patient || '');
+                            $('#birth_date_up').val(patient.birth_date || '');
+                            $('#numero_identite_up').val(patient.numero_identite || '');
+                            $('#gender_up').val(patient.gender || '');
+                            $('#telephone').val(patient.telephone || '');
+                            $('#contact2_up').val(patient.contact2 || '');
+                            $('#profession_up').val(patient.profession || '');
+                            $('#type_piece_up').val(patient.type_piece || '');
+                            $('#residence_habituelle_up').val(resHabituelleName);
+                            $('#residence_actuelle_up').val(resActuelleName);
+                            $('#situation_matrimoniale_up').val(patient.situation_matrimoniale || '');
+                            $('#address_up').val(patient.address || '');
+                            $('#ethnie_up').val(patient.ethnie || '');
+                            $('#lieu_naissance_up').val(lieuNaissanceName);
+                            $('#nbre_enfant_up').val(patient.nbre_enfant || '');
+                            $('#nom_personne_cas_urgence_up').val(patient.nom_personne_cas_urgence || '');
+                            $('#telephone_personne_cas_urgence_up').val(patient.telephone_personne_cas_urgence || '');
+                            $('#lien_personne_cas_urgence_up').val(patient.lien_personne_cas_urgence || '');
 
                             // Champs modifiable //
-                            //$('#telephone_up').prop('readonly', false);
                             $('#residence_actuelle_up').prop('readonly', false);
                             $('#residence_habituelle_up').prop('readonly', false);
                             $('#contact2_up').prop('readonly', false);
 
-                            if (patient.user.name !== '') {
+                            if (userName !== '') {
                                 $('#birth_date_up').prop('readonly', true);
                                 $('#name_up').prop('readonly', true);
                                 $('#prenom_up').prop('readonly', true);
                                 $('#gender_up').prop('readonly', true);
-                            }
-                            if (patient.user.name == null) {
+                            } else {
                                 $('#birth_date_up').prop('readonly', false);
                                 $('#name_up').prop('readonly', false);
                                 $('#prenom_up').prop('readonly', false);
@@ -715,14 +896,12 @@
 
                             //Champs select //
                             $('#residence_habituelle_up option').each(function() {
-                                if ($(this).val() === patient.residence_habituelle
-                                    .name) {
+                                if (resHabituelleName && $(this).val() === resHabituelleName) {
                                     $(this).prop('selected', true);
                                 }
                             });
                             $('#residence_actuelle_up option').each(function() {
-                                if ($(this).val() === patient.residence_actuelle
-                                    .name) {
+                                if (resActuelleName && $(this).val() === resActuelleName) {
                                     $(this).prop('selected', true);
                                 }
                             });
@@ -743,20 +922,17 @@
                                 }
                             });
                             $('#situation_matrimoniale_up option').each(function() {
-                                if ($(this).val() === patient
-                                    .situation_matrimoniale) {
+                                if ($(this).val() === patient.situation_matrimoniale) {
                                     $(this).prop('selected', true);
                                 }
                             });
 
                             //champs radio button
-                            $('#en_cours_de_scolarisation_up input[type="radio"]').each(
-                                function() {
-                                    if ($(this).val() === patient
-                                        .en_cours_de_scolarisation) {
-                                        $(this).prop('checked', true);
-                                    }
-                                });
+                            $('#en_cours_de_scolarisation_up input[type="radio"]').each(function() {
+                                if ($(this).val() === patient.en_cours_de_scolarisation) {
+                                    $(this).prop('checked', true);
+                                }
+                            });
                             $('#tranche_age_up input[type="radio"]').each(function() {
                                 if ($(this).val() === patient.tranche_age) {
                                     $(this).prop('checked', true);
@@ -779,24 +955,17 @@
                                 }
                             });
 
-
                             $('#type_population_up input[type="radio"]').each(function() {
                                 if ($(this).val() === patient.type_population) {
                                     $(this).prop('checked', true);
-                                }
-                                if ($('#autrePopulUp').prop('checked', true)) {
-                                    autrePopulInputUp.style.display = 'block';
-                                }
-                            });
-                            $('#type_population_up input[type="radio"]').each(function() {
-                                if ($(this).val() === patient.type_population) {
-                                    $(this).prop('checked', true);
-
                                     if ($(this).val() === 'autrePopulUp') {
-                                        autrePopulInputUp.style.display = 'block';
-                                    }
-                                    if ($(this).val() != 'autrePopulUp') {
-                                        autrePopulInputUp.style.display = 'none';
+                                        if (typeof autrePopulInputUp !== 'undefined' && autrePopulInputUp) {
+                                            autrePopulInputUp.style.display = 'block';
+                                        }
+                                    } else {
+                                        if (typeof autrePopulInputUp !== 'undefined' && autrePopulInputUp) {
+                                            autrePopulInputUp.style.display = 'none';
+                                        }
                                     }
                                 }
                             });
@@ -837,43 +1006,47 @@
             },
             success: function(response) {
                 var patient = response.patient;
-                //console.log(patient);
+                var userName = (patient.user && patient.user.name) ? patient.user.name : '';
+                var userPrenom = (patient.user && patient.user.prenom) ? patient.user.prenom : '';
+                var userEmail = (patient.user && patient.user.email) ? patient.user.email : '';
+                var resHabituelleName = (patient.residence_habituelle && patient.residence_habituelle.name) ? patient.residence_habituelle.name : '';
+                var resActuelleName = (patient.residence_actuelle && patient.residence_actuelle.name) ? patient.residence_actuelle.name : '';
+                var lieuNaissanceName = (patient.lieu_naissance && patient.lieu_naissance.name) ? patient.lieu_naissance.name : '';
+
                 $('#patient_id').val(patient.id);
-                $('#name_up').val(patient.user.name);
-                $('#prenom_up').val(patient.user.prenom);
-                $('#pays_up').val(patient.country);
-                $('#email_up').val(patient.user.email);
-                $('#code_patient').val(patient.code_patient);
-                $('#birth_date_up').val(patient.birth_date);
-                $('#numero_identite_up').val(patient.numero_identite);
-                $('#gender_up').val(patient.gender);
-                $('#telephone').val(patient.telephone);
-                $('#contact2_up').val(patient.contact2);
-                $('#profession_up').val(patient.profession);
-                $('#type_piece_up').val(patient.type_piece);
-                $('#residence_habituelle_up').val(patient.residence_habituelle.name);
-                $('#residence_actuelle_up').val(patient.residence_actuelle.name);
-                $('#temperature_up').val(patient.temperature);
-                $('#situation_matrimoniale_up').val(patient.situation_matrimoniale);
-                $('#address_up').val(patient.address);
-                $('#ethnie_up').val(patient.ethnie);
-                $('#lieu_naissance_up').val(patient.lieu_naissance.name);
-                $('#nbre_enfant_up').val(patient.nbre_enfant);
-                $('#nom_personne_cas_urgence_up').val(patient.nom_personne_cas_urgence);
-                $('#telephone_personne_cas_urgence_up').val(patient.telephone_personne_cas_urgence);
-                $('#lien_personne_cas_urgence_up').val(patient.lien_personne_cas_urgence);
+                $('#name_up').val(userName);
+                $('#prenom_up').val(userPrenom);
+                $('#pays_up').val(patient.country || '');
+                $('#email_up').val(userEmail);
+                $('#code_patient').val(patient.code_patient || '');
+                $('#birth_date_up').val(patient.birth_date || '');
+                $('#numero_identite_up').val(patient.numero_identite || '');
+                $('#gender_up').val(patient.gender || '');
+                $('#telephone').val(patient.telephone || '');
+                $('#contact2_up').val(patient.contact2 || '');
+                $('#profession_up').val(patient.profession || '');
+                $('#type_piece_up').val(patient.type_piece || '');
+                $('#residence_habituelle_up').val(resHabituelleName);
+                $('#residence_actuelle_up').val(resActuelleName);
+                $('#temperature_up').val(patient.temperature || '');
+                $('#situation_matrimoniale_up').val(patient.situation_matrimoniale || '');
+                $('#address_up').val(patient.address || '');
+                $('#ethnie_up').val(patient.ethnie || '');
+                $('#lieu_naissance_up').val(lieuNaissanceName);
+                $('#nbre_enfant_up').val(patient.nbre_enfant || '');
+                $('#nom_personne_cas_urgence_up').val(patient.nom_personne_cas_urgence || '');
+                $('#telephone_personne_cas_urgence_up').val(patient.telephone_personne_cas_urgence || '');
+                $('#lien_personne_cas_urgence_up').val(patient.lien_personne_cas_urgence || '');
 
                 // Champs modifiable //
-                //$('#telephone_up').prop('readonly', false);
                 $('#contact2_up').prop('readonly', false);
 
-                if (patient.user.name !== '') {
+                if (userName !== '') {
                     $('#birth_date_up').prop('readonly', true);
                     $('#name_up').prop('readonly', true);
                     $('#prenom_up').prop('readonly', true);
                     $('#gender_up').prop('readonly', true);
-                }
-                if (patient.user.name == null) {
+                } else {
                     $('#birth_date_up').prop('readonly', false);
                     $('#name_up').prop('readonly', false);
                     $('#prenom_up').prop('readonly', false);
@@ -886,12 +1059,12 @@
 
                 //Champs select //
                 $('#residence_habituelle_up option').each(function() {
-                    if ($(this).val() === patient.residence_habituelle.name) {
+                    if (resHabituelleName && $(this).val() === resHabituelleName) {
                         $(this).prop('selected', true);
                     }
                 });
                 $('#residence_actuelle_up option').each(function() {
-                    if ($(this).val() === patient.residence_actuelle.name) {
+                    if (resActuelleName && $(this).val() === resActuelleName) {
                         $(this).prop('selected', true);
                     }
                 });

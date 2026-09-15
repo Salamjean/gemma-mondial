@@ -24,7 +24,10 @@ class InfirmierController extends Controller
 
     public function index()
     {
-        $infirmiers = Infirmier::where('hospital_id', Auth::user()->hospital->id)->where('delete', 0)->with('user.availability')->get();
+        $infirmiers = Infirmier::where('hospital_id', Auth::user()->hospital->id)
+            ->where('delete', 0)
+            ->with(['user.availability', 'services.serviceHospital.service', 'serviceHospital.service'])
+            ->get();
 
         $title = "Liste des infirmiers";
         $empty = "Liste vide...";
@@ -84,8 +87,23 @@ class InfirmierController extends Controller
             $infirmier->img_url = $this->deleteUploadImage($request->image, 'infirmier');
         }
 
-        $infirmier->service_hospital_id = $request->service;
+        $serviceIds = [];
+        if ($request->has('services') && is_array($request->services)) {
+            $serviceIds = array_filter($request->services);
+        } elseif ($request->filled('service')) {
+            $serviceIds = [$request->service];
+        }
+
+        $infirmier->service_hospital_id = !empty($serviceIds) ? $serviceIds[0] : null;
         $infirmier->save();
+
+        \App\Models\ServiceInfirmier::where('infirmier_id', $infirmier->id)->delete();
+        foreach ($serviceIds as $srvId) {
+            \App\Models\ServiceInfirmier::create([
+                'infirmier_id' => $infirmier->id,
+                'service_hospital_id' => $srvId,
+            ]);
+        }
 
         //update availability
         $planning = Availability::where('user_id', $user->id)->first();

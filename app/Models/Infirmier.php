@@ -23,6 +23,11 @@ class Infirmier extends Model
         return $this->belongsTo(ServiceHospital::class, 'service_hospital_id', 'id');
     }
 
+    public function services(): HasMany
+    {
+        return $this->hasMany(ServiceInfirmier::class, 'infirmier_id', 'id');
+    }
+
     public function hospital() : BelongsTo
     {
         return $this->belongsTo(Hospital::class, 'hospital_id', 'id');

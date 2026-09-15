@@ -379,28 +379,7 @@
 
             <input type="hidden" name="fingerprint_device" id="fingerprint_device" value="DigitalPersona U.are.U 4500"> -->
             <!-- Step 3 -->
-            <div class="row mt-20" id="questAdd">
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <div class="form-group">
-                            <label for="fonction" class="form-label"> <b>Voulez-vous affecter le Patient: </b>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <div class="form-group">
-                            <div class="c-inputs-stacked" id="admission_patient">
-                                <input type="radio" id="Ad01" value="Oui" name="admission_patient">
-                                <label for="Ad01" class="me-30">Oui</label>
-                                <input type="radio" id="Ad02" value="Non" name="admission_patient">
-                                <label for="Ad02" class="me-30">Non</label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <input type="hidden" name="admission_patient" value="Oui">
 
             <div id="admissionForm">
                 <div class="box-body ribbon-box">
@@ -548,21 +527,9 @@
 
     });
     /** validation patient **/
-    const admAdd = document.querySelectorAll('input[type=radio][name="admission_patient"]');
-    const admissionForm = document.getElementById('admissionForm')
-
-    admissionForm.style.display = 'none';
-
-    Array.prototype.forEach.call(admAdd, function (radio) {
-        radio.addEventListener('change', changeHandlerAM);
-    });
-
-    function changeHandlerAM(event) {
-        if (this.value == 'Oui') {
-            admissionForm.style.display = 'block';
-        } else {
-            admissionForm.style.display = 'none';
-        }
+    const admissionForm = document.getElementById('admissionForm');
+    if (admissionForm) {
+        admissionForm.style.display = 'block';
     }
 
     $(document).ready(function () {
@@ -727,9 +694,10 @@
                     type: 'GET',
                     success: function (response) {
                         $.each(response, function (key, prestation) {
-                            prestationlist.append('<option value="' + prestation
-                                .id + '">' + prestation.prestation_service
-                                    .libelle + '</option>');
+                            var label = (prestation.prestation_service && prestation.prestation_service.libelle)
+                                ? prestation.prestation_service.libelle
+                                : (prestation.description || 'Prestation');
+                            prestationlist.append('<option value="' + prestation.id + '">' + label + '</option>');
                         });
                     },
                     error: function (xhr, status, error) {
@@ -865,8 +833,8 @@
                 servicelist.append('<option value="">Selectionner</option>');
 
                 $.each(response, function (key, service) {
-                    servicelist.append('<option value="' + service.service.libelle + '">' +
-                        service.service.libelle + '</option>');
+                    var libelle = (service.service && service.service.libelle) ? service.service.libelle : ('Service #' + service.id);
+                    servicelist.append('<option value="' + libelle + '">' + libelle + '</option>');
                 });
             },
             error: function (xhr) { }

@@ -1,4 +1,17 @@
 <div class="container">
+        @php
+            $patient = $consultation->patient ?? ($consultation->admission->patient ?? null);
+            $motif = $consultation->admission->motif_consultation ?? ($consultation->observation_infirmiere ?? 'Non spécifié');
+            $age = 'N/A';
+            if ($patient && $patient->birth_date) {
+                try {
+                    $agePatient = \Carbon\Carbon::createFromFormat('d/m/Y', $patient->birth_date);
+                    $age = $agePatient->diffInYears(\Carbon\Carbon::now()) . ' ans';
+                } catch (\Exception $e) {
+                    $age = 'N/A';
+                }
+            }
+        @endphp
         <form action="{{ route('infirmier.consultation.formulaire.store') }}" method="POST">
             @csrf
             <input type="hidden" name="consultation_id" value="{{ $consultation->id }}" />
@@ -7,11 +20,11 @@
                 <div class="box bb-3 border-danger pe-95 pb-20 ps-95 pt-20 bg-color">
                     <div class="row">
                         <div class="col-md-2">
-                            @if ($consultation->admission->patient->img_url != null)
-                                <img src="{{ asset('assets/uploads/patient/' . $consultation->admission->patient->img_url) }}"
+                            @if ($patient && $patient->img_url != null)
+                                <img src="{{ asset('assets/uploads/patient/' . $patient->img_url) }}"
                                     class="rounded-circle" alt="Photo de profil" style="width:128px; height:128px" />
                             @else
-                                @if ($consultation->admission->patient->gender == 'masculin')
+                                @if ($patient && $patient->gender == 'masculin')
                                     <img src="{{ asset('assets/images/avatar/6.png') }}" class="rounded-circle"
                                         alt="Photo de profil" />
                                 @else
@@ -24,40 +37,36 @@
                             <div class="row">
                                 <div class="row mt-20">
                                     <div class="col-md-6">
-                                        <label class="form-label">N° Dossier médical | <span class="fw-bold fs-18"><span id="dm_patient" style="color:red;">{{ $consultation->admission->patient->code_patient }}</span></span></label>
+                                        <label class="form-label">N° Dossier médical | <span class="fw-bold fs-18"><span id="dm_patient" style="color:red;">{{ $patient->code_patient ?? 'N/A' }}</span></span></label>
                                     </div>
                                 </div>
                                 <hr>
-                                @php
-                                    $agePatient = \Carbon\Carbon::createFromFormat('d/m/Y', $consultation->patient->birth_date);
-                                    $age = $agePatient->diffInYears(Carbon\Carbon::now());
-                                @endphp
                                 <div class="col-md-4">
                                     <div class="form-group">
                                         <label for="name" class="form-label"> <b>Nom complet </b> </label>
                                         <input type="text" class="form-control" id="name" name="name"
-                                        value="{{ $consultation->admission->patient->user->name }} {{ $consultation->admission->patient->user->prenom }}" disabled>
+                                        value="{{ ($patient->user->name ?? '') . ' ' . ($patient->user->prenom ?? '') }}" disabled>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="form-group">
                                         <label for="birth_date" class="form-label"> <b>Né(e) le</b></label>
                                         <input type="text" class="form-control" id="birth_date" name="birth_date"
-                                        value="{{ $consultation->admission->patient->birth_date }}" disabled>
+                                        value="{{ $patient->birth_date ?? 'N/A' }}" disabled>
                                     </div>
                                 </div>
                                 <div class="col-md-2">
                                     <div class="form-group">
                                         <label for="age" class="form-label"> <b>Age </b></label>
                                         <input type="text" class="form-control" id="age" name="age"
-                                        value="{{ $age }} ans" disabled>
+                                        value="{{ $age }}" disabled>
                                     </div>
                                 </div>
                                 <div class="col-md-2">
                                     <div class="form-group">
                                         <label for="gender" class="form-label"> <b>Sexe </b></label>
                                         <input type="text" class="form-control" id="gender" name="gender"
-                                        value="{{ $consultation->admission->patient->gender }}" disabled>
+                                        value="{{ $patient->gender ?? 'N/A' }}" disabled>
                                     </div>
                                 </div>
                             </div>
@@ -66,24 +75,24 @@
                                 <div class="col-md-4">
                                     <label class="form-label"><b>Résidence Actuelle</b></label>
                                     <input type="text" class="form-control"
-                                        value="{{ $consultation->admission->patient->residenceActuelle->name }}" readonly />
+                                        value="{{ $patient->residenceActuelle->name ?? 'N/A' }}" readonly />
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label"><b>Contact</b></label>
                                     <input type="text" class="form-control"
-                                        value="{{ $consultation->admission->patient->telephone }}" readonly />
+                                        value="{{ $patient->telephone ?? '' }}" readonly />
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label"><b>N° de securité sociale</b></label>
                                     <input type="text" class="form-control"
-                                        value="{{ $consultation->admission->patient->no_assurance }}" readonly />
+                                        value="{{ $patient->no_assurance ?? '' }}" readonly />
                                 </div>
                             </div>
                             <div class="row">
                                 <div class="col-md-12">
                                     <label class="form-label"><b>Motif de la consultation</b></label>
                                     <textarea type="text" class="form-control" name="motif_consultation" id="motif_consultation"
-                                        value="{{ $consultation->admission->motif_consultation }}" readonly>{{ $consultation->admission->motif_consultation }}</textarea>
+                                        readonly>{{ $motif }}</textarea>
                                 </div>
                             </div>
                         </div>

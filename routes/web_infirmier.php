@@ -25,6 +25,7 @@ Route::middleware(['auth'])->group(function () {
             //care
             Route::prefix('care')->name('care.')->group(function () {
                 Route::get('new', 'CareController@new')->name('new');
+                Route::get('all', 'CareController@allCares')->name('all');
                 Route::get('history', 'CareController@history')->name('history');
                 Route::get('formulaire/{id}', 'CareController@formulaire')->name('formulaire');
 
@@ -46,6 +47,7 @@ Route::middleware(['auth'])->group(function () {
             //consultation
             Route::prefix('consultation')->name('consultation.')->group(function () {
                 Route::get('today', 'ConsultationController@today')->name('today');
+                Route::get('all', 'ConsultationController@allPatients')->name('all');
                 Route::get('history', 'ConsultationController@history')->name('history');
                 Route::get('detail/{id}', 'ConsultationController@detail')->name('detail');
                 Route::get('info/{id}', 'ConsultationController@infoPatient')->name('info');
@@ -62,6 +64,12 @@ Route::middleware(['auth'])->group(function () {
                 Route::get('/patient/{id}', [SuiviController::class, 'suiviePatient'])->name('hospitalisation');
                 Route::post('/applique/protocol/{id}', [SuiviController::class, 'appliqueProtocol'])->name('applique');
                 Route::post('/make/surveillance', [SuiviController::class, 'makeSuveillance'])->name('surveillance');
+            });
+
+            //hospitalisation list
+            Route::prefix('hospitalisation')->name('hospitalisation.')->group(function () {
+                Route::get('in_progress', 'HospitalisationController@in_progress')->name('in_progress');
+                Route::get('history', 'HospitalisationController@history')->name('history');
             });
         });
 

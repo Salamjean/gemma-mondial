@@ -2,14 +2,14 @@
 
 @section('content')
     <div class="box">
-        <div class="box-header">
-            <div class="row">
-                <div class="col-xs-12  col-xl-9 col-lg-9 col-md-9 col-sm-9">
-                    <h4 class="box-title">Toutes les consultations</h4>
-                </div>
-            </div>
+        <div class="box-header d-flex align-items-center justify-content-between p-20 flex-wrap gap-2">
+            <h4 class="box-title mb-0 fw-bold text-dark">
+                <i class="fa-solid fa-history me-2 text-primary"></i><b>Historique de toutes les consultations</b>
+            </h4>
+            <a href="{{ route('dashboard') }}" class="btn btn-sm btn-secondary rounded-10 fw-bold shadow-sm">
+                <i class="fa-solid fa-arrow-left me-1"></i> Retour
+            </a>
         </div>
-        <br /><br />
         <div class="box-body">
             <div class="table-responsive">
                 <table id="example" class="table table-striped table-hover display nowrap margin-top-10 w-p100">
@@ -17,13 +17,24 @@
                         <tr>
                             <th class="bb-2">Date et heure</th>
                             <th class="bb-2">Reference</th>
-                            <th class="bb-2">Motif</th>
+                            <th class="bb-2">Motif & Mode</th>
                             <th class="bb-2">Status</th>
                             <th class="bb-2 text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($consultations as $item)
+                            @php
+                                $hasJustification = !empty(optional($item->registre)->issue_consultation_justification);
+                                $hasOrdonnance = ($item->ordonnances_count > 0);
+                                $hasExamen = ($item->examen_count > 0);
+                                $hasArret = ($item->arret_count > 0);
+                                $hasDeclaration = ($item->declaration_count > 0);
+                                $hasHospitalisation = \App\Models\Hospitalisation::where('consultation_id', $item->id)->exists();
+
+                                // Une consultation est véritablement terminée si status == 1 ET qu'au moins une étape post-consultation / issue / ordonnance / hospitalisation est enregistrée
+                                $isTerminee = ($item->status == 1) && ($hasJustification || $hasOrdonnance || $hasExamen || $hasArret || $hasDeclaration || $hasHospitalisation);
+                            @endphp
                             <tr>
                                 <td>
                                     @if ($item->registre)
@@ -35,17 +46,23 @@
                                     @endif
 
                                 </td>
-                                <td><b>{{ $item->patient->code_patient }}</b></td>
+                                <td><b>{{ optional($item->patient)->code_patient ?? 'N/A' }}</b></td>
 
-                                <td class="" style="width: 200px;">
-                                    <p class="text-muted">{{ $item->prestationHospital->prestationService->libelle }}</p>
+                                <td class="" style="width: 220px;">
+                                    <span class="fw-bold text-dark fs-13">{{ optional(optional($item->prestationHospital)->prestationService)->libelle ?? $item->motif_consultation ?? 'Consultation' }}</span>
+                                    <br>
+                                    @if(!empty($item->call_channel))
+                                        <span class="badge" style="background-color: #0d9488; color: #ffffff; font-size: 11px; padding: 4px 8px; border-radius: 6px; display: inline-block; margin-top: 4px;"><i class="fa-solid fa-video me-1"></i> Téléconsultation</span>
+                                    @else
+                                        <span class="badge" style="background-color: #475569; color: #ffffff; font-size: 11px; padding: 4px 8px; border-radius: 6px; display: inline-block; margin-top: 4px;"><i class="fa-solid fa-hospital me-1"></i> Présentiel</span>
+                                    @endif
                                 </td>
 
                                 <td class="">
-                                    @if ($item->status == 0)
-                                        <span class="badge badge-danger">Annulée</span>
+                                    @if (!$isTerminee)
+                                        <span class="badge badge-warning"><i class="fa-solid fa-clock me-1"></i> Non terminée</span>
                                     @else
-                                        <span class="badge badge-success">Terminée</span> <br>
+                                        <span class="badge badge-success"><i class="fa-solid fa-check-circle me-1"></i> Terminée</span> <br>
                                         <div style="padding-top: 5px;">
                                             @if ($item->ordonnances_count > 0)
                                                 @foreach ($item->ordonnances as $ordonnan)
@@ -72,33 +89,37 @@
                                     @endif
                                 </td>
                                 <td class="text-center">
-                                    @php
-                                        $dateConsult = \Carbon\Carbon::parse($item->registre ? $item->registre->updated_at : $item->created_at)->addMinutes(15);
-                                        $delaie = \Carbon\Carbon::now()->addMinutes(15);
-
-                                        $interval = $dateConsult->diffInMinutes($delaie);
-
-                                    @endphp
-                                    @if ($interval < 15)
-                                        <a href="{{ route('doctor.consultation.formulaire', $item->id) }}"
-                                            class="btn btn-sm btn-danger" title="update consultation">
-                                            <span class="">Modifier</span>
-                                        </a>
-                                    @elseif ($item->status == 0)
-                                        <a href="{{ route('doctor.patient.detail', $item->patient->id) }}"
-                                            class="btn btn-sm btn-info" title="info">
-                                            <span class="">Info patient</span>
+                                    @if (!$isTerminee)
+                                        @php
+                                            $poursuivreUrl = route('doctor.consultation.formulaire', $item->id);
+                                            if ($item->registre && !empty($item->registre->issue_consultation)) {
+                                                $poursuivreUrl = route('doctor.consultation.formulaire.issue', [
+                                                    'title' => 'Formulaire issue',
+                                                    'issue' => $item->registre->issue_consultation,
+                                                    'id' => $item->id
+                                                ]);
+                                            }
+                                        @endphp
+                                        <a href="{{ $poursuivreUrl }}"
+                                            class="btn btn-sm btn-primary me-1" title="Poursuivre la consultation">
+                                            <i class="fa-solid fa-play me-1"></i> <span class="">Poursuivre</span>
                                         </a>
                                     @else
-                                        <a href="{{ route('doctor.consultation.detail', $item->id) }}" class="btn btn-sm btn-info"
-                                            title="detail consultation">
-                                            <span class="">Détail</span>
+                                        <a href="{{ route('doctor.consultation.detail', $item->id) }}" class="btn btn-sm btn-info me-1"
+                                            title="Détail de la consultation">
+                                            <i class="fa-solid fa-eye me-1"></i> <span class="">Détail</span>
+                                        </a>
+                                        <a href="{{ route('doctor.consultation.formulaire', $item->id) }}"
+                                            class="btn btn-sm btn-warning me-1" title="Modifier la consultation">
+                                            <i class="fa-solid fa-pen-to-square me-1"></i> <span class="">Modifier</span>
                                         </a>
                                     @endif
-                                    <a href="javascript:void(0)"
-                                        onclick="openCardModal('{{ route('doctor.consultation.patient.card', $item->patient->id) }}')"
-                                        class="btn btn-sm btn-warning" title="Carte numérique"><i
-                                            class="fa-solid fa-id-card"></i></a>
+                                    @if (optional($item->patient)->id)
+                                        <a href="javascript:void(0)"
+                                            onclick="openCardModal('{{ route('doctor.consultation.patient.card', $item->patient->id) }}')"
+                                            class="btn btn-sm btn-outline-secondary" title="Carte numérique"><i
+                                                class="fa-solid fa-id-card"></i></a>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach

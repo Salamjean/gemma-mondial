@@ -1,89 +1,100 @@
-@extends('layouts.dashboard',['title' => "Liste des patients"])
+@extends('layouts.dashboard', ['title' => "Liste des patients"])
 
 @push('css')
     @livewireStyles()
 @endpush
 @section('content')
-<div class="row justify-content-center">
-    <div class="col-12">
-      <div class="box">
-        <div class="box-header">
-              <div class="row">
-                <div class="col-xs-12  col-xl-9 col-lg-9 col-md-9 col-sm-9">
-                    <h4 class="box-title">PATIENTS</h4>
+    <div class="row justify-content-center">
+        <div class="col-12">
+            <div class="box">
+                <div class="box-header">
+                    <div class="row">
+                        <div class="col-xs-12  col-xl-9 col-lg-9 col-md-9 col-sm-9">
+                            <h4 class="box-title">PATIENTS</h4>
+                        </div>
+                        <div class="col-xs-12 col-xl-3 col-lg-3 col-md-3 col-sm-3 float-right">
+                            <a href="{{ route('secretariat.patient.create') }}"
+                                class="btn btn-primary btn-sm shadow">Ajouter un Patient</a>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-xs-12 col-xl-3 col-lg-3 col-md-3 col-sm-3 float-right">
-                    <a href="{{ route('secretariat.patient.create') }}" class="btn btn-primary btn-sm shadow">Ajouter un Patient</a>
+                <div class="box-body">
+                    <div class="table-responsive">
+                        <table id="example" class="table table-striped table-hover display nowrap margin-top-10 w-p100">
+                            <thead class="bg-primary">
+                                <tr>
+                                    <th class="bb-2">N° Dossier médical</th>
+                                    <th class="bb-2">Photo</th>
+                                    <th class="bb-2">Nom & Prénom(s)</th>
+                                    <th class="bb-2">Genre</th>
+                                    <th class="bb-2">Age</th>
+                                    <th class="bb-2">Pays de naissance</th>
+                                    <th class="bb-2">N° d'identité</th>
+                                    <th class="bb-2 text-center">Lieu d'habitation</th>
+                                    <th class="bb-2">Inscrit le</th>
+                                    <th class="bb-2 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                                @foreach ($patients as $patient)
+                                    @php
+                                        $dateNaissance = \Carbon\Carbon::createFromFormat('d/m/Y', $patient->birth_date);
+                                        $age = $dateNaissance->diffInYears(\Carbon\Carbon::now());
+                                    @endphp
+                                    <tr>
+                                        <td><b><i>{{ $patient->code_patient }}</i></b></td>
+
+                                        <td>
+                                            @if ($patient->img_url != null)
+                                                <img src="{{ asset('assets/uploads/patient/' . $patient->img_url) }}"
+                                                    class="rounded-circle" alt="Photo de profil" style="width:48px; height:48px" />
+                                            @else
+                                                @if ($patient->gender == 'masculin')
+                                                    <img src="{{ asset('assets/images/avatar/6.png') }}"
+                                                        class="avatar avatar-lg rounded10" alt="Photo de profil" />
+                                                @else
+                                                    <img src="{{ asset('assets/images/avatar/2.png') }}"
+                                                        class="avatar avatar-lg rounded10" alt="Photo de profil" />
+                                                @endif
+                                            @endif
+
+                                        </td>
+                                        <td><i>{{ $patient->user->name }} {{ $patient->user->prenom }}</i></td>
+                                        <td>{{ $patient->gender }}</td>
+                                        <td>{{ $age }} ans</td>
+                                        <td>{{ $patient->lieuNaissance->name }}</td>
+                                        <td>{{ $patient->numero_identite }}</td>
+                                        <td>{{ $patient->residenceActuelle->name }}</td>
+                                        <td>
+                                            {{ \Carbon\Carbon::parse($patient->created_at)->format('d/m/Y') }} -
+                                            {{ heureFr($patient->created_at) }}
+                                        </td>
+                                        <td class="text-center">
+                                            <a href="{{ route('secretariat.patient.detail', $patient->id) }}"
+                                                class="btn btn-sm btn-info" data-bs-toggle="tooltip" data-bs-placement="bottom"
+                                                title="Détail"><i class="fa-solid fa-eye"></i></a>
+                                            <a href="{{ route('secretariat.patient.edit', $patient->id) }}"
+                                                class="btn btn-sm btn-primary" data-bs-toggle="tooltip"
+                                                data-bs-placement="bottom" title="Modifier"><i
+                                                    class="fa-solid fa-pen-to-square"></i></a>
+                                            <a href="javascript:void(0)"
+                                                onclick="openCardModal('{{ route('secretariat.patient.card', $patient->id) }}')"
+                                                class="btn btn-sm btn-warning" data-bs-toggle="tooltip"
+                                                data-bs-placement="bottom" title="Carte numérique"><i
+                                                    class="fa-solid fa-id-card"></i></a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-              </div>
-        </div>
-        <div class="box-body">
-            <div class="table-responsive">
-                <table id="example" class="table table-striped table-hover display nowrap margin-top-10 w-p100">
-                    <thead class="bg-primary">
-                        <tr>
-                            <th class="bb-2">N° Dossier médical</th>
-                            <th class="bb-2">Photo</th>
-                            <th class="bb-2">Nom & Prénom(s)</th>
-                            <th class="bb-2">Genre</th>
-                            <th class="bb-2">Age</th>
-                            <th class="bb-2">Pays de naissance</th>
-                            <th class="bb-2">N° d'identité</th>
-                            <th class="bb-2 text-center">Lieu d'habitation</th>
-                            <th class="bb-2">Inscrit le</th>
-                            <th class="bb-2 text-center">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-
-                        @foreach ($patients as $patient)
-                            @php
-                                $dateNaissance = \Carbon\Carbon::createFromFormat('d/m/Y', $patient->birth_date);
-                                $age = $dateNaissance->diffInYears(\Carbon\Carbon::now());
-                            @endphp
-                            <tr>
-                                <td><b><i>{{ $patient->code_patient }}</i></b></td>
-
-                                <td>
-                                    @if ($patient->img_url != null)
-        								<img src="{{ asset('assets/uploads/patient/'. $patient->img_url) }}"
-        									class="rounded-circle" alt="Photo de profil" style="width:48px; height:48px" />
-        							@else
-        							    @if ($patient->gender == 'masculin')
-        								<img src="{{ asset('assets/images/avatar/6.png') }}" class="avatar avatar-lg rounded10"
-        									alt="Photo de profil" />
-            							@else
-            								<img src="{{ asset('assets/images/avatar/2.png') }}" class="avatar avatar-lg rounded10"
-            									alt="Photo de profil" />
-            							@endif
-        							@endif
-                                    
-                                </td>
-                                <td><i>{{ $patient->user->name }} {{ $patient->user->prenom }}</i></td>
-                                <td>{{ $patient->gender }}</td>
-                                <td>{{ $age }} ans</td>
-                                <td>{{ $patient->lieuNaissance->name }}</td>
-                                <td>{{ $patient->numero_identite }}</td>
-                                <td>{{ $patient->residenceActuelle->name }}</td>
-                                <td>
-                                    {{ \Carbon\Carbon::parse($patient->created_at)->format('d/m/Y') }} - 
-                                    {{ heureFr($patient->created_at) }}
-                                </td>
-                                <td class="text-center">
-                                    <a href="{{ route('secretariat.patient.detail', $patient->id) }}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Détail"><i class="fa-solid fa-pen-to-square"></i></a>
-                                    <a href="javascript:void(0)" onclick="openCardModal('{{ route('secretariat.patient.card', $patient->id) }}')" class="btn btn-sm btn-warning" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Carte numérique"><i class="fa-solid fa-id-card"></i></a>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                  </table>
             </div>
-          </div>
-      </div>
+        </div>
     </div>
-</div>
 
-</div>
+    </div>
 @endsection
 @push('js')
     @livewireScripts()
@@ -103,34 +114,34 @@
                 didOpen: () => {
                     Swal.getPopup().style.overflow = 'hidden';
                     Swal.showLoading();
-                    fetch(url, { headers: {'X-Requested-With': 'XMLHttpRequest'} })
-                    .then(response => {
-                        if(!response.ok) throw new Error("Network response was not ok");
-                        return response.text();
-                    })
-                    .then(html => {
-                        Swal.hideLoading();
-                        const container = document.getElementById('swal-card-container');
-                        container.innerHTML = html;
-                        
-                        // Re-execute scripts (QR Code etc)
-                        const scripts = container.querySelectorAll("script");
-                        scripts.forEach(oldScript => {
-                            const newScript = document.createElement("script");
-                            Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-                            newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-                            oldScript.parentNode.replaceChild(newScript, oldScript);
+                    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                        .then(response => {
+                            if (!response.ok) throw new Error("Network response was not ok");
+                            return response.text();
+                        })
+                        .then(html => {
+                            Swal.hideLoading();
+                            const container = document.getElementById('swal-card-container');
+                            container.innerHTML = html;
+
+                            // Re-execute scripts (QR Code etc)
+                            const scripts = container.querySelectorAll("script");
+                            scripts.forEach(oldScript => {
+                                const newScript = document.createElement("script");
+                                Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                                newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                                oldScript.parentNode.replaceChild(newScript, oldScript);
+                            });
+                        })
+                        .catch(err => {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Erreur',
+                                text: 'Impossible de charger la carte.',
+                                confirmButtonColor: '#3596f7'
+                            });
+                            console.error(err);
                         });
-                    })
-                    .catch(err => {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Erreur',
-                            text: 'Impossible de charger la carte.',
-                            confirmButtonColor: '#3596f7'
-                        });
-                        console.error(err);
-                    });
                 }
             });
         }

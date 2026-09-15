@@ -1,6 +1,6 @@
 <li class="treeview">
-    <a href="#" class="{{ routeActive(['cashier.admission.list', 'cashier.admission.admission', 'cashier.admission.hospitalisation']) }}">
-        <i class="fa fa-paypal {{ routeActive(['cashier.admission.list', 'cashier.admission.admission', 'cashier.admission.hospitalisation']) }}">
+    <a href="#" class="{{ routeActive(['cashier.admission.list', 'cashier.admission.all', 'cashier.admission.admission', 'cashier.admission.hospitalisation']) }}">
+        <i class="fa fa-paypal {{ routeActive(['cashier.admission.list', 'cashier.admission.all', 'cashier.admission.admission', 'cashier.admission.hospitalisation']) }}">
             <span class="path1"></span><span class="path2"></span><span class="path3"></span>
         </i>
         <span>Paiements</span>
@@ -10,8 +10,13 @@
     </a>
     <ul class="treeview-menu">
         <li>
+            <a href="{{ route('cashier.admission.all') }}" class="{{ routeActive('cashier.admission.all') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>En attente
+            </a>
+        </li>
+        <li>
             <a href="{{ route('cashier.admission.list') }}" class="{{ routeActive('cashier.admission.list') }}">
-                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Liste
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Historique des paiements
             </a>
         </li>
         <li>
@@ -71,6 +76,24 @@
         <li>
             <a href="{{ route('cashier.assurance.history') }}">
                 <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Historiques
+            </a>
+        </li>
+    </ul>
+</li>
+<li class="treeview">
+    <a href="#" class="{{ routeActive('cashier.planning') }}">
+        <i class="fa-solid fa-calendar-days {{ routeActive('cashier.planning') }}">
+            <span class="path1"></span><span class="path2"></span><span class="path3"></span>
+        </i>
+        <span>Planning</span>
+        <span class="pull-right-container">
+            <i class="fa-solid fa-angle-right"></i>
+        </span>
+    </a>
+    <ul class="treeview-menu">
+        <li>
+            <a href="{{ route('cashier.planning') }}" class="{{ routeActive('cashier.planning') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Mon Planning
             </a>
         </li>
     </ul>

@@ -174,6 +174,8 @@ Route::middleware(['auth'])->group(function () {
             Route::prefix('patient')->name('patient.')->group(function () {
                 Route::get('index', 'PatientController@index')->name('index');
                 Route::get('show/{id}', 'PatientController@show')->name('detail');
+                Route::get('dossier_medical/{id}', 'PatientController@dossierMedical')->name('dossier_medical');
+                Route::get('parcours/{id}', 'PatientController@parcoursIntervention')->name('parcours');
             });
 
             //consultation

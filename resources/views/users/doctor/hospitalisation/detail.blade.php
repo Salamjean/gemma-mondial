@@ -17,6 +17,17 @@
         <div class=" card-body">
             @php
                 $diff = Carbon\Carbon::parse($hospitalisation->created_at)->diffInDays(Carbon\Carbon::now()) + 1;
+            @php
+                $patient = $hospitalisation->consultation->patient ?? ($hospitalisation->consultation->admission->patient ?? null);
+                $age = 'N/A';
+                if ($patient && $patient->birth_date) {
+                    try {
+                        $agePatient = \Carbon\Carbon::createFromFormat('d/m/Y', $patient->birth_date);
+                        $age = $agePatient->diffInYears(\Carbon\Carbon::now()) . ' ans';
+                    } catch (\Exception $e) {
+                        $age = 'N/A';
+                    }
+                }
             @endphp
             <div class="row">
                 <div class="col-md-12">
@@ -27,7 +38,7 @@
                                 <div class="">
                                     <label class="form-label">N° Dossier médical | <span class="fw-bold fs-18"><span
                                                 id="dm_patient"
-                                                style="color:red;">{{ $hospitalisation->consultation->admission->patient->code_patient }}</span></span></label>
+                                                style="color:red;">{{ $patient->code_patient ?? 'N/A' }}</span></span></label>
                                 </div>
                                 <div class="d-flex items-center pb-1">
 
@@ -36,19 +47,23 @@
                                         </span>
                                         <pre>  </pre>
                                     </span>
-{{--                                     <a href="" title="dossier medical" class="btn btn-sm  btn-secondary mx-1"
-                                        target="_blank"><i class="fa-solid fa-print"></i></a> --}}
-                                    <a href={{ route('doctor.patient.detail', $hospitalisation->consultation->patient->id) }}"
-                                        title="info patient" class="btn btn-sm  btn-success mx-1"><i
-                                            class="fa-solid fa-info"></i></a>
+                                    <a href="{{ route('doctor.hospitalisation.history') }}"
+                                        title="Retour à la liste" class="btn btn-sm btn-secondary mx-1">
+                                        <i class="fa-solid fa-arrow-left me-1"></i> Retour
+                                    </a>
+                                    <a href="{{ route('doctor.hospitalisation.download_facture', $hospitalisation->id) }}"
+                                        title="Télécharger la facture PDF" class="btn btn-sm btn-danger mx-1">
+                                        <i class="fa-solid fa-file-pdf me-1"></i> Télécharger Facture PDF
+                                    </a>
+                                    @if ($patient)
+                                        <a href="{{ route('doctor.patient.detail', $patient->id) }}"
+                                            title="info patient" class="btn btn-sm btn-success mx-1"><i
+                                                class="fa-solid fa-info"></i></a>
+                                    @endif
                                 </div>
                             </div>
 
                             <hr>
-                            @php
-                                $agePatient = \Carbon\Carbon::createFromFormat('d/m/Y', $hospitalisation->consultation->patient->birth_date);
-                                $age = $agePatient->diffInYears(Carbon\Carbon::now());
-                            @endphp
 
                             <div class="row">
 
@@ -57,7 +72,7 @@
                                         <label for="name" class="form-label"> <b>Nom complet </b>
                                         </label>
                                         <input type="text" class="form-control" id="name" name="name"
-                                            value="{{ $hospitalisation->consultation->admission->patient->user->name }} {{ $hospitalisation->consultation->admission->patient->user->prenom }}"
+                                            value="{{ ($patient->user->name ?? '') . ' ' . ($patient->user->prenom ?? '') }}"
                                             disabled>
                                     </div>
                                 </div>
@@ -66,7 +81,7 @@
                                     <div class="form-group">
                                         <label for="birth_date" class="form-label"> <b>Né(e) le</b></label>
                                         <input type="text" class="form-control" id="birth_date" name="birth_date"
-                                            value="{{ $hospitalisation->consultation->admission->patient->birth_date }}"
+                                            value="{{ $patient->birth_date ?? 'N/A' }}"
                                             disabled>
                                     </div>
                                 </div>
@@ -74,27 +89,27 @@
                                     <div class="form-group">
                                         <label for="age" class="form-label"> <b>Age </b></label>
                                         <input type="text" class="form-control" id="age" name="age"
-                                            value="{{ $age }} ans" disabled>
+                                            value="{{ $age }}" disabled>
                                     </div>
                                 </div>
                                 <div class="col-md-2">
                                     <div class="form-group">
                                         <label for="gender" class="form-label"> <b>Sexe </b></label>
                                         <input type="text" class="form-control" id="gender" name="gender"
-                                            value="{{ $hospitalisation->consultation->admission->patient->gender }}"
+                                            value="{{ $patient->gender ?? 'N/A' }}"
                                             disabled>
                                     </div>
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label"><b>Résidence Actuelle</b></label>
                                     <input type="text" class="form-control"
-                                        value="{{ $hospitalisation->consultation->admission->patient->residenceActuelle->name }}"
+                                        value="{{ $patient->residenceActuelle->name ?? 'N/A' }}"
                                         readonly />
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label"><b>Contact</b></label>
                                     <input type="text" class="form-control"
-                                        value="{{ $hospitalisation->consultation->admission->patient->telephone }}"
+                                        value="{{ $patient->telephone ?? '' }}"
                                         readonly />
                                 </div>
 

@@ -29,6 +29,16 @@ class CareController extends Controller
         return view('users.infirmier.care.new', compact('cares'));
     }
 
+    public function allCares()
+    {
+        $infirmierId = Auth::user()->infirmier->id;
+        $cares = CareRequested::with('admission')->whereHas('admission', function ($query) use ($infirmierId) {
+            $query->where('infirmier_id', $infirmierId)->orWhereNull('infirmier_id');
+        })->where('status', '!=', 'success')->orderByDESC('created_at')->get();
+
+        return view('users.infirmier.care.all', compact('cares'));
+    }
+
     public function history()
     {
         $infirmierId = Auth::user()->infirmier->id;

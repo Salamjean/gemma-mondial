@@ -1,5 +1,18 @@
 @extends('layouts.dashboard', ['title' => 'Formulaire pour les premiers soins du patient'])
 @section('content')
+        @php
+            $patient = $consultation->patient ?? ($consultation->admission->patient ?? null);
+            $motif = $consultation->admission->motif_consultation ?? ($consultation->observation_infirmiere ?? 'Non spécifié');
+            $age = 'N/A';
+            if ($patient && $patient->birth_date) {
+                try {
+                    $agePatient = \Carbon\Carbon::createFromFormat('d/m/Y', $patient->birth_date);
+                    $age = $agePatient->diffInYears(\Carbon\Carbon::now()) . ' ans';
+                } catch (\Exception $e) {
+                    $age = 'N/A';
+                }
+            }
+        @endphp
         <div class="container">
             <form action="{{ route('infirmier.consultation.formulaire.store') }}" method="POST">
                 @csrf
@@ -9,11 +22,11 @@
                     <div class="box bb-3 border-danger pe-95 pb-20 ps-95 pt-20 bg-color">
                         <div class="row">
                             <div class="col-md-2">
-                                @if ($consultation->admission->patient->img_url != null)
-                                    <img src="{{ asset('assets/uploads/patient/' . $consultation->admission->patient->img_url) }}"
+                                @if ($patient && $patient->img_url != null)
+                                    <img src="{{ asset('assets/uploads/patient/' . $patient->img_url) }}"
                                         class="rounded-circle" alt="Photo de profil" style="width:128px; height:128px" />
                                 @else
-                                    @if ($consultation->admission->patient->gender == 'masculin')
+                                    @if ($patient && $patient->gender == 'masculin')
                                         <img src="{{ asset('assets/images/avatar/6.png') }}" class="rounded-circle"
                                             alt="Photo de profil" />
                                     @else
@@ -25,22 +38,19 @@
                             <div class="col-md-10">
                                 <div class="row">
                                     <div class="row mt-20">
-                                        <div class="col-md-6">
-                                            <label class="form-label">N° Dossier médical | <span class="fw-bold fs-18"><span
+                                        <div class="col-md-6 d-flex align-items-center">
+                                            <a href="{{ route('infirmier.consultation.today') }}" class="btn btn-sm btn-secondary me-3"><i class="fa-solid fa-arrow-left me-1"></i> Retour</a>
+                                            <label class="form-label mb-0">N° Dossier médical | <span class="fw-bold fs-18"><span
                                                         id="dm_patient"
-                                                        style="color:red;">{{ $consultation->admission->patient->code_patient }}</span></span></label>
+                                                        style="color:red;">{{ $patient->code_patient ?? 'N/A' }}</span></span></label>
                                         </div>
                                     </div>
                                     <hr>
-                                    @php
-                                        $agePatient = \Carbon\Carbon::createFromFormat('d/m/Y', $consultation->patient->birth_date);
-                                        $age = $agePatient->diffInYears(Carbon\Carbon::now());
-                                    @endphp
                                     <div class="col-md-4">
                                         <div class="form-group">
                                             <label for="name" class="form-label"> <b>Nom complet </b> </label>
                                             <input type="text" class="form-control" id="name" name="name"
-                                                value="{{ $consultation->admission->patient->user->name }} {{ $consultation->admission->patient->user->prenom }}"
+                                                value="{{ ($patient->user->name ?? '') . ' ' . ($patient->user->prenom ?? '') }}"
                                                 disabled>
                                         </div>
                                     </div>
@@ -48,21 +58,21 @@
                                         <div class="form-group">
                                             <label for="birth_date" class="form-label"> <b>Né(e) le</b></label>
                                             <input type="text" class="form-control" id="birth_date" name="birth_date"
-                                                value="{{ $consultation->admission->patient->birth_date }}" disabled>
+                                                value="{{ $patient->birth_date ?? 'N/A' }}" disabled>
                                         </div>
                                     </div>
                                     <div class="col-md-2">
                                         <div class="form-group">
                                             <label for="age" class="form-label"> <b>Age </b></label>
                                             <input type="text" class="form-control" id="age" name="age"
-                                                value="{{ $age }} ans" disabled>
+                                                value="{{ $age }}" disabled>
                                         </div>
                                     </div>
                                     <div class="col-md-2">
                                         <div class="form-group">
                                             <label for="gender" class="form-label"> <b>Sexe </b></label>
                                             <input type="text" class="form-control" id="gender" name="gender"
-                                                value="{{ $consultation->admission->patient->gender }}" disabled>
+                                                value="{{ $patient->gender ?? 'N/A' }}" disabled>
                                         </div>
                                     </div>
                                 </div>
@@ -71,23 +81,23 @@
                                     <div class="col-md-4">
                                         <label class="form-label"><b>Résidence Actuelle</b></label>
                                         <input type="text" class="form-control"
-                                            value="{{ $consultation->admission->patient->residenceActuelle->name }}"
+                                            value="{{ $patient->residenceActuelle->name ?? 'N/A' }}"
                                             readonly />
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label"><b>Profession</b></label>
                                         <input type="text" class="form-control"
-                                            value="{{ $consultation->admission->patient->profession }}" readonly />
+                                            value="{{ $patient->profession ?? '' }}" readonly />
                                     </div>
                                     <div class="col-md-2">
                                         <label class="form-label"><b>Contact</b></label>
                                         <input type="text" class="form-control"
-                                            value="{{ $consultation->admission->patient->telephone }}" readonly />
+                                            value="{{ $patient->telephone ?? '' }}" readonly />
                                     </div>
                                     <div class="col-md-2">
                                         <label class="form-label"><b>No Assurance</b></label>
                                         <input type="text" class="form-control"
-                                            value="{{ $consultation->admission->patient->no_assurance }}" readonly />
+                                            value="{{ $patient->no_assurance ?? '' }}" readonly />
                                     </div>
 
                                 </div>
@@ -96,7 +106,7 @@
                                     <div class="col-md-12">
                                         <label class="form-label"><b>Motif de la consultation</b></label>
                                         <textarea type="text" class="form-control" name="motif_consultation" id="motif_consultation"
-                                            value="{{ $consultation->admission->motif_consultation }}" readonly>{{ $consultation->admission->motif_consultation }}</textarea>
+                                            readonly>{{ $motif }}</textarea>
                                     </div>
                                 </div>
                             </div>
@@ -111,32 +121,40 @@
                                 <h4 class="fw-600 mb-10">Constantes physiques du patient </h4>
                                 <hr>
                                 <div class="row">
+                                    @php
+                                        $valPoids = $consultation->poids ?: ($consultation->registre->registreConsultationCurative->poids ?? '');
+                                        $valTaille = $consultation->taille ?: ($consultation->registre->registreConsultationCurative->taille ?? '');
+                                        $valImc = $consultation->imc ?: ($consultation->registre->registreConsultationCurative->imc ?? '');
+                                        $valTemp = $consultation->temperature ?: ($consultation->registre->registreConsultationCurative->temperature ?? '');
+                                        $valTA = $consultation->tension_arterielle ?: ($consultation->registre->registreConsultationCurative->ta ?? '');
+                                        $valPouls = $consultation->pouls ?: ($consultation->registre->registreConsultationCurative->pouls ?? '');
+                                    @endphp
                                     <div class="col-md-2">
                                         <div class="form-group">
                                             <label for="poids" class="form-label"> <b>Poids(kg)</b></label>
                                             <input type="text" class="form-control" id="poids" name="poids"
-                                                placeholder="Kg">
+                                                value="{{ $valPoids }}" placeholder="Kg" {{ !empty($valPoids) ? 'readonly' : '' }}>
                                         </div>
                                     </div>
                                     <div class="col-md-2">
                                         <div class="form-group">
                                             <label for="taille" class="form-label"> <b>Taille(cm)</b></label>
                                             <input type="text" class="form-control" id="taille" name="taille"
-                                                placeholder="ex: 162">
+                                                value="{{ $valTaille }}" placeholder="ex: 162" {{ !empty($valTaille) ? 'readonly' : '' }}>
                                         </div>
                                     </div>
                                     <div class="col-md-2">
                                         <div class="form-group">
                                             <label for="imc" class="form-label"><b>IMC</b></label>
                                             <input type="text" class="form-control" id="imc" name="imc"
-                                                placeholder="Kg/m²" readonly>
+                                                value="{{ $valImc }}" placeholder="Kg/m²" readonly>
                                         </div>
                                     </div>
                                     <div class="col-md-2">
                                         <div class="form-group">
                                             <label for="temperature" class="form-label"> <b>T(°C)</b></label>
                                             <input type="text" class="form-control" id="temperature" name="temperature"
-                                                placeholder="°C">
+                                                value="{{ $valTemp }}" placeholder="°C" {{ !empty($valTemp) ? 'readonly' : '' }}>
                                         </div>
                                     </div>
                                     <div class="col-md-2">
@@ -144,14 +162,16 @@
                                             <label for="tension_arterielle" class="form-label"> <b>TA(mmHg)</b></label>
                                             <input type="text"
                                                 class="form-control @error('tension_arterielle') is-invalid @enderror"
-                                                id="tension_arterielle" name="tension_arterielle" placeholder="mmHg">
+                                                id="tension_arterielle" name="tension_arterielle" value="{{ $valTA }}"
+                                                placeholder="mmHg" {{ !empty($valTA) ? 'readonly' : '' }}>
                                         </div>
                                     </div>
                                     <div class="col-md-2">
                                         <div class="form-group">
                                             <label for="pouls" class="form-label"> <b>Pouls(batt/mn)</b></label>
                                             <input type="text" class="form-control @error('pouls') is-invalid @enderror"
-                                                id="pouls" name="pouls" placeholder="batt/mn">
+                                                id="pouls" name="pouls" value="{{ $valPouls }}"
+                                                placeholder="batt/mn" {{ !empty($valPouls) ? 'readonly' : '' }}>
                                         </div>
                                     </div>
                                 </div>
@@ -160,10 +180,8 @@
                         </div>
                         <div class="box-footer bt-3 border-primary">
                             <div class="float-end">
-                                <a href="{{ route('dashboard') }}">
-                                    <button type="button" class="btn btn-warning me-1">
-                                        <i class="ti-trash"></i> Annuler
-                                    </button>
+                                <a href="{{ route('infirmier.consultation.today') }}" class="btn btn-warning me-1">
+                                    <i class="ti-trash"></i> Annuler
                                 </a>
                                 <button type="submit" class="btn btn-primary">
                                     <i class="ti-save-alt"></i> Valider

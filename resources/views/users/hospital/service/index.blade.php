@@ -31,7 +31,7 @@
                                     <tr>
                                         <td class="text-dark fw-bold fs-6">{{ $loop->index + 1 }}</td>
                                         <td>
-                                            {{ $item->service->libelle }}
+                                            {{ $item->service?->libelle ?? 'Service non spécifié' }}
                                         </td>
                                         <td>{{ count($item->prestationHospitals) }}</td>
                                         <td class="text-center">

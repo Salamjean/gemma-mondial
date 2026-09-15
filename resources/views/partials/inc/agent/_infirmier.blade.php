@@ -47,5 +47,28 @@
         </li>
     </ul>
 </li>
+<li class="treeview">
+    <a href="#" class="{{ routeActive(['infirmier.hospitalisation.in_progress', 'infirmier.hospitalisation.history']) }}">
+        <i class="fa-solid {{ routeActive(['infirmier.hospitalisation.in_progress', 'infirmier.hospitalisation.history']) }} fa-bed">
+            <span class="path1"></span><span class="path2"></span><span class="path3"></span>
+        </i>
+        <span>Hospitalisations</span>
+        <span class="pull-right-container">
+            <i class="fa-solid fa-angle-right"></i>
+        </span>
+    </a>
+    <ul class="treeview-menu">
+        <li>
+            <a href="{{ route('infirmier.hospitalisation.in_progress') }}" class="{{routeActive('infirmier.hospitalisation.in_progress')}}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>En cours
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('infirmier.hospitalisation.history') }}" class="{{routeActive('infirmier.hospitalisation.history')}}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Historique
+            </a>
+        </li>
+    </ul>
+</li>
 
 

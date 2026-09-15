@@ -22,6 +22,14 @@ class SuiviController extends Controller
     public function appliqueProtocol($id)
     {
         $hour = ProtocolHourApplication::findOrFail($id);
+        $day = DayHospitalisation::whereHas('therapeutiqueProtocols.protocolHourApplications', function ($q) use ($id) {
+            $q->where('id', $id);
+        })->first();
+
+        if ($day && $day->hospitalisation && $day->hospitalisation->status === 'finished') {
+            return response()->json(['message' => 'L\'hospitalisation est terminée. Impossible de modifier le protocole.'], 403);
+        }
+
         $hour->update([
             'status' => 'appliqué',
             'hour_applique'=> Carbon::now(),
@@ -30,6 +38,11 @@ class SuiviController extends Controller
     }
     public function makeSuveillance(Request $request)
     {
+        $day = DayHospitalisation::find($request->day_hospitalisation_id);
+        if ($day && $day->hospitalisation && $day->hospitalisation->status === 'finished') {
+            return back()->with('error', 'L\'hospitalisation est terminée. Impossible d\'ajouter de surveillance.');
+        }
+
         $rules = [
             'ta' => 'required',
             'temperature' => 'required',

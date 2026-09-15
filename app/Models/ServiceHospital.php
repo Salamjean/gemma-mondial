@@ -14,6 +14,8 @@ class ServiceHospital extends Model
 {
     use HasFactory;
 
+    protected $guarded = [];
+
     public function prestationHospitals(): HasMany
     {
         return $this->hasMany(PrestationHospital::class);

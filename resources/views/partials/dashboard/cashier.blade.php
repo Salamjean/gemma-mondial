@@ -63,11 +63,21 @@
         <div class="box">
             <div class="box-header">
                 <div class="row">
-                    <div class="col-xs-12  d-flex justify-content-between">
-                        <h4 class="box-title"><b>PAIEMENT EN ATTENTE</b></h4>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <a href="{{ route('cashier.admission.indicate', 'day') }}" target="_blank">
-                                <span class="fa-solid fa-print  fa-2x"></span>
+                    <div class="col-xs-12 d-flex justify-content-between align-items-center">
+                        <h4 class="box-title"><b>PAIEMENTS EN ATTENTE DU JOUR</b></h4>
+                        <div class="d-flex align-items-center gap-2">
+                            @php
+                                $hospitalIdCashier = \Illuminate\Support\Facades\Auth::user()->cashier->hospital_id;
+                                $countAllCashierPending = \App\Models\Payment::where('status', 'pending')
+                                    ->where('hospital_id', $hospitalIdCashier)
+                                    ->count();
+                            @endphp
+                            <a href="{{ route('cashier.admission.all') }}" class="btn btn-sm btn-primary rounded-10 fw-bold shadow-sm me-2">
+                                <i class="fa-solid fa-list me-1"></i> Tous les paiements en attente
+                                <span class="badge bg-white text-primary ms-1 fs-12">{{ $countAllCashierPending }}</span>
+                            </a>
+                            <a href="{{ route('cashier.admission.indicate', 'day') }}" target="_blank" title="Imprimer">
+                                <span class="fa-solid fa-print fa-2x"></span>
                             </a>
                         </div>
                     </div>

@@ -989,6 +989,7 @@
         <hr />
     </div>
 
+            <a href="{{ route('doctor.consultation.today') }}" class="btn btn-warning me-1"><i class="ti-trash"></i> Annuler</a>
             <input class="btn btn-danger btn-submit" type="submit" value="Enregister" />
 </section>
 </form>

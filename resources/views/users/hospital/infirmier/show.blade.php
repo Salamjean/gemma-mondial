@@ -106,21 +106,27 @@
                                     </div>
                                 </div>
                                 <div class="row">
-                                        <div class="col-md-6">
-                                            <div class="form-group">
-                                                <label for="service" class="form-label">Service<span
-                                                        class="text-danger fw-bold">*</span></label>
-                                                <select class="form-select" id="service" name="service" required
-                                                    style="width: 100%;">
-                                                    @foreach ($service as $item)
-                                                        <option value="{{ $item->id }}"
-                                                            @if ($infirmier->service_hospital_id == $item->id) selected @endif>
-                                                            {{ $item->service->libelle }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-                                        </div>
+                                         <div class="col-md-6">
+                                             <div class="form-group">
+                                                 <label for="services" class="form-label">Services attribués<span
+                                                         class="text-danger fw-bold">*</span></label>
+                                                 @php
+                                                     $assignedServiceIds = $infirmier->services->pluck('service_hospital_id')->toArray();
+                                                     if (empty($assignedServiceIds) && $infirmier->service_hospital_id) {
+                                                         $assignedServiceIds = [$infirmier->service_hospital_id];
+                                                     }
+                                                 @endphp
+                                                 <select class="form-select select2 text-uppercase" id="services" name="services[]" multiple required
+                                                     style="width: 100%;">
+                                                     @foreach ($service as $item)
+                                                         <option value="{{ $item->id }}"
+                                                             @if (in_array($item->id, $assignedServiceIds)) selected @endif>
+                                                             {{ $item->service?->libelle }}
+                                                         </option>
+                                                     @endforeach
+                                                 </select>
+                                             </div>
+                                         </div>
                                         <div class="col-md-6">
                                             <div class="form-group">
                                                 <label for="image"

@@ -23,10 +23,23 @@ class ServiceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'department' => 'required',
-            'service' => 'required|array',
-            'prix' => 'required|array',
+            'mode_service' => 'nullable|in:existant,nouveau',
+            'department' => 'required_without:nom_nouveau_service',
+            'nom_nouveau_service' => 'required_without:department',
+            'service' => 'nullable|array',
+            'prix' => 'nullable|array',
             'description' => 'nullable|array',
+            'nouveau_acte_libelle' => 'nullable|array',
+            'nouveau_acte_prix' => 'nullable|array',
+            'nouveau_acte_description' => 'nullable|array',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'department.required_without' => 'Veuillez sélectionner un service existant ou renseigner le nom d\'un nouveau service.',
+            'nom_nouveau_service.required_without' => 'Veuillez indiquer le nom du nouveau service à créer.',
         ];
     }
 }

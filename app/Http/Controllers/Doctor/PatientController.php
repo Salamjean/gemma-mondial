@@ -38,4 +38,37 @@ class PatientController extends Controller
         $registres = Registre::where('consultation_id', $consultation->id)->get();
         return view('users.doctor.patient.dossier_medical', ['patient' => $patient, 'consultations' => $consultations,'consultation' => $consultation, 'ordonnance_interne' => $ordonnance_interne,'ordonnance_externe' => $ordonnance_externe, 'registres'=>$registres]);
     }
+
+    public function parcoursIntervention($id)
+    {
+        $consultation = Consultation::with([
+            'patient.user',
+            'patient.lieuNaissance',
+            'patient.residenceActuelle',
+            'doctor.user',
+            'infirmier.user',
+            'admission.infirmier.user',
+            'admission.doctor.user',
+            'admission.cashier.user',
+            'admission.secretariat.user',
+            'prestationHospital.prestationService.service',
+            'registre.registreConsultationCurative',
+            'registre.registreAccouchement',
+            'registre.registreConsultationPreNatale',
+            'registre.registreConsultationPostNatale',
+            'ordonnances.prescriptions.drug',
+            'ordonnances.prescriptions.drugHospital.drug',
+            'examen',
+            'arret',
+            'declaration',
+            'hospitalisation'
+        ])->findOrFail($id);
+
+        $patient = $consultation->patient;
+        $ordonnance_interne = Ordonnance::where('type', 'interne')->where('consultation_id', $consultation->id)->first();
+        $ordonnance_externe = Ordonnance::where('type', 'externe')->where('consultation_id', $consultation->id)->first();
+        $registres = Registre::where('consultation_id', $consultation->id)->get();
+
+        return view('users.patient.parcours_intervention', compact('consultation', 'patient', 'ordonnance_interne', 'ordonnance_externe', 'registres'));
+    }
 }

@@ -12,6 +12,18 @@
                         @endphp
                         <div class="row">
                             <div class="col-md-12">
+                                @php
+                                    $patient = $hospitalisation->consultation->patient ?? ($hospitalisation->consultation->admission->patient ?? null);
+                                    $age = 'N/A';
+                                    if ($patient && $patient->birth_date) {
+                                        try {
+                                            $agePatient = \Carbon\Carbon::createFromFormat('d/m/Y', $patient->birth_date);
+                                            $age = $agePatient->diffInYears(\Carbon\Carbon::now()) . ' ans';
+                                        } catch (\Exception $e) {
+                                            $age = 'N/A';
+                                        }
+                                    }
+                                @endphp
                                 <div class="px-2">
                                     <div class="px-5 bg-color">
 
@@ -19,9 +31,12 @@
                                             <div class="">
                                                 <label class="form-label"><b>N° Dossier médical&nbsp;&nbsp;|&nbsp;&nbsp;
                                                     </b><span class="fw-bold fs-18"><span id="dm_patient"
-                                                            style="color:red;">{{ $hospitalisation->consultation->admission->patient->code_patient }}</span></span></label>
+                                                            style="color:red;">{{ $patient->code_patient ?? 'N/A' }}</span></span></label>
                                             </div>
                                             <div class="d-flex items-center pb-1">
+                                                <a href="{{ route('doctor.hospitalisation.in_progress') }}" class="btn btn-sm btn-secondary mx-1" title="Retour à la liste">
+                                                    <i class="fa-solid fa-arrow-left me-1"></i> Retour
+                                                </a>
                                                 <span class=" d-flex mt-1 text-success">
                                                     <pre>  </pre> <span> N°{{ $hospitalisation->code }}
                                                     </span>
@@ -30,18 +45,20 @@
                                                 <a href="" title="dossier medical"
                                                     class="btn btn-sm  btn-secondary mx-1" target="_blank"><i
                                                         class="fa-solid fa-print"></i></a>
-                                                <a href={{ route('doctor.patient.detail', $hospitalisation->consultation->patient->id) }}"
-                                                    title="info patient" class="btn btn-sm  btn-success mx-1"
-                                                    target="_blank"><i class="fa-solid fa-info"></i></a>
+                                                @if ($patient)
+                                                    <a href="{{ route('doctor.patient.detail', $patient->id) }}"
+                                                        title="info patient" class="btn btn-sm  btn-success mx-1"
+                                                        target="_blank"><i class="fa-solid fa-info"></i></a>
+                                                @endif
                                             </div>
                                         </div>
 
                                         <hr>
-                                        @php
-                                            $agePatient = \Carbon\Carbon::createFromFormat('d/m/Y', $hospitalisation->consultation->patient->birth_date);
-                                            $age = $agePatient->diffInYears(Carbon\Carbon::now());
-                                        @endphp
                                         <div class="d-flex justify-content-end py-2">
+                                            <a href="{{ route('doctor.hospitalisation.in_progress') }}"
+                                                class="btn btn-secondary-light mx-2">
+                                                <i class="fa-solid fa-arrow-left me-1"></i> Retour
+                                            </a>
                                             @if (count($hospitalisation->consultation->ordonnances) > 0)
                                                 <a href="{{ route('doctor.hospitalisation.ordonnances', $hospitalisation->id) }}"
                                                     class="col-md-2 mx-2 capitalize btn btn-warning-light">
@@ -84,7 +101,7 @@
                                                     <label for="name" class="form-label"> <b>Nom complet </b>
                                                     </label>
                                                     <input type="text" class="form-control" id="name" name="name"
-                                                        value="{{ $hospitalisation->consultation->admission->patient->user->name }} {{ $hospitalisation->consultation->admission->patient->user->prenom }}"
+                                                        value="{{ ($patient->user->name ?? '') . ' ' . ($patient->user->prenom ?? '') }}"
                                                         disabled>
                                                 </div>
                                             </div>
@@ -94,7 +111,7 @@
                                                     <label for="birth_date" class="form-label"> <b>Né(e) le</b></label>
                                                     <input type="text" class="form-control" id="birth_date"
                                                         name="birth_date"
-                                                        value="{{ $hospitalisation->consultation->admission->patient->birth_date }}"
+                                                        value="{{ $patient->birth_date ?? 'N/A' }}"
                                                         disabled>
                                                 </div>
                                             </div>
@@ -102,19 +119,19 @@
                                                 <div class="form-group">
                                                     <label for="age" class="form-label"> <b>Age </b></label>
                                                     <input type="text" class="form-control" id="age" name="age"
-                                                        value="{{ $age }} ans" disabled>
+                                                        value="{{ $age }}" disabled>
                                                 </div>
                                             </div>
                                             <div class="col-md-2">
                                                 <label class="form-label"><b>Résidence Actuelle</b></label>
                                                 <input type="text" class="form-control"
-                                                    value="{{ $hospitalisation->consultation->admission->patient->residenceActuelle->name }}"
+                                                    value="{{ $patient->residenceActuelle->name ?? 'N/A' }}"
                                                     readonly />
                                             </div>
                                             <div class="col-md-2">
                                                 <label class="form-label"><b>Contact</b></label>
                                                 <input type="text" class="form-control"
-                                                    value="{{ $hospitalisation->consultation->admission->patient->telephone }}"
+                                                    value="{{ $patient->telephone ?? '' }}"
                                                     readonly />
                                             </div>
 
@@ -128,20 +145,34 @@
                         <div class="card-body pt-3">
 
 
-                            <ul class="nav nav-tabs nav-tabs-bordered">
+                            @if (count($hospitalisation->daysHospitalisation) == 0)
+                                <div class="alert alert-warning p-20 text-center my-4">
+                                    <h4 class="fw-bold mb-2"><i class="fa-solid fa-bed me-2"></i>Patient en attente d'attribution de chambre</h4>
+                                    <p class="fs-16 mb-3">Aucune chambre ni protocole n'ont encore été attribués à cette hospitalisation.</p>
+                                    <div>
+                                        <a href="{{ route('doctor.hospitalisation.edit.protocol', ['interne', $hospitalisation->id]) }}" class="btn btn-primary mx-1">
+                                            <i class="fa-solid fa-plus me-1"></i> Attribuer une chambre & Protocole Interne
+                                        </a>
+                                        <a href="{{ route('doctor.hospitalisation.edit.protocol', ['externe', $hospitalisation->id]) }}" class="btn btn-danger mx-1">
+                                            <i class="fa-solid fa-plus me-1"></i> Attribuer une chambre & Protocole Externe
+                                        </a>
+                                    </div>
+                                </div>
+                            @else
+                                <ul class="nav nav-tabs nav-tabs-bordered">
 
-                                @foreach ($hospitalisation->daysHospitalisation as $key => $day)
-                                    <li class="nav-item">
-                                        <button class="nav-link capitalize  {{ $key == 0 ? 'active' : '' }}"
-                                            data-bs-toggle="tab"
-                                            data-bs-target="#day{{ $key }}">{{ dateCompletFr($day->day) }}</button>
-                                    </li>
-                                @endforeach
+                                    @foreach ($hospitalisation->daysHospitalisation as $key => $day)
+                                        <li class="nav-item">
+                                            <button class="nav-link capitalize  {{ $key == 0 ? 'active' : '' }}"
+                                                data-bs-toggle="tab"
+                                                data-bs-target="#day{{ $key }}">{{ dateCompletFr($day->day) }}</button>
+                                        </li>
+                                    @endforeach
 
-                            </ul>
-                            <div class="tab-content pt-2">
+                                </ul>
+                                <div class="tab-content pt-2">
 
-                                @foreach ($hospitalisation->daysHospitalisation as $key => $day)
+                                    @foreach ($hospitalisation->daysHospitalisation as $key => $day)
                                     <div class="tab-pane fade show {{ $key == 0 ? 'active' : '' }} day{{ $key }}"
                                         id="day{{ $key }}">
                                         <div class="table-responsive">
@@ -313,6 +344,7 @@
                                 @endforeach
 
                             </div>
+                            @endif
                         </div>
                     </div>
 

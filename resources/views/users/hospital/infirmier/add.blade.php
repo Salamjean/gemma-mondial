@@ -78,12 +78,10 @@
                             </div>
                             <div class="col-md-3">
                                 <div class="form-group">
-                                    <label for="service" class="form-label">Service</label>
-                                    <select class="form-select text-uppercase" id="service" name="service"
-                                        style="width: 100%;">
-                                        <option value="">----</option>
+                                    <label for="services" class="form-label">Services attribués<span class="text-danger fw-bold">*</span></label>
+                                    <select class="form-select select2 text-uppercase" id="services" name="services[]" multiple required style="width: 100%;">
                                         @foreach ($service as $item)
-                                            <option value="{{ $item->id }}">{{ $item->service->libelle }}</option>
+                                            <option value="{{ $item->id }}">{{ $item->service?->libelle }}</option>
                                         @endforeach
                                     </select>
                                 </div>

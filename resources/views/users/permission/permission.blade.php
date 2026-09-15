@@ -51,16 +51,25 @@
                                 </td>
 
                                 <td class="text-center">
-
-                                    <button type="button" id="menu" title="Menu" data-bs-toggle="modal"
-                                        class="btn btn-sm btn-warning editBtn" data-bs-target="#editModal"
+                                    <button type="button" id="menu" title="Consulter" data-bs-toggle="modal"
+                                        class="btn btn-sm btn-info editBtn me-1" data-bs-target="#editModal"
                                         data-bs-users="{{ $item->user->name }}"
                                         data-bs-descriptions="{{ $item->description }}"
                                         data-bs-beging_dates="{{ $item->beging_date }}"
                                         data-bs-end_dates="{{ $item->end_date }}" data-bs-status="{{ $item->status }}"
                                         data-bs-_urls="{{ $item->_url }}">
-                                        <span class="fa-solid fa-eye "></span>
+                                        <span class="fa-solid fa-eye"></span>
                                     </button>
+                                    @if ($item->status == 'pending')
+                                        <button type="button" title="Modifier la demande" data-bs-toggle="modal"
+                                            class="btn btn-sm btn-primary editUserPermissionBtn" data-bs-target="#editUserPermissionModal"
+                                            data-action="{{ route('permission.userUpdate', $item->id) }}"
+                                            data-beging_date="{{ $item->beging_date }}"
+                                            data-end_date="{{ $item->end_date }}"
+                                            data-description="{{ $item->description }}">
+                                            <span class="fa-solid fa-pen-to-square"></span>
+                                        </button>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach
@@ -199,17 +208,62 @@
         </div>
     </div>
 
+    <!-- Modal de Modification pour la permission en attente -->
+    <div class="modal fade" id="editUserPermissionModal" tabindex="-1" aria-labelledby="editUserPermissionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <form id="editUserPermissionForm" action="" method="post" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold" id="editUserPermissionModalLabel">Modifier ma demande de permission (En attente)</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="edit_user_beging_date" class="form-label">Date début <span class="text-danger fw-bold">*</span></label>
+                                    <input type="date" id="edit_user_beging_date" name="beging_date" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="edit_user_end_date" class="form-label">Date fin <span class="text-danger fw-bold">*</span></label>
+                                    <input type="date" id="edit_user_end_date" name="end_date" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label for="edit_user_description" class="form-label">Description / Motif <span class="text-danger fw-bold">*</span></label>
+                                    <textarea class="form-control" name="description" id="edit_user_description" rows="6" required></textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label for="edit_user_url" class="form-label">Remplacer la pièce jointe (Optionnel)</label>
+                                    <input type="file" id="edit_user_url" name="_url" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                        <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         $(document).ready(function() {
             $(".editBtn").click(function() {
-
                 var descriptions = $(this).data('bs-descriptions');
                 var beging_dates = $(this).data('bs-beging_dates');
                 var end_dates = $(this).data('bs-end_dates');
                 var users = $(this).data('bs-users');
-
                 var _urls = $(this).data('bs-_urls');
-                console.log(_urls)
+
                 if (_urls) {
                     $('#download').attr('href', '../assets/uploads/permission/' + _urls).show();
                 } else {
@@ -220,8 +274,18 @@
                 $('#beging_dates').val(beging_dates);
                 $('#end_dates').val(end_dates);
                 $('#users').val(users);
+            });
 
+            $(".editUserPermissionBtn").click(function() {
+                var action = $(this).data('action');
+                var beging_date = $(this).data('beging_date');
+                var end_date = $(this).data('end_date');
+                var description = $(this).data('description');
 
+                $('#editUserPermissionForm').attr('action', action);
+                $('#edit_user_beging_date').val(beging_date);
+                $('#edit_user_end_date').val(end_date);
+                $('#edit_user_description').val(description);
             });
         });
     </script>

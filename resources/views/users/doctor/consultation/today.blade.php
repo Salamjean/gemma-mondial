@@ -1,15 +1,33 @@
 @extends('layouts.dashboard', ['title' => 'Liste des consultations'])
 
 @section('content')
-    <div class="box">
-        <div class="box-header">
-            <div class="row">
-                <div class="col-xs-12  col-xl-9 col-lg-9 col-md-9 col-sm-9">
-                    <h4 class="box-title">Vos consultations du jour en cours</h4>
-                </div>
+    <!-- Section Demandes de Téléconsultation en ligne en attente -->
+    @include('partials.doctor_pending_teleconsultations')
+
+    <div class="box border-0 shadow-sm rounded-20 bg-white">
+        <div class="box-header with-border p-20 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div>
+                <h4 class="box-title mb-0 fw-bold text-dark fs-16">
+                    <i class="fa-solid fa-stethoscope text-primary me-2"></i><b>VOS CONSULTATIONS DU JOUR EN COURS</b>
+                </h4>
+            </div>
+            @php
+                $doctorId = \Illuminate\Support\Facades\Auth::user()->doctor->id;
+                $countAllConsultations = \App\Models\Consultation::where('doctor_id', $doctorId)
+                    ->where('status', 0)
+                    ->whereNull('call_channel')
+                    ->count();
+            @endphp
+            <div class="d-flex align-items-center gap-2">
+                <a href="{{ route('dashboard') }}" class="btn btn-sm btn-secondary rounded-10 fw-bold shadow-sm me-1">
+                    <i class="fa-solid fa-arrow-left me-1"></i> Retour
+                </a>
+                <a href="{{ route('doctor.consultation.all') }}" class="btn btn-sm btn-primary rounded-10 fw-bold shadow-sm">
+                    <i class="fa-solid fa-users me-1"></i> Toutes les consultations
+                    <span class="badge bg-white text-primary ms-1 fs-12">{{ $countAllConsultations }}</span>
+                </a>
             </div>
         </div>
-        <br /><br />
         <div class="box-body">
             <div class="table-responsive">
                 <table id="example" class="table table-striped table-hover display nowrap margin-top-10 w-p100">
@@ -24,6 +42,11 @@
                     </thead>
                     <tbody>
                         @foreach ($consultations as $item)
+                            @php
+                                $srvLibelle = optional(optional(optional($item->prestationHospital)->prestationService)->service)->libelle ?? '';
+                                $prestLibelle = optional(optional($item->prestationHospital)->prestationService)->libelle ?? '';
+                                $isConsultationService = (stripos($srvLibelle, 'consultation') !== false) || (stripos($prestLibelle, 'consultation') !== false);
+                            @endphp
                             <tr>
                                 <td><b>{{ $item->patient->code_patient }}</b></td>
                                 <td>
@@ -51,7 +74,6 @@
                                             <span class="">Commencer la consultation</span>
 
                                         </a>
-
                                     @else
                                         <a href="{{ route('doctor.consultation.detail', $item->id) }}" class="btn btn-sm btn-info"
                                             title="detail consultation">
@@ -70,22 +92,6 @@
             </div>
         </div>
     </div>
-    <script>
-        (function ($) {
-            "use strict";
-
-            $('#menu').on('click', function (e) {
-
-
-
-
-            });
-
-
-
-
-        })(jQuery);
-    </script>
 @endsection
 
 @push('js')

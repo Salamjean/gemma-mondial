@@ -48,9 +48,21 @@ Route::prefix('v1/patient')->group(
             Route::post('rdv/create', [DataController::class, 'createRendezVous']);
             Route::get('rdv', [DataController::class, 'rendezVous']);
             Route::get('doctors', [DataController::class, 'getDoctors']);
+            Route::get('services', [DataController::class, 'getServices']);
+            Route::get('pending-paid-consultation', [DataController::class, 'getPendingPaidConsultation']);
+            Route::get('active-call', [DataController::class, 'checkActiveCall']);
+            Route::post('accept-call', [DataController::class, 'acceptCall']);
+            Route::post('reject-call', [DataController::class, 'rejectCall']);
+            Route::post('end-call', [DataController::class, 'endCall']);
+            Route::get('calls/history', [DataController::class, 'callHistory']);
+            Route::post('online-consultation/request', [DataController::class, 'requestOnlineConsultation']);
+            Route::get('online-consultation/status/{id}', [DataController::class, 'checkOnlineConsultationStatus']);
+            Route::get('verify-wave-payment/{id}', [DataController::class, 'verifyWavePayment']);
 
             Route::get('rdv/{id}', [DataController::class, 'deleteRendezVous']);
         });
+
+        Route::post('wave/webhook', [DataController::class, 'waveWebhook']);
     }
 );
 

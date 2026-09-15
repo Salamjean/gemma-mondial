@@ -13,7 +13,7 @@
 
                     <div class="fs-18">Icone de la page</div>
                     <div class="d-flex justify-content-center">
-                        <img src="{{ asset(iconsLoad()['logo']) }}" alt="logo" height="150" />
+                        <img src="{{ asset(iconsLoad()['logo']) }}?v={{ time() }}" alt="logo" height="150" />
                     </div>
                     </div>
                 </div>
@@ -22,7 +22,7 @@
 
                     <div class="fs-18">Icone pendant le chargement des pages</div>
                     <div class="d-flex justify-content-center">
-                        <img src="{{ asset(iconsLoad()['loading']) }}" alt="loading" height="150" />
+                        <img src="{{ asset(iconsLoad()['loading']) }}?v={{ time() }}" alt="loading" height="150" />
                     </div>
                     </div>
                 </div>
@@ -30,7 +30,7 @@
                     <div class="border-icon">
                         <div class="fs-18">Favicon</div>
                         <div class="d-flex justify-content-center">
-                            <img src="{{ asset(iconsLoad()['favicon']) }}" alt="fav" height="150" />
+                            <img src="{{ asset(iconsLoad()['favicon']) }}?v={{ time() }}" alt="fav" height="150" />
                         </div>
                     </div>
                 </div>

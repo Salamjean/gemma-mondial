@@ -57,22 +57,45 @@ class DoctorController extends Controller
 
     public function getPrestations($service)
     {
-        $hospital = Hospital::find(Auth::user()->doctor->hospital_id);
+        $hospitalId = Auth::user()->doctor->hospital_id ?? Auth::user()->doctor->hospital->id ?? null;
 
-        $prestations = PrestationHospital::where('status', 0)->with('prestationService')->whereHas('serviceHospital', function (Builder $query) use ($hospital, $service) {
-            $query->where('hospital_id', $hospital->id)->whereHas('service', function (Builder $query) use ($service) {
-                $query->where('libelle', $service);
-            });
-        })->get();
+        $prestations = PrestationHospital::where('status', 0)
+            ->with(['prestationService', 'serviceHospital.service'])
+            ->whereHas('serviceHospital', function (Builder $query) use ($hospitalId, $service) {
+                $query->where('hospital_id', $hospitalId)
+                      ->where(function (Builder $q) use ($service) {
+                          $q->where('id', $service)
+                            ->orWhere('service_id', $service)
+                            ->orWhereHas('service', function (Builder $sq) use ($service) {
+                                $sq->where('libelle', $service)->orWhere('id', $service);
+                            });
+                      });
+            })->get();
         return response()->json($prestations);
     }
     public function getInfirmiers($service)
     {
-        $infirmiers = Infirmier::where('hospital_id', Auth::user()->doctor->hospital->id)->whereHas('serviceHospital', function (Builder $query) use ($service) {
-            $query->whereHas('service', function (Builder $query) use ($service) {
-                $query->where('libelle', $service);
-            });
-        })->with('user')->get();
+        $hospitalId = Auth::user()->doctor->hospital_id ?? Auth::user()->doctor->hospital->id ?? null;
+        $infirmiers = Infirmier::where('hospital_id', $hospitalId)
+            ->where(function (Builder $outerQuery) use ($service) {
+                $outerQuery->whereHas('serviceHospital', function (Builder $query) use ($service) {
+                    $query->where(function (Builder $q) use ($service) {
+                        $q->where('id', $service)
+                          ->orWhere('service_id', $service)
+                          ->orWhereHas('service', function (Builder $sq) use ($service) {
+                              $sq->where('libelle', $service)->orWhere('id', $service);
+                          });
+                    });
+                })->orWhereHas('services.serviceHospital', function (Builder $query) use ($service) {
+                    $query->where(function (Builder $q) use ($service) {
+                        $q->where('id', $service)
+                          ->orWhere('service_id', $service)
+                          ->orWhereHas('service', function (Builder $sq) use ($service) {
+                              $sq->where('libelle', $service)->orWhere('id', $service);
+                          });
+                    });
+                });
+            })->with('user')->get();
 
         return response()->json($infirmiers);
     }
@@ -94,14 +117,12 @@ class DoctorController extends Controller
     }
     public function getHopitalServices()
     {
-        $services = ServiceHospital::where('hospital_id', Auth::user()->doctor->hospital->id)
-        ->whereHas('service', function (Builder $query) {
-            $query->where('libelle', 'Soins infirmier');
-        })
-        ->with('service')
-        ->where('status', 0)
-        ->get();
-    
-    return response()->json($services);
+        $hospitalId = Auth::user()->doctor->hospital_id ?? Auth::user()->doctor->hospital->id ?? null;
+        $services = ServiceHospital::where('hospital_id', $hospitalId)
+            ->whereHas('service')
+            ->with('service')
+            ->where('status', 0)
+            ->get();
+        return response()->json($services);
     }
 }

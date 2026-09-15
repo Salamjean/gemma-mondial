@@ -1,6 +1,6 @@
 <li>
     <a href="{{ route('secretariat.patient.list') }}">
-        <i class="fa-solid fa-user-o">
+        <i class="fa-solid fa-users">
             <span class="path1"></span><span class="path2"></span><span class="path3"></span>
         </i>
         <span>Patients</span>

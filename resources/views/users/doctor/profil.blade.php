@@ -20,9 +20,11 @@
                             <div class="form-group">
                                 <div class="image-upload">
                                     <div class="avatar-preview">
-                                    <div class="profilePicPreview" style="height:200px;">
-                                            <img src="{{ asset("assets/uploads/hospital/$doctors->img_url")}}" alt="Image de profil" class="img-thumbnail mt-3" >
-                                    </div>
+                                            @if (!empty($doctors->img_url) && file_exists(public_path("assets/uploads/doctor/$doctors->img_url")))
+                                                <img src="{{ asset("assets/uploads/doctor/$doctors->img_url") }}" alt="Image de profil" class="img-thumbnail mt-3" style="max-height: 200px;">
+                                            @else
+                                                <img src="{{ asset('assets/images/user2.png') }}" alt="Image de profil" class="img-thumbnail mt-3" style="max-height: 200px;">
+                                            @endif
                                     </div>
                                 </div>
                             </div>

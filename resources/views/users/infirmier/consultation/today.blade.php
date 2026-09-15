@@ -2,14 +2,24 @@
 
 @section('content')
     <div class="box">
-        <div class="box-header">
-            <div class="row">
-                <div class="col-xs-12  col-xl-9 col-lg-9 col-md-9 col-sm-9">
-                    <h4 class="box-title"><b>VOS CONSULTATIONS DU JOUR</b></h4>
-                </div>
+        <div class="box-header with-border d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div>
+                <h4 class="box-title mb-0"><b>VOS CONSULTATIONS DU JOUR</b></h4>
+            </div>
+            <div>
+                @php
+                    $infirmierId = \Illuminate\Support\Facades\Auth::user()->infirmier->id;
+                    $countAllInfConsultations = \App\Models\Consultation::where(function ($q) use ($infirmierId) {
+                        $q->where('infirmier_id', $infirmierId)
+                          ->orWhereNull('infirmier_id');
+                    })->where('status_inf', 0)->count();
+                @endphp
+                <a href="{{ route('infirmier.consultation.all') }}" class="btn btn-sm btn-primary rounded-10 fw-bold shadow-sm">
+                    <i class="fa-solid fa-users me-1"></i> Tous les patients (Sans filtre)
+                    <span class="badge bg-white text-primary ms-1 fs-12">{{ $countAllInfConsultations }}</span>
+                </a>
             </div>
         </div>
-        <br /><br />
         <div class="box-body">
             <div class="table-responsive">
                 <table id="example" class="table table-striped table-hover display nowrap margin-top-10 w-p100">

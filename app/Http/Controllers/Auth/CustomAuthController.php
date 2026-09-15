@@ -34,8 +34,19 @@ class CustomAuthController extends Controller
             return back()->withErrors($response['message']);
 
         $credentials = $request->only('email', 'password');
-        if (Auth::attempt($credentials))
+        if (Auth::attempt($credentials)) {
+            $intended = session()->get('url.intended');
+            if ($intended && (
+                str_contains($intended, 'incoming-requests') ||
+                str_contains($intended, 'pending-online-requests') ||
+                str_contains($intended, 'patient-info') ||
+                str_contains($intended, 'call/')
+            )) {
+                session()->forget('url.intended');
+            }
+
             return redirect()->intended('dashboard')->with('success', 'Bienvenue!');
+        }
 
         return back()->withErrors('Adresse ou mot de passe incorrecte!');
     }

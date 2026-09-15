@@ -74,7 +74,14 @@ class PatientRepository
 
     public function consultations()
     {
-        return Consultation::orderByDESC('created_at')->where('patient_id', Auth::user()->patient->id)
+        return Consultation::orderByDESC('created_at')
+            ->where('patient_id', Auth::user()->patient->id)
+            ->where(function ($query) {
+                $query->where('status', 1)
+                      ->orWhere('call_status', 'completed')
+                      ->orWhereNotNull('issue_consultation_id')
+                      ->orWhereHas('registre');
+            })
             ->with('admission', 'doctor.user', 'hospital.user', 'ordonnance.prescriptions', 'examen.examens', 'arret', 'registre', 'declaration.deces', 'declaration.naissance', 'declaration.decesPatient')
             ->with('hospitalisation.daysHospitalisation.therapeutiqueProtocols')
             ->get();

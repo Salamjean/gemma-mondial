@@ -1,10 +1,10 @@
 @php
-    if ($hospitalisation->daysHospitalisation[0]->day != date('Y-m-d')) {
+    $hasDay = count($hospitalisation->daysHospitalisation) > 0 && isset($hospitalisation->daysHospitalisation[0]->bed);
+    if (!$hasDay || $hospitalisation->daysHospitalisation[0]->day != date('Y-m-d')) {
         $form = 'doctor.hospitalisation.update.new';
     } else {
         $form = 'doctor.hospitalisation.update.already';
     }
-
 @endphp
 
 <form class="form-horizontal" id="formHospitalisation" action=" {{ route($form, $hospitalisation->id) }}" method="post">
@@ -19,7 +19,7 @@
             <br />
 
             <div class="row">
-                @if ($hospitalisation->daysHospitalisation[0]->day != date('Y-m-d'))
+                @if (!$hasDay || $hospitalisation->daysHospitalisation[0]->day != date('Y-m-d'))
                     <div class="col-md-12">
 
                         <div class="box-body ">
@@ -37,26 +37,28 @@
                                 <br />
                                 <br />
                             </div>
-                            <div class="bed--occupied">
-                                <table class="table table-bordered table-hover">
-                                    <tbody>
-                                        <tr>
-                                            <th>
-                                                Type de chambre : <span
-                                                    class="text-info">{{ $hospitalisation->daysHospitalisation[0]->bed->bedroom->type }}</span>
-                                            </th>
-                                            <th>
-                                                Chambre : <span
-                                                    class="text-warning">{{ $hospitalisation->daysHospitalisation[0]->bed->bedroom->number }}</span>
-                                            </th>
-                                            <th>
-                                                Lit n° <span
-                                                    class="text-success">{{ $hospitalisation->daysHospitalisation[0]->bed->number }}</span>
-                                            </th>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                            @if ($hasDay)
+                                <div class="bed--occupied">
+                                    <table class="table table-bordered table-hover">
+                                        <tbody>
+                                            <tr>
+                                                <th>
+                                                    Type de chambre : <span
+                                                        class="text-info">{{ $hospitalisation->daysHospitalisation[0]->bed->bedroom->type }}</span>
+                                                </th>
+                                                <th>
+                                                    Chambre : <span
+                                                        class="text-warning">{{ $hospitalisation->daysHospitalisation[0]->bed->bedroom->number }}</span>
+                                                </th>
+                                                <th>
+                                                    Lit n° <span
+                                                        class="text-success">{{ $hospitalisation->daysHospitalisation[0]->bed->number }}</span>
+                                                </th>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @endif
                             <div class="col-md-6 row">
                                 <div class="col-md-12">
                                     <div class="form-group">
@@ -192,7 +194,13 @@
 
         var protocolCounter = 0;
         var hourCounter = 1;
-        @if ($hospitalisation->daysHospitalisation[0]->day != date('Y-m-d'))
+        @if (!$hasDay)
+            $('.bed-template').css('display', 'block');
+            $('.priceeeee').css('display', 'block');
+            $("select[name=type_bedroom]").prop('required', true);
+            $("select[name=bedroom]").prop('required', true);
+            $("select[name=bed]").prop('required', true);
+        @elseif ($hospitalisation->daysHospitalisation[0]->day != date('Y-m-d'))
 
             $('.bed-template').css('display', 'none');
             $('.priceeeee').css('display', 'none');

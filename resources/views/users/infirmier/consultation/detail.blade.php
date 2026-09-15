@@ -102,8 +102,7 @@
                             </div>
                             <div class="col-md-3 col-xs-6 border-end"> <strong>Type de visite</strong>
                                 <br>
-                                <p class="text-muted">{{ $consultation->prestationHospital->prestationService->libelle }}
-                                </p>
+                                <p class="text-muted">{{ optional(optional($consultation->prestationHospital)->prestationService)->libelle ?? ($consultation->prestationHospital->serviceHospital->service->libelle ?? 'Consultation') }}</p>
 
                             </div>
                             <div class="col-md-3 col-xs-6"> <strong>Issue consultation</strong>

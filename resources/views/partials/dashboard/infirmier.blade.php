@@ -88,10 +88,22 @@
 
                     <div class="box">
                         <div class="box-header">
-                            <div class="row">
-                                <div class="col-xs-12  col-xl-9 col-lg-9 col-md-9 col-sm-9">
+                            <div class="row align-items-center">
+                                <div class="col-xs-12 col-xl-8 col-lg-8 col-md-8 col-sm-8">
                                     <div class="badge badge-warning" style="font-size: 15px;">LISTE DE VOS SOINS NOUVEAUX SOINS
                                     </div>
+                                </div>
+                                <div class="col-xs-12 col-xl-4 col-lg-4 col-md-4 col-sm-4 text-end">
+                                    @php
+                                        $infirmierId = \Illuminate\Support\Facades\Auth::user()->infirmier->id;
+                                        $countAllInfCares = \App\Models\CareRequested::with('admission')->whereHas('admission', function ($query) use ($infirmierId) {
+                                            $query->where('infirmier_id', $infirmierId);
+                                        })->where('status', '!=', 'success')->count();
+                                    @endphp
+                                    <a href="{{ route('infirmier.care.all') }}" class="btn btn-sm btn-primary rounded-10 fw-bold shadow-sm">
+                                        <i class="fa-solid fa-list-check me-1"></i> Tous les soins (Sans filtre)
+                                        <span class="badge bg-white text-primary ms-1 fs-12">{{ $countAllInfCares }}</span>
+                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -231,7 +243,20 @@
     @else
         <div class="col-xl-12 col-lg-12 col-12">
             <div class="box" style="background: rgba(9, 187, 134, 0.288); padding : 10px 20px;">
-                <div class="badge badge-dark" style="font-size: 20px;">PATIENTS A CONSULTER POUR CE JOUR</div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="badge badge-dark" style="font-size: 20px;">PATIENTS A CONSULTER POUR CE JOUR</div>
+                    @php
+                        $infirmierId = \Illuminate\Support\Facades\Auth::user()->infirmier->id;
+                        $countAllInfConsultations = \App\Models\Consultation::where(function ($q) use ($infirmierId) {
+                            $q->where('infirmier_id', $infirmierId)
+                              ->orWhereNull('infirmier_id');
+                        })->where('status_inf', 0)->count();
+                    @endphp
+                    <a href="{{ route('infirmier.consultation.all') }}" class="btn btn-sm btn-primary fw-bold shadow-sm">
+                        <i class="fa-solid fa-users me-1"></i> Toutes les consultations
+                        <span class="badge bg-white text-primary ms-1 fs-12">{{ $countAllInfConsultations }}</span>
+                    </a>
+                </div>
                 <div class="box-body text-center">
                     <div class="table-responsive">
                         <table class="table table-striped table-hover">
@@ -315,7 +340,7 @@
                                                 <td><b>{{ $item->patient->code_patient }}</b></td>
 
                                                 <td class="" style="width: 200px;">
-                                                    {{ $item->prestationHospital->prestationService->libelle }} </td>
+                                                    {{ optional(optional($item->prestationHospital)->prestationService)->libelle ?? ($item->prestationHospital->serviceHospital->service->libelle ?? 'Consultation') }} </td>
 
                                                 <td class="">
                                                     @if ($item->status_inf == 0)
@@ -375,11 +400,11 @@
                     <div class="box-body">
                         <div class="slimScrollDiv" style="position: relative; overflow: auto; width: auto; height: 235px;">
                             <div class="inner-user-div3" style="overflow: auto; width: auto; height: 335px;">
-                                @foreach (\App\Models\DayHospitalisation::orderByDESC('created_at')->where('infirmier_id', \Illuminate\Support\Facades\Auth::user()->infirmier->id)->where('status', 'en_cours')->get() as $item)
+                                @foreach (\App\Models\DayHospitalisation::orderByDESC('created_at')->where('infirmier_id', \Illuminate\Support\Facades\Auth::user()->infirmier->id)->where('status', 'en_cours')->whereHas('hospitalisation', function($q) { $q->where('status', 'in_progress'); })->get() as $item)
                                 <div class="d-flex align-items-center mb-10">
                                     <div class="me-15">
                                         @if ($item->hospitalisation->consultation->patient->img_url != null)
-                                            <img src="{{ asset('assets/uploads/patient/'. $$item->hospitalisation->consultation->patient->img_url) }}"
+                                            <img src="{{ asset('assets/uploads/patient/'. $item->hospitalisation->consultation->patient->img_url) }}"
                                                 class="avatar avatar-lg rounded10 bg-primary-light" alt="Photo de profil" style="width:128px; height:128px" />
                                         @else
                                             @if ($item->hospitalisation->consultation->patient->gender == 'masculin')

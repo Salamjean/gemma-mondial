@@ -154,4 +154,16 @@ class AdmissionController extends Controller
 
         return $response;
     }
+
+    public function all()
+    {
+        $hospitalId = Auth::user()->cashier->hospital_id;
+        $payments = Payment::where('status', 'pending')
+            ->where('hospital_id', $hospitalId)
+            ->with(['admission.patient.user', 'hospitalisation.consultation.patient.user'])
+            ->orderBy('created_at', 'DESC')
+            ->get();
+
+        return view('users.cashier.admission.all', compact('payments'));
+    }
 }

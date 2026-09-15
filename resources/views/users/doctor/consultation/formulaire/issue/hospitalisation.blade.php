@@ -1,4 +1,16 @@
 <div class="container">
+    @php
+        $patient = $consultation->patient ?? ($consultation->admission->patient ?? null);
+        $age = 'N/A';
+        if ($patient && $patient->birth_date) {
+            try {
+                $agePatient = \Carbon\Carbon::createFromFormat('d/m/Y', $patient->birth_date);
+                $age = $agePatient->diffInYears(\Carbon\Carbon::now()) . ' ans';
+            } catch (\Exception $e) {
+                $age = 'N/A';
+            }
+        }
+    @endphp
     <div class="box bb-3 pe-5 pb-10 px-20 ps-10 pt-10 bg-color">
         <div class="row">
             <div class="col-md-12">
@@ -9,7 +21,7 @@
                                 <div class="">
                                     <label class="form-label">N° Dossier médical | <span class="fw-bold fs-18"><span
                                                 id="dm_patient"
-                                                style="color:red;">{{ $consultation->admission->patient->code_patient }}</span></span></label>
+                                                style="color:red;">{{ $patient->code_patient ?? 'N/A' }}</span></span></label>
                                 </div>
                                 <div class="d-flex items-center pb-1">
 
@@ -22,21 +34,19 @@
                                     </span>
                                     <a href="" title="dossier medical" class="btn btn-sm  btn-secondary mx-1"
                                         target="_blank"><i class="fa-solid fa-print"></i></a>
-                                    <a href={{ route('doctor.patient.detail', $consultation->patient->id) }}"
-                                        title="info patient" class="btn btn-sm  btn-success mx-1" target="_blank"><i
-                                            class="fa-solid fa-info"></i></a>
+                                    @if ($patient)
+                                        <a href="{{ route('doctor.patient.detail', $patient->id) }}"
+                                            title="info patient" class="btn btn-sm  btn-success mx-1" target="_blank"><i
+                                                class="fa-solid fa-info"></i></a>
+                                    @endif
                                 </div>
                             </div>
                             <hr>
-                            @php
-                                $agePatient = \Carbon\Carbon::createFromFormat('d/m/Y', $consultation->patient->birth_date);
-                                $age = $agePatient->diffInYears(Carbon\Carbon::now());
-                            @endphp
                             <div class="col-md-3">
                                 <div class="form-group">
                                     <label for="name" class="form-label"> <b>Nom complet </b> </label>
                                     <input type="text" class="form-control" id="name" name="name"
-                                        value="{{ $consultation->admission->patient->user->name }} {{ $consultation->admission->patient->user->prenom }}"
+                                        value="{{ ($patient->user->name ?? '') . ' ' . ($patient->user->prenom ?? '') }}"
                                         disabled>
                                 </div>
                             </div>
@@ -44,32 +54,32 @@
                                 <div class="form-group">
                                     <label for="birth_date" class="form-label"> <b>Né(e) le</b></label>
                                     <input type="text" class="form-control" id="birth_date" name="birth_date"
-                                        value="{{ $consultation->admission->patient->birth_date }}" disabled>
+                                        value="{{ $patient->birth_date ?? 'N/A' }}" disabled>
                                 </div>
                             </div>
                             <div class="col-md-1">
                                 <div class="form-group">
                                     <label for="age" class="form-label"> <b>Age </b></label>
                                     <input type="text" class="form-control" id="age" name="age"
-                                        value="{{ $age }} ans" disabled>
+                                        value="{{ $age }}" disabled>
                                 </div>
                             </div>
                             <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="gender" class="form-label"> <b>Sexe </b></label>
                                     <input type="text" class="form-control" id="gender" name="gender"
-                                        value="{{ $consultation->admission->patient->gender }}" disabled>
+                                        value="{{ $patient->gender ?? 'N/A' }}" disabled>
                                 </div>
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label"><b>Résidence Actuelle</b></label>
                                 <input type="text" class="form-control"
-                                    value="{{ $consultation->admission->patient->residenceActuelle->name }}" readonly />
+                                    value="{{ $patient->residenceActuelle->name ?? 'N/A' }}" readonly />
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label"><b>Contact</b></label>
                                 <input type="text" class="form-control"
-                                    value="{{ $consultation->admission->patient->telephone }}" readonly />
+                                    value="{{ $patient->telephone ?? '' }}" readonly />
                             </div>
 
                         </div>
@@ -114,9 +124,9 @@
                             <div class="col-md-4">
                                 <div class="form-group">
                                     <label for="type_bedroom" class="form-label"> <b>Type de chambre </b>
-                                        <span class="danger">*</span></label>
-                                    <select class="form-select" id="type_bedroom" name="type_bedroom" required>
-                                        <option value="" disabled selected>Selectionner</option>
+                                        <small class="text-muted">(Optionnel)</small></label>
+                                    <select class="form-select" id="type_bedroom" name="type_bedroom">
+                                        <option value="" selected>Selectionner</option>
                                         <option value="individual">Individuelle</option>
                                         <option value="collective">Collective</option>
                                     </select>
@@ -126,9 +136,9 @@
                             <div class="col-md-4">
                                 <div class="form-group">
                                     <label for="bedroom" class="form-label"> <b>Chambre N° </b>
-                                        <span class="danger">*</span></label>
-                                    <select class="form-select" id="bedroom" name="bedroom" required>
-                                        <option value="" disabled selected>Selectionner</option>
+                                        <small class="text-muted">(Optionnel)</small></label>
+                                    <select class="form-select" id="bedroom" name="bedroom">
+                                        <option value="" selected>Selectionner</option>
 
                                     </select>
 
@@ -137,9 +147,9 @@
                             <div class="col-md-4">
                                 <div class="form-group">
                                     <label for="bed" class="form-label"> <b>Lit N° </b>
-                                        <span class="danger">*</span></label>
-                                    <select class="form-select" id="bed" name="bed" required>
-                                        <option value="" disabled selected>Selectionner</option>
+                                        <small class="text-muted">(Optionnel)</small></label>
+                                    <select class="form-select" id="bed" name="bed">
+                                        <option value="" selected>Selectionner</option>
 
                                     </select>
 
@@ -363,8 +373,8 @@
                 description.append(
                     `<div class="form-group">
                         <label for="description_regime" class="form-label"> <b>Description </b>
-                            <span class="danger">*</span></label>
-                        <textarea class="form-control" id="description_regime" rows="1" name="description_regime" required></textarea>
+                            <small class="text-muted">(Optionnel)</small></label>
+                        <textarea class="form-control" id="description_regime" rows="1" name="description_regime"></textarea>
                     </div>`
                 )
             }
@@ -379,9 +389,9 @@
                 date_op.append(
                     `<div class="form-group">
                         <label for="date_operation" class="form-label"> <b>Date opération </b>
-                            <span class="danger">*</span></label>
+                            <small class="text-muted">(Optionnel)</small></label>
                         <input class="form-control" type="date" id="date_operation"
-                            name="date_operation" required />
+                            name="date_operation" />
                     </div>`
                 )
             }
@@ -489,52 +499,51 @@
         $("#formHospitalisation").submit(function(e) {
             e.preventDefault();
 
-            var drugsCount = $("#drug__item .row").length;
+            var drugSelects = $('select[name="drug[]"]');
+            var hasDrug = false;
+            drugSelects.each(function() {
+                if ($(this).val() !== "" && $(this).val() !== null) {
+                    hasDrug = true;
+                }
+            });
 
-            if (drugsCount === 0) {
+            if (!hasDrug) {
                 Swal.fire({
-                    title: 'Erreur!',
-                    text: 'Veuillez ajouter au moins un protocole.',
+                    title: 'Protocole obligatoire',
+                    text: 'Veuillez ajouter au moins un protocole thérapeutique avant d\'enregistrer.',
                     icon: 'error',
+                    confirmButtonText: 'OK'
                 });
-            } else {
-                Swal.fire({
-                    title: 'Etes vous sûr d\'hospitalisé le patient?',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#3085d6',
-                    cancelButtonColor: '#d33',
-                    confirmButtonText: 'Oui',
-                    cancelButtonText: 'Annuler'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-
-                        $("#formHospitalisation")[0].submit();
-
-                        // var data = {
-                        //     "consultation_id": '{{ $consultation->id }}',
-                        // }
-
-                        // store(data)
-
-                        let timerInterval
-                        Swal.fire({
-                            title: 'Chargement!',
-                            timer: 2000,
-                            timerProgressBar: true,
-                            didOpen: () => {
-                                Swal.showLoading()
-                            },
-                            willClose: () => {
-                                clearInterval(timerInterval)
-                            }
-                        })
-                    }
-                });
+                return false;
             }
 
+            Swal.fire({
+                title: 'Êtes-vous sûr d\'hospitaliser ce patient ?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Oui',
+                cancelButtonText: 'Annuler'
+            }).then((result) => {
+                if (result.isConfirmed) {
 
+                    $("#formHospitalisation")[0].submit();
 
+                    let timerInterval
+                    Swal.fire({
+                        title: 'Chargement...',
+                        timer: 2000,
+                        timerProgressBar: true,
+                        didOpen: () => {
+                            Swal.showLoading()
+                        },
+                        willClose: () => {
+                            clearInterval(timerInterval)
+                        }
+                    })
+                }
+            });
         });
 
         //function
@@ -588,8 +597,8 @@
                             <div class="form-group">
                                 <div class="">
                                     <label for="drug" class="form-label"> <b>Nom du produit </b>
-                                        <span class="danger">*</span></label>
-                                    <select class="select2 form-select custom-select-heightI" id="drug" name="drug[]" required>
+                                        <small class="text-muted">(Optionnel)</small></label>
+                                    <select class="select2 form-select custom-select-heightI" id="drug" name="drug[]">
                                         <option value="" disabled selected>Selectionner</option>
                                         @foreach ($drugsHospital as $drug)
                                             <option value="{{ $drug->id }}">{{ $drug->drug->name }}</option>
@@ -602,9 +611,8 @@
                             <div class="form-group">
                                 <div class="">
                                     <label for="quantity" class="form-label"> <b>Quantité </b>
-                                        <span class="danger">*</span></label>
-                                    <input type="number" class="form-control" id="quantity" name="quantity[]" min="1"
-                                        required />
+                                        <small class="text-muted">(Optionnel)</small></label>
+                                    <input type="number" class="form-control" id="quantity" name="quantity[]" min="1" />
 
                                 </div>
                             </div>

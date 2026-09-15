@@ -23,9 +23,7 @@
                                 <th class="bb-2">Date et heure</th>
                                 <th class="bb-2">Photo</th>
                                 <th class="bb-2">Nom & prénom(s)</th>
-                                <th class="bb-2">Motif de la visite</th>
                                 <th class="bb-2">Description de la visite</th>
-                                <th class="bb-2">Mode d'entrée</th>
                                 <th class="bb-2">Médecin/Infirmier(re) en charge</th>
                                 <th class="bb-2">Montant</th>
                                 <th class="bb-2 text-center">Status</th>
@@ -59,17 +57,7 @@
                                       <i>{{ $item->patient->user->name }} {{ $item->patient->user->prenom }}</i>
                                     </td>
                                     <td>
-                                        @if($item->type_examen_id == null)
-                                            <span class="badge badge-primary">{{ $item->prestationHospital->service->libelle ?? null }} </span>
-                                        @else
-                                            <span class="badge badge-info">{{ $item->typeExamen->libelle ?? null }} </span>
-                                        @endif
-                                    </td>
-                                    <td>
                                         <i>{{ $item->motif_consultation }} </i>
-                                    </td>
-                                    <td>
-                                        {{ $item->mode_entree }}
                                     </td>
                                 
                                     <td>

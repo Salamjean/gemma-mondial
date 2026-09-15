@@ -16,11 +16,13 @@ Route::middleware(['auth'])->group(function() {
 
             Route::get('profile', [CashierController::class, 'profile'])->name('profile');
             Route::post('update', [CashierController::class, 'update'])->name('update');
+            Route::get('planning', [CashierController::class, 'planning'])->name('planning');
 
             Route::prefix('admission')->name('admission.')->group(function () {
                 Route::get('list', 'AdmissionController@list')->name('list');
                 Route::get('admission', 'AdmissionController@admission')->name('admission');
                 Route::get('hospitalisation', 'AdmissionController@hospitalisation')->name('hospitalisation');
+                Route::get('all', 'AdmissionController@all')->name('all');
                 Route::get('show/{id}', 'AdmissionController@show')->name('show');
                 Route::get('details/{id}', 'AdmissionController@details')->name('details');
 

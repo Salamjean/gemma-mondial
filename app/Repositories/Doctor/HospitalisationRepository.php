@@ -50,18 +50,74 @@ class HospitalisationRepository
         return $hospitalisation;
     }
 
+    public function syncPendingHospitalisationsFromConsultations()
+    {
+        try {
+            $consultationsWithHosp = Consultation::whereHas('registre', function ($q) {
+                $q->where('issue_consultation', 'LIKE', '%hospit%')
+                    ->orWhere('issue_consultation_justification', 'LIKE', '%hospit%');
+            })->get();
+
+            foreach ($consultationsWithHosp as $consultation) {
+                if (!Hospitalisation::where('consultation_id', $consultation->id)->exists()) {
+                    $hosp = new Hospitalisation();
+                    $hosp->code = noDossierHospitalisation();
+                    $hosp->consultation_id = $consultation->id;
+                    $hosp->doctor_id = $consultation->doctor_id ?? (auth()->check() && auth()->user()->doctor ? auth()->user()->doctor->id : 1);
+                    $hosp->type = "hospitalisation";
+                    $hosp->date = date('Y-m-d');
+                    $hosp->status = "in_progress";
+                    $hosp->save();
+                }
+            }
+        } catch (\Throwable $e) {
+            // Ignorer silencieusement si la table n'existe pas encore ou en cas d'erreur mineure
+        }
+    }
+
+    public function all()
+    {
+        $this->syncPendingHospitalisationsFromConsultations();
+        return $this->model()::orderByDESC('id')->get();
+    }
+
     public function in_progress()
     {
-        $doctor = auth()->user()->doctor;
+        $this->syncPendingHospitalisationsFromConsultations();
+        $doctor = auth()->check() ? auth()->user()->doctor : null;
 
-        $hospitalisations = $this->model()::orderByDESC('id')->where('status', 'in_progress')->get();
+        $hospitalisations = $this->model()::orderByDESC('id')
+            ->where('status', 'in_progress')
+            ->whereHas('daysHospitalisation', function ($q) {
+                $q->whereNotNull('bed_id');
+            })
+            ->get();
+
+        return $hospitalisations;
+    }
+
+    public function pending_room()
+    {
+        $this->syncPendingHospitalisationsFromConsultations();
+        $doctor = auth()->check() ? auth()->user()->doctor : null;
+
+        $hospitalisations = $this->model()::orderByDESC('id')
+            ->where('status', 'in_progress')
+            ->where(function ($query) {
+                $query->whereDoesntHave('daysHospitalisation')
+                    ->orWhereHas('daysHospitalisation', function ($q) {
+                        $q->whereNull('bed_id');
+                    });
+            })
+            ->get();
 
         return $hospitalisations;
     }
 
     public function history()
     {
-        $doctor = auth()->user()->doctor;
+        $this->syncPendingHospitalisationsFromConsultations();
+        $doctor = auth()->check() ? auth()->user()->doctor : null;
         $hospitalisations = $this->model()::orderByDESC('id')->where('status', '!=', 'in_progress')->get();
 
         return $hospitalisations;
@@ -95,18 +151,24 @@ class HospitalisationRepository
 
             $lastHospitalisationDay = DayHospitalisation::orderByDESC('day')->where('hospitalisation_id', $hospitalisation->id)->first();
 
-            if ($request->bedcheck) {
+            if ($request->bedcheck || !$lastHospitalisationDay || !$lastHospitalisationDay->bed_id) {
 
                 $bed = Bed::find($request->bed);
-                if ($bed->status_occupied != 'no_occupied')
+                if ($bed && $bed->status_occupied != 'no_occupied')
                     return ['status' => 'warning', 'message' => 'Bed of the bedroom occupied.'];
+                if ($bed) {
+                    $bed->status_occupied = 'occupied';
+                    $bed->save();
+                }
             } else
                 $bed = Bed::find($lastHospitalisationDay->bed_id);
 
-            $diffInDays = Carbon::parse($lastHospitalisationDay->day)->diffInDays(Carbon::now());
-            $lastHospitalisationDay->number_days = $diffInDays;
-            $lastHospitalisationDay->end_date = date('Y-m-d');
-            $lastHospitalisationDay->save();
+            if ($lastHospitalisationDay) {
+                $diffInDays = Carbon::parse($lastHospitalisationDay->day)->diffInDays(Carbon::now());
+                $lastHospitalisationDay->number_days = $diffInDays;
+                $lastHospitalisationDay->end_date = date('Y-m-d');
+                $lastHospitalisationDay->save();
+            }
 
             if ($request->operation) {
 
@@ -491,25 +553,17 @@ class HospitalisationRepository
                 if (!$day->end_date)
                     $day->end_date = date('Y-m-d');
 
+                $day->status = 'terminé';
+
                 //find bed price
-                $bed = Bed::find($day->bed_id);
-                $bed->status_occupied = 'no_occupied';
-                $bed->save();
-
-
-                //initialise total drug;
-                // $priceDrug = 0;
-
-                // foreach ($day->therapeutiqueProtocols as $keyy => $therapP){
-
-                //     //find therapeutiqueProtocols
-                //     $therap = TherapeutiqueProtocol::find($therapP->id);
-
-                //     $priceDrug += $therap->total;
-
-                // }
-
-                $day->price = ($bed->price * $day->number_days);
+                if ($day->bed_id) {
+                    $bed = Bed::find($day->bed_id);
+                    if ($bed) {
+                        $bed->status_occupied = 'no_occupied';
+                        $bed->save();
+                        $day->price = ($bed->price * $day->number_days);
+                    }
+                }
 
                 $day->save();
 

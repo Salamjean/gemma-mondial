@@ -18,6 +18,20 @@ class ConsultationController extends Controller
         return view('users.infirmier.consultation.today', ['consultations' => Consultation::where('infirmier_id', auth()->user()->infirmier->id)->withCount('ordonnances', 'arret', 'examen')->where('date_consultation', date('Y-m-d'))->get()]);
     }
 
+    public function allPatients()
+    {
+        $infirmierId = auth()->user()->infirmier->id;
+        $consultations = Consultation::orderByDESC('created_at')
+            ->where(function ($q) use ($infirmierId) {
+                $q->where('infirmier_id', $infirmierId)
+                    ->orWhereNull('infirmier_id');
+            })
+            ->where('status_inf', 0)
+            ->get();
+
+        return view('users.infirmier.consultation.all', compact('consultations'));
+    }
+
     public function history()
     {
         return view('users.infirmier.consultation.history', ['consultations' => Consultation::orderByDESC("date_consultation")->withCount(['ordonnances', 'arret', "examen", "declaration", "registre"])->with("ordonnances", "arret", "examen", "declaration", "registre")->where('infirmier_id', auth()->user()->infirmier->id)->where('date_consultation', '<', date('Y-m-d'))->orWhere('status_inf', 1)->get()]);

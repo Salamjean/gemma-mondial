@@ -1,8 +1,8 @@
 <li class="treeview">
     <a href="#"
-        class="{{ routeActive(['doctor.consultation.today', 'doctor.consultation.cours', 'doctor.consultation.history']) }}">
+        class="{{ routeActive(['doctor.consultation.today', 'doctor.consultation.all', 'doctor.consultation.cours', 'doctor.consultation.history']) }}">
         <i
-            class="fa-solid {{ routeActive(['doctor.consultation.today', 'doctor.consultation.cours', 'doctor.consultation.history']) }} fa-thermometer-half">
+            class="fa-solid {{ routeActive(['doctor.consultation.today', 'doctor.consultation.all', 'doctor.consultation.cours', 'doctor.consultation.history']) }} fa-thermometer-half">
             <span class="path1"></span><span class="path2"></span><span class="path3"></span>
         </i>
         <span>Consultations</span>
@@ -16,11 +16,22 @@
                 <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Nouvelles
             </a>
         </li>
+        <li>
+            <a href="{{ route('doctor.consultation.all') }}" class="{{ routeActive('doctor.consultation.all') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Tous les patients
+            </a>
+        </li>
 
         <li>
             <a href="{{ route('doctor.consultation.history') }}"
                 class="{{ routeActive('doctor.consultation.history') }}">
                 <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Historique
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('doctor.consultation.call.history') }}"
+                class="{{ routeActive('doctor.consultation.call.history') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Appels Vidéo HD
             </a>
         </li>
     </ul>
@@ -57,9 +68,9 @@
 @endif
 <li class="treeview">
     <a href="#"
-        class="{{ routeActive(['doctor.hospitalisation.in_progress', 'doctor.hospitalisation.history']) }}">
+        class="{{ routeActive(['doctor.hospitalisation.pending_room', 'doctor.hospitalisation.in_progress', 'doctor.hospitalisation.history']) }}">
         <i
-            class="fa-solid fa-bed {{ routeActive(['doctor.hospitalisation.in_progress', 'doctor.hospitalisation.history']) }}">
+            class="fa-solid fa-bed {{ routeActive(['doctor.hospitalisation.pending_room', 'doctor.hospitalisation.in_progress', 'doctor.hospitalisation.history']) }}">
             <span class="path1"></span><span class="path2"></span><span class="path3"></span>
         </i>
         <span>Hospitalisation</span>
@@ -68,6 +79,12 @@
         </span>
     </a>
     <ul class="treeview-menu">
+        <li>
+            <a href="{{ route('doctor.hospitalisation.pending_room') }}"
+                class="{{ routeActive('doctor.hospitalisation.pending_room') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>En attente
+            </a>
+        </li>
         <li>
             <a href="{{ route('doctor.hospitalisation.in_progress') }}"
                 class="{{ routeActive('doctor.hospitalisation.in_progress') }}">

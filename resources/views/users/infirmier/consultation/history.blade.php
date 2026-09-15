@@ -37,7 +37,7 @@
                                 </td>
                                 <td><b>{{ $item->patient->code_patient }}</b></td>
 
-                                <td class="" style="width: 200px;"> {{ $item->prestationHospital->prestationService->libelle }}
+                                <td class="" style="width: 200px;"> {{ optional(optional($item->prestationHospital)->prestationService)->libelle ?? ($item->prestationHospital->serviceHospital->service->libelle ?? 'Consultation') }}
                                 </td>
 
                                 <td class="">

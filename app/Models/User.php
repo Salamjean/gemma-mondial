@@ -110,4 +110,32 @@ class User extends Authenticatable
         return $this->hasOne(Availability::class);
     }
 
+    public function getTelephoneAttribute()
+    {
+        if ($this->doctor && !empty($this->doctor->contact)) {
+            return $this->doctor->contact;
+        }
+        if ($this->infirmier && !empty($this->infirmier->contact)) {
+            return $this->infirmier->contact;
+        }
+        if ($this->secretariat && !empty($this->secretariat->contact)) {
+            return $this->secretariat->contact;
+        }
+        if ($this->cashier && !empty($this->cashier->contact)) {
+            return $this->cashier->contact;
+        }
+        if ($this->accountant && !empty($this->accountant->contact)) {
+            return $this->accountant->contact;
+        }
+        if ($this->patient && !empty($this->patient->telephone)) {
+            return $this->patient->telephone;
+        }
+        return $this->attributes['telephone'] ?? null;
+    }
+
+    public function getContactAttribute()
+    {
+        return $this->telephone;
+    }
+
 }

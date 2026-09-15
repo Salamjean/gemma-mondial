@@ -78,6 +78,14 @@ class DeclarationRepository
 
         $declaration->save();
 
+        if (!empty($request->consultation_id)) {
+            $consultation = \App\Models\Consultation::find($request->consultation_id);
+            if ($consultation) {
+                $consultation->status = 1;
+                $consultation->save();
+            }
+        }
+
         $death = new DeclarationDeces();
         //reference : dd-hospital_id, date, (counter + 1)
         $death->reference = 'DD' . substr($patient->code_patient, 2) . Auth::user()->doctor->hospital_id . $counter + 1;

@@ -17,11 +17,10 @@ class SmsRepository
         $this->phone = $phone;
         $this->message = $message;
 
-        // Récupération des identifiants Yéllika depuis le .env (avec trim pour éviter les espaces invisibles)
-        $this->apiKey = trim(env('YELLIKA_API_KEY'));
-        $this->senderId = env('YELLIKA_SENDER_ID', 'Notify');
-        // On récupère la base URL (ex: https://app.1smsafrica.com/api/v3)
-        $this->baseUrl = rtrim(env('YELLIKA_API_URL', 'https://app.1smsafrica.com/api/v3'), '/');
+        // Récupération des identifiants Yéllika via config() pour supporter php artisan config:cache
+        $this->apiKey = trim(config('services.yellika.api_key', '811|BjTyHTb8CdJnYA6nBDhiaX9R0f3gtXG9FTKaZpGKf035957f'));
+        $this->senderId = config('services.yellika.sender_id', 'GestPatient');
+        $this->baseUrl = rtrim(config('services.yellika.api_url', 'https://app.1smsafrica.com/api/v3'), '/');
 
         // Log de vérification de la clé (sans l'afficher entièrement pour sécurité)
         $len = strlen($this->apiKey);

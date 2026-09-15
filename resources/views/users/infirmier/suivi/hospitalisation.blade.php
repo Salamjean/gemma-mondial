@@ -1,11 +1,36 @@
 @extends('layouts.dashboard', ['title' => 'Suivi Hospitalisation'])
 @section('content')
+@php
+    $patient = $hospitalisation->consultation->patient ?? ($hospitalisation->consultation->admission->patient ?? null);
+    $user = $patient->user ?? null;
+    $patientCode = $patient->code_patient ?? 'N/A';
+    $patientName = trim(($user->name ?? '') . ' ' . ($user->prenom ?? ''));
+    if (empty($patientName)) {
+        $patientName = 'N/A';
+    }
+    $birthDate = $patient->birth_date ?? '';
+    $age = 'N/A';
+    if ($birthDate) {
+        try {
+            $agePatient = \Carbon\Carbon::createFromFormat('d/m/Y', $birthDate);
+            $age = $agePatient->diffInYears(\Carbon\Carbon::now()) . ' ans';
+        } catch(\Exception $e) {
+            $age = $birthDate;
+        }
+    }
+    $gender = $patient->gender ?? 'N/A';
+    $residence = $patient->place_residence ?? ($patient->residence_actuelle ?? 'N/A');
+    $contact = $user->telephone ?? ($patient->phone ?? 'N/A');
+    $insuranceNumber = $patient->insurance_number ?? ($patient->code_assurance ?? 'N/A');
+    $motif = $hospitalisation->consultation->motif_consultation ?? ($hospitalisation->consultation->motif ?? 'N/A');
+    $avatar = ($user && $user->photo) ? asset('storage/' . $user->photo) : asset('assets/images/avatar/6.png');
+    $createdDate = $hospitalisation->created_at ? \Carbon\Carbon::parse($hospitalisation->created_at)->format('d/m/Y') : \Carbon\Carbon::now()->format('d/m/Y');
+@endphp
 <div class="container">
-    
     <div class="box bb-3 border-dark pe-5 pb-20 px-20 ps-10 pt-20 bg-color">
         <div class="row">
-            <div class="col-md-2">
-                <img src="{{ asset('assets/images/avatar/6.png') }}" class="rounded-circle" alt="Photo de profil"/>      
+            <div class="col-md-2 text-center">
+                <img src="{{ $avatar }}" class="rounded-circle" style="width: 100px; height: 100px; object-fit: cover;" alt="Photo de profil"/>      
             </div>
             <div class="col-md-10">
                 <div class="px-2">
@@ -14,21 +39,18 @@
                             <div class="d-flex justify-content-between mt-10">
                                 <div class="">
                                     <label class="form-label">N° Dossier médical | <span class="fw-bold fs-18"><span id="dm_patient"
-                                                style="color:red;">DM160419501</span></span></label>
+                                                style="color:red;">{{ $patientCode }}</span></span></label>
                                 </div>
                                 <div class="d-flex items-center pb-1">
-
+                                    <a href="{{ route('infirmier.hospitalisation.in_progress') }}" class="btn btn-sm btn-secondary me-2">
+                                        <i class="fa-solid fa-arrow-left me-1"></i> Retour
+                                    </a>
                                     <span class=" d-flex mt-1 text-success">
-                                        <span>Admission du {{ Carbon\Carbon::now()->format('d/m/Y') }}</span>
+                                        <span>Hospitalisation du {{ $createdDate }}</span>
                                         <pre>  </pre> |
-                                        <pre>  </pre> <span>Ordre
-                                            N°</span>
+                                        <pre>  </pre> <span>N°{{ $hospitalisation->code ?? $hospitalisation->id }}</span>
                                         <pre>  </pre>
                                     </span>
-                                    <a href="" title="dossier medical" class="btn btn-sm  btn-secondary mx-1"
-                                        target="_blank"><i class="fa-solid fa-print"></i></a>
-                                    <a href="#" title="info patient"
-                                        class="btn btn-sm  btn-success mx-1" target="_blank"><i class="fa-solid fa-info"></i></a>
                                 </div>
                             </div>
                             <hr>
@@ -37,7 +59,7 @@
                                 <div class="form-group">
                                     <label for="name" class="form-label"> <b>Nom complet </b> </label>
                                     <input type="text" class="form-control" id="name" name="name"
-                                        value="KOUASSI N'GORAN ROMEO KOUAME"
+                                        value="{{ $patientName }}"
                                         disabled>
                                 </div>
                             </div>
@@ -45,42 +67,41 @@
                                 <div class="form-group">
                                     <label for="birth_date" class="form-label"> <b>Né(e) le</b></label>
                                     <input type="text" class="form-control" id="birth_date" name="birth_date"
-                                        value="16/04/1995" disabled>
+                                        value="{{ $birthDate }}" disabled>
                                 </div>
                             </div>
                             <div class="col-md-1">
                                 <div class="form-group">
                                     <label for="age" class="form-label"> <b>Age </b></label>
                                     <input type="text" class="form-control" id="age" name="age"
-                                        value="26 ans" disabled>
+                                        value="{{ $age }}" disabled>
                                 </div>
                             </div>
                             <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="gender" class="form-label"> <b>Sexe </b></label>
                                     <input type="text" class="form-control" id="gender" name="gender"
-                                        value="Masculin" disabled>
+                                        value="{{ $gender }}" disabled>
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label"><b>Résidence Actuelle</b></label>
                                 <input type="text" class="form-control"
-                                    value="Cocody Riviera 2" readonly />
+                                    value="{{ $residence }}" readonly />
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-3">
                                 <label class="form-label"><b>Contact</b></label>
                                 <input type="text" class="form-control"
-                                    value="0707267572" readonly />
+                                    value="{{ $contact }}" readonly />
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-3">
                                 <label class="form-label"><b>N° Assurance</b></label>
                                 <input type="text" class="form-control"
-                                    value="AXA178992" readonly />
+                                    value="{{ $insuranceNumber }}" readonly />
                             </div>
-                            <div class="col-md-12">
+                            <div class="col-md-12 mt-2">
                                 <label class="form-label"><b>Motif de la consultation</b></label>
-                                <textarea type="text" class="form-control" name="motif_consultation" id="motif_consultation"
-                                    value="Probleme d'apenecie" readonly>Probleme d'apenecie</textarea>
+                                <textarea class="form-control" name="motif_consultation" id="motif_consultation" readonly>{{ $motif }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -132,15 +153,13 @@
                                                                                 <td>{{ $hour->hour }}</td>
                                                                                 <td class="text-center">
                                                                                     @if ($hour->status === 'pending')
-                                                                                    <a href="#" onclick="appliqueProtocol(event, {{ $hour->id }})">
-                                                                                        <span class="badge badge-warning">{{ $hour->status }}</span>
-                                                                                    </a>
-                                                                                    <!--
-                                                                                        <form method="POST" action="{{ route("infirmier.suivi.applique", ["id" => $hour->id]) }}">
-                                                                                            @csrf
-                                                                                            <button class="btn btn-sm btn-warning">{{ $hour->status }}</button>
-                                                                                        </form>
-                                                                                    -->
+                                                                                        @if ($hospitalisation->status === 'finished')
+                                                                                            <span class="badge badge-secondary" title="Hospitalisation terminée">Non appliqué</span>
+                                                                                        @else
+                                                                                            <a href="#" onclick="appliqueProtocol(event, {{ $hour->id }})">
+                                                                                                <span class="badge badge-warning">{{ $hour->status }}</span>
+                                                                                            </a>
+                                                                                        @endif
                                                                                     @else
                                                                                         <span class="badge badge-success">Appliqué</span>
                                                                                     @endif
@@ -243,6 +262,7 @@
                 </div>
             </div>
             
+            @if ($hospitalisation->status !== 'finished')
             <div class="box">
                 <div class="box-body">
                     <form action="{{ route('infirmier.suivi.surveillance') }}" class="form-horizontal" method="POST">
@@ -298,6 +318,11 @@
                     </form>
                 </div>
             </div>
+            @else
+            <div class="alert alert-info text-center mt-3">
+                <i class="fa-solid fa-lock me-1"></i> Cette hospitalisation est terminée. La saisie de surveillance n'est plus autorisée.
+            </div>
+            @endif
         </div>
         
     </div>

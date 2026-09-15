@@ -56,27 +56,53 @@ class PatientController extends Controller
 
         $request->validate([
             'email_up' => ['nullable'],
-            'residence_actuelle_up' => 'required',
-            'situation_matrimoniale_up' => 'required',
-            'type_piece_up' => 'required',
+            'residence_actuelle_up' => 'nullable',
+            'situation_matrimoniale_up' => 'nullable',
+            'type_piece_up' => 'nullable',
             'numero_identite' => ['nullable', Rule::unique('patients')->ignore($patient->id)],
             'telephone' => ['required', Rule::unique('patients')->ignore($patient->id)],
             'contact2' => ['nullable', Rule::unique('patients')->ignore($patient->id)],
 
-            'admission_patient_up' => 'required',
+            'admission_patient_up' => 'nullable',
 
-            'prestation_service_id' => 'required_if:admission_patient_up,Oui',
-            'infirmier_id' => 'required_if:admission_patient_up,Oui',
-            'motif_consultation' => 'required_if:admission_patient_up,Oui',
-
+            'prestation_service_id' => 'nullable',
+            'infirmier_id' => 'nullable',
+            'doctor_id' => 'nullable',
+            'motif_consultation' => 'nullable',
         ]);
 
-        // Effectuez la mise à jour des informations du patient
+        if ($request->filled('name_up')) {
+            $user->name = $request->name_up;
+        }
+        if ($request->filled('prenom_up')) {
+            $user->prenom = $request->prenom_up;
+        }
         $user->email = $request->email_up;
         $patient->no_assurance = $request->no_assurance_up;
         $patient->profession = $request->profession_up;
-        $patient->residence_habituelle_id = $request->residence_habituelle_up;
-        $patient->residence_actuelle_id = $request->residence_actuelle_up;
+
+        if ($request->filled('residence_habituelle_up')) {
+            if (is_numeric($request->residence_habituelle_up)) {
+                $patient->residence_habituelle_id = $request->residence_habituelle_up;
+            } else {
+                $sub = \App\Models\SubPrefecture::where('name', $request->residence_habituelle_up)->first();
+                if ($sub) {
+                    $patient->residence_habituelle_id = $sub->id;
+                }
+            }
+        }
+
+        if ($request->filled('residence_actuelle_up')) {
+            if (is_numeric($request->residence_actuelle_up)) {
+                $patient->residence_actuelle_id = $request->residence_actuelle_up;
+            } else {
+                $sub = \App\Models\SubPrefecture::where('name', $request->residence_actuelle_up)->first();
+                if ($sub) {
+                    $patient->residence_actuelle_id = $sub->id;
+                }
+            }
+        }
+
         $patient->contact2 = $request->contact2;
         $patient->ethnie = $request->ethnie_up;
         $patient->type_piece = $request->type_piece_up;
@@ -144,6 +170,68 @@ class PatientController extends Controller
         return view('users.secretariat.patient.detail', compact('patient', 'type_assurances'));
     }
 
+    public function dossierMedical($id)
+    {
+        $patient = Patient::findOrFail($id);
+        $consultations = \App\Models\Consultation::where('patient_id', $patient->id)->get();
+        $consultation = \App\Models\Consultation::where('patient_id', $patient->id)->first();
+        $ordonnance_interne = $consultation ? \App\Models\Ordonnance::where('type', 'interne')->where('consultation_id', $consultation->id)->first() : null;
+        $ordonnance_externe = $consultation ? \App\Models\Ordonnance::where('type', 'externe')->where('consultation_id', $consultation->id)->first() : null;
+        $registres = $consultation ? \App\Models\Registre::where('consultation_id', $consultation->id)->get() : collect();
+        return view('users.doctor.patient.dossier_medical', compact('patient', 'consultations', 'consultation', 'ordonnance_interne', 'ordonnance_externe', 'registres'));
+    }
+
+    public function parcoursIntervention($id)
+    {
+        $consultation = \App\Models\Consultation::with([
+            'patient.user',
+            'patient.lieuNaissance',
+            'patient.residenceActuelle',
+            'doctor.user',
+            'infirmier.user',
+            'admission.infirmier.user',
+            'admission.doctor.user',
+            'admission.cashier.user',
+            'admission.secretariat.user',
+            'prestationHospital.prestationService.service',
+            'registre.registreConsultationCurative',
+            'registre.registreAccouchement',
+            'registre.registreConsultationPreNatale',
+            'registre.registreConsultationPostNatale',
+            'ordonnances.prescriptions.drug',
+            'ordonnances.prescriptions.drugHospital.drug',
+            'examen',
+            'arret',
+            'declaration',
+            'hospitalisation'
+        ])->findOrFail($id);
+
+        $patient = $consultation->patient;
+        $ordonnance_interne = \App\Models\Ordonnance::where('type', 'interne')->where('consultation_id', $consultation->id)->first();
+        $ordonnance_externe = \App\Models\Ordonnance::where('type', 'externe')->where('consultation_id', $consultation->id)->first();
+        $registres = \App\Models\Registre::where('consultation_id', $consultation->id)->get();
+
+        return view('users.patient.parcours_intervention', compact('consultation', 'patient', 'ordonnance_interne', 'ordonnance_externe', 'registres'));
+    }
+
+    public function edit($id)
+    {
+        $patient = Patient::with([
+            'user',
+            'lieuNaissance',
+            'residenceActuelle',
+            'residenceHabituelle',
+            'admissions' => function ($query) {
+                $query->latest()->with(['prestationHospital.serviceHospital.service', 'infirmier.user', 'doctor.user']);
+            }
+        ])->findOrFail($id);
+
+        $latestAdmission = $patient->admissions->first();
+        $type_assurances = TypeAssurance::get();
+
+        return view('users.secretariat.patient.edit', compact('patient', 'latestAdmission', 'type_assurances'));
+    }
+
     public function card(Request $request, $id)
     {
         $patient = Patient::with(['user', 'hospital'])->findOrFail($id);
@@ -166,13 +254,26 @@ class PatientController extends Controller
         }
 
         if ($fullname) {
-            $fullname = explode(" ", $request->input('fullname'), 2);
-            $nom = $fullname[0];
-            $pnom = $fullname[1];
-            $data->whereHas('user', function ($q) use ($nom, $pnom) {
-                $q->where('name', 'like', '%' . $nom . '%')
-                    ->where('prenom', 'like', '%' . $pnom . '%');
-            });
+            $terms = array_values(array_filter(explode(" ", trim($request->input('fullname')))));
+            if (count($terms) >= 2) {
+                $first = $terms[0];
+                $second = implode(" ", array_slice($terms, 1));
+                $data->whereHas('user', function ($q) use ($first, $second) {
+                    $q->where(function ($sub) use ($first, $second) {
+                        $sub->where('name', 'like', '%' . $first . '%')
+                            ->where('prenom', 'like', '%' . $second . '%');
+                    })->orWhere(function ($sub) use ($first, $second) {
+                        $sub->where('name', 'like', '%' . $second . '%')
+                            ->where('prenom', 'like', '%' . $first . '%');
+                    });
+                });
+            } else if (count($terms) === 1) {
+                $term = $terms[0];
+                $data->whereHas('user', function ($q) use ($term) {
+                    $q->where('name', 'like', '%' . $term . '%')
+                        ->orWhere('prenom', 'like', '%' . $term . '%');
+                });
+            }
         }
 
         if ($birth_date) {
@@ -244,7 +345,6 @@ class PatientController extends Controller
             'secretaire_id' => $secretaire->id,
             'hospital_id' => $secretaire->hospital->id,
             'gender' => $request->gender,
-            'code_patient' => "DM$dataNaissRef$countNaissRef$code",
             'no_assurance' => $request->no_assurance,
             'profession' => $request->profession,
             'lieu_de_naissance_id' => $request->lieu_de_naissance,

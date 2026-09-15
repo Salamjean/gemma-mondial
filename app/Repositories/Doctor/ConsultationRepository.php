@@ -32,12 +32,20 @@ class ConsultationRepository
 
     public function today()
     {
-        return Consultation::where('doctor_id', auth()->user()->doctor->id)->where('date_consultation', date('Y-m-d'))->get();
+        return Consultation::where('doctor_id', auth()->user()->doctor->id)
+            ->where('date_consultation', date('Y-m-d'))
+            ->whereNull('call_channel')
+            ->get();
     }
 
     public function history()
     {
-        return Consultation::orderByDESC("date_consultation")->withCount(['ordonnances', 'arret', "examen", "declaration", "registre"])->with("ordonnances", "arret", "examen", "declaration", "registre")->where('doctor_id', auth()->user()->doctor->id)->where('date_consultation', '<', date('Y-m-d'))->orWhere('status', 1)->get();
+        $doctorId = auth()->user()->doctor->id;
+        return Consultation::orderByDESC("updated_at")
+            ->where('doctor_id', $doctorId)
+            ->withCount(['ordonnances', 'arret', "examen", "declaration", "registre"])
+            ->with(["ordonnances", "arret", "examen", "declaration", "registre", "patient.user", "prestationHospital.prestationService"])
+            ->get();
     }
 
     public function show($id)

@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Doctor\DoctorController;
-use App\Http\Controllers\Doctor\PostConsultationController;
+use App\Http\Controllers\PostConsultationController;
 
 Route::get('pdf', [PostConsultationController::class, 'viewPdf']);
 Route::middleware(['auth'])->group(function () {
@@ -26,6 +26,7 @@ Route::middleware(['auth'])->group(function () {
             Route::prefix('consultation')->name('consultation.')->group(function () {
                 //view consultation
                 Route::get('today', 'ConsultationController@today')->name('today');
+                Route::get('all', 'ConsultationController@allPatients')->name('all');
                 Route::get('history', 'ConsultationController@history')->name('history');
                 //Route::get('detail/{id}', 'ConsultationController@detailconsulation')->name('detailConsul');
                 Route::get('detail/{id}', 'ConsultationController@detail')->name('detail');
@@ -33,6 +34,12 @@ Route::middleware(['auth'])->group(function () {
                 Route::get('patient/{id}/card', 'ConsultationController@patientCard')->name('patient.card');
                 //formulaire consultation
                 Route::get('formulaire/{id}', 'ConsultationController@formulaire')->name('formulaire');
+                Route::post('call/start/{id}', 'ConsultationController@startCall')->name('call.start');
+                Route::post('call/end/{id}', 'ConsultationController@endCall')->name('call.end');
+                Route::get('call/status/{id}', 'ConsultationController@callStatus')->name('call.status');
+                Route::get('call/history', 'ConsultationController@callHistory')->name('call.history');
+                Route::get('online/patient-info/{id}', 'ConsultationController@onlinePatientInfo')->name('online.patient.info');
+
 
                 //store consultation
                 Route::prefix('formulaire')->name('store.')->group(function () {
@@ -62,7 +69,9 @@ Route::middleware(['auth'])->group(function () {
             Route::prefix('hospitalisation')->name('hospitalisation.')->group(function () {
 
                 //list
+                Route::get('all', 'HospitalisationController@all')->name('all');
                 Route::get('in_progress', 'HospitalisationController@in_progress')->name('in_progress');
+                Route::get('pending_room', 'HospitalisationController@pending_room')->name('pending_room');
                 Route::get('history', 'HospitalisationController@history')->name('history');
 
                 //follow up
@@ -73,6 +82,7 @@ Route::middleware(['auth'])->group(function () {
                 Route::post('update_already/{id}', 'HospitalisationController@update_already')->name('update.already');
                 Route::get('validate/{id}', 'HospitalisationController@validated')->name('validate');
                 Route::get('manufacturing/{id}', 'HospitalisationController@manufacturing')->name('manufacturing');
+                Route::get('download-facture/{id}', 'HospitalisationController@downloadFacture')->name('download_facture');
 
                 //pdf file
                 Route::get('detail/{id}', 'HospitalisationController@detail')->name('detail');
@@ -95,6 +105,7 @@ Route::middleware(['auth'])->group(function () {
                 Route::get('list', 'PatientController@list')->name('list');
                 Route::get('show/{id}', 'PatientController@show')->name('detail');
                 Route::get('dossier_medical/{id}', 'PatientController@dossierMedical')->name('dossier_medical');
+                Route::get('parcours/{id}', 'PatientController@parcoursIntervention')->name('parcours');
             });
 
             //declaration

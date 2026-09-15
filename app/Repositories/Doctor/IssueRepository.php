@@ -129,6 +129,9 @@ class IssueRepository
         $registre->issue_consultation_justification = $request->justification;
         $registre->save();
 
+        $consultation->status = 1;
+        $consultation->save();
+
         return ['status' => 'success', 'message' => 'Issue de consultation validée.'];
     }
 
@@ -224,6 +227,9 @@ class IssueRepository
                 ]);
             }
         }
+
+        $consultation->status = 1;
+        $consultation->save();
 
         return ['status' => 'success', 'message' => 'Patient mise en observation'];
     }

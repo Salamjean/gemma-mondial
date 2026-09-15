@@ -41,7 +41,15 @@
                                             <img src="{{ asset("assets/uploads/infirmier/$item->img_url")}}" class="avatar avatar-lg rounded10" alt="Photo de profil"/>
                                         @endif
                                     </td>
-                                    <td>{{  $item->serviceHospital->service->libelle }}</td>
+                                     <td>
+                                         @if($item->services && $item->services->count() > 0)
+                                             @foreach($item->services as $infSrv)
+                                                 <span class="badge bg-primary me-1">{{ $infSrv->serviceHospital?->service?->libelle ?? 'Service' }}</span>
+                                             @endforeach
+                                         @else
+                                             <span class="badge bg-secondary">{{ $item->serviceHospital?->service?->libelle ?? 'Non spécifié' }}</span>
+                                         @endif
+                                     </td>
                                     <td>{{ $item->matricule }}</td>
                                     <td>
                                         {{ $item->user->name }}

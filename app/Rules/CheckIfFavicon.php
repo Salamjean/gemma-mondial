@@ -14,11 +14,11 @@ class CheckIfFavicon implements ValidationRule
      */
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        //
-    }
-
-    public function passes($attribute, $value)
-    {
-        return $value->getClientOriginalExtension() == 'ico';
+        if ($value && method_exists($value, 'getClientOriginalExtension')) {
+            $ext = strtolower($value->getClientOriginalExtension());
+            if (!in_array($ext, ['ico', 'png', 'jpg', 'jpeg', 'svg'])) {
+                $fail("Le favicon doit être un fichier image de type : .ico, .png, .jpg, .jpeg, .svg.");
+            }
+        }
     }
 }

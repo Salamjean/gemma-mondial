@@ -9,6 +9,7 @@
         "barryvdh/laravel-dompdf": "^2.0",
         "cboden/ratchet": "^0.4.4",
         "dompdf/dompdf": "^2.0",
+        "firebase/php-jwt": "*",
         "guzzlehttp/guzzle": "^7.2",
         "intervention/image": "^3.11",
         "laravel/framework": "^10.0",
