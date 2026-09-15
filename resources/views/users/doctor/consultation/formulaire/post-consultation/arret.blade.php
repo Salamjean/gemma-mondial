@@ -150,14 +150,6 @@
 
                                                     </div>
                                                 </div>
-                                                <div class="col-md-3">
-                                                    <div class="form-group">
-                                                        <label for="nb_jour" class="form-label"> <b>Nombre de jours
-                                                            </b></label>
-                                                        <input type="text" class="form-control" id="nb_jour"
-                                                            name="nb_jour" value="" readonly>
-                                                    </div>
-                                                </div>
 
                                                 <div class="col-md-3">
                                                     <div class="form-group">
@@ -173,6 +165,15 @@
                                                                 Fin</b></label>
                                                         <input type="date" class="form-control" id="date_fin"
                                                             name="date_fin" onchange="calculerDifferenceDates()" min="{{ now()->format('Y-m-d') }}">
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-md-3">
+                                                    <div class="form-group">
+                                                        <label for="nb_jour" class="form-label"> <b>Nombre de jours
+                                                            </b></label>
+                                                        <input type="text" class="form-control" id="nb_jour"
+                                                            name="nb_jour" value="" readonly>
                                                     </div>
                                                 </div>
                                             </div>

@@ -44,6 +44,7 @@ Route::prefix('v1/patient')->group(
             Route::post('one-signal/token', [OneSignalTokenController::class, 'store']);
 
             Route::get('consultations', [DataController::class, 'consultations']);
+            Route::get('parcours/{id}', [DataController::class, 'parcoursDetail']);
             Route::get('declarations', [DataController::class, 'declarations']);
             Route::post('rdv/create', [DataController::class, 'createRendezVous']);
             Route::get('rdv', [DataController::class, 'rendezVous']);

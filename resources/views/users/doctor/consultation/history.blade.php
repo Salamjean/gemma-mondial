@@ -13,13 +13,14 @@
         <div class="box-body">
             <div class="table-responsive">
                 <table id="example" class="table table-striped table-hover display nowrap margin-top-10 w-p100">
-                    <thead>
-                        <tr>
-                            <th class="bb-2">Date et heure</th>
-                            <th class="bb-2">Reference</th>
-                            <th class="bb-2">Motif & Mode</th>
-                            <th class="bb-2">Status</th>
-                            <th class="bb-2 text-center">Actions</th>
+                    <thead style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                        <tr class="text-dark fw-bold fs-13">
+                            <th class="py-3 px-3 text-dark fw-bold">Date et heure</th>
+                            <th class="py-3 px-3 text-dark fw-bold">Référence</th>
+                            <th class="py-3 px-3 text-dark fw-bold">Motif & Mode</th>
+                            <th class="py-3 px-3 text-dark fw-bold text-center">Dossier médical</th>
+                            <th class="py-3 px-3 text-dark fw-bold">Statut</th>
+                            <th class="py-3 px-3 text-dark fw-bold text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -55,6 +56,18 @@
                                         <span class="badge" style="background-color: #0d9488; color: #ffffff; font-size: 11px; padding: 4px 8px; border-radius: 6px; display: inline-block; margin-top: 4px;"><i class="fa-solid fa-video me-1"></i> Téléconsultation</span>
                                     @else
                                         <span class="badge" style="background-color: #475569; color: #ffffff; font-size: 11px; padding: 4px 8px; border-radius: 6px; display: inline-block; margin-top: 4px;"><i class="fa-solid fa-hospital me-1"></i> Présentiel</span>
+                                    @endif
+                                </td>
+
+                                <td class="text-center">
+                                    @if (optional($item->patient)->id)
+                                        <a href="{{ route('doctor.patient.dossier_medical', $item->patient->id) }}"
+                                            class="btn btn-sm btn-outline-info rounded-pill fw-bold shadow-xs px-3 py-1.5 text-nowrap d-inline-flex align-items-center gap-1.5" title="Ouvrir le dossier médical complet">
+                                            <i class="fa-solid fa-folder-open fs-13"></i>
+                                            <span>Dossier médical</span>
+                                        </a>
+                                    @else
+                                        <span class="text-muted fs-11">-</span>
                                     @endif
                                 </td>
 
@@ -113,12 +126,6 @@
                                             class="btn btn-sm btn-warning me-1" title="Modifier la consultation">
                                             <i class="fa-solid fa-pen-to-square me-1"></i> <span class="">Modifier</span>
                                         </a>
-                                    @endif
-                                    @if (optional($item->patient)->id)
-                                        <a href="javascript:void(0)"
-                                            onclick="openCardModal('{{ route('doctor.consultation.patient.card', $item->patient->id) }}')"
-                                            class="btn btn-sm btn-outline-secondary" title="Carte numérique"><i
-                                                class="fa-solid fa-id-card"></i></a>
                                     @endif
                                 </td>
                             </tr>

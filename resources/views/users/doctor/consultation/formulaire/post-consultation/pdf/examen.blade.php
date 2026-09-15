@@ -11,10 +11,10 @@
     <div class="container">
         <div class="header__section">
             @if ($bulletin->consultation->hospital->img_url != null)
-                <img src="{{ asset('assets/uploads/hospital/' . $bulletin->consultation->hospital->img_url) }}"
+                <img src="{{ pdf_img('assets/uploads/hospital/' . $bulletin->consultation->hospital->img_url) }}"
                     alt="hôpital" width="100">
             @else
-                <div><img src="{{ asset('assets/uploads/ministere.jpg') }}" alt=""></div>
+                <div><img src="{{ pdf_img('assets/uploads/ministere.jpg') }}" alt=""></div>
             @endif
             <div class="section-content-nob">
                 <div style="font-size: 18px;margin-top: none">
@@ -25,12 +25,12 @@
             </br></br></br>
             <h1>BULLETIN D’EXAMEN MEDICAL</h1>
             <div style="position: absolute; top:0; right :0;">
-                <img src="{{ asset('assets/uploads/republique.png') }}" alt="">
+                <img src="{{ pdf_img('assets/uploads/republique.png') }}" alt="">
             </div>
         </div>
 
         <div class="bg-img">
-            <img src="{{ asset('assets/uploads/bulletin_examen.png') }}"
+            <img src="{{ pdf_img('assets/uploads/bulletin_examen.png') }}"
                 style="top:305px; position:fixed; width:700px; opacity: 0.1; " />
         </div>
         <div class="section" style="margin-top: 20px;">

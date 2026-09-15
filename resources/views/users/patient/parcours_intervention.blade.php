@@ -68,14 +68,27 @@
         ?? optional(optional(optional(optional($consultation->prestationHospital)->prestationService)->service))->libelle 
         ?? 'Consultation générale';
 
+    $isOnline = !empty($consultation->call_channel) || !empty($consultation->desired_date) || empty($consultation->admission_id);
+
     $doctorName = trim(optional(optional($consultation->doctor)->user)->name . ' ' . optional(optional($consultation->doctor)->user)->prenom) 
         ?: trim(optional(optional(optional($consultation->admission)->doctor)->user)->name . ' ' . optional(optional(optional($consultation->admission)->doctor)->user)->prenom);
-    
+    if ($doctorName) {
+        $doctorName = 'Dr. ' . $doctorName;
+    } else {
+        $doctorName = 'En attente d\'attribution';
+    }
+
     $infirmierName = trim(optional(optional($consultation->infirmier)->user)->name . ' ' . optional(optional($consultation->infirmier)->user)->prenom)
         ?: trim(optional(optional(optional($consultation->admission)->infirmier)->user)->name . ' ' . optional(optional(optional($consultation->admission)->infirmier)->user)->prenom);
+    if (!$infirmierName) {
+        $infirmierName = $isOnline ? 'Non applicable (Consultation en ligne)' : 'Non attribué lors du tri';
+    }
 
     $caissiereName = trim(optional(optional(optional($consultation->admission)->cashier)->user)->name . ' ' . optional(optional(optional($consultation->admission)->cashier)->user)->prenom)
         ?: trim(optional(optional(optional($consultation->admission)->secretariat)->user)->name . ' ' . optional(optional(optional($consultation->admission)->secretariat)->user)->prenom);
+    if (!$caissiereName) {
+        $caissiereName = $isOnline ? 'Paiement numérique (En ligne)' : 'Accueil Hôpital / Guichet Général';
+    }
 
     $reg = $consultation->registre;
     $regCur = optional($reg)->registreConsultationCurative;
@@ -88,6 +101,11 @@
     $valPouls = $consultation->pouls ?: (optional($regCur)->pouls ?? 'N/A');
     $valSat = $consultation->saturation_oxygene ?: (optional($regCur)->saturation_oxygene ?? 'N/A');
     $valGlyA = $consultation->gly_a_jeun ?: (optional($regCur)->glycemie_a_jeun ?? 'N/A');
+
+    $hospitalName = optional($consultation->hospital)->label 
+        ?: (optional(optional($consultation->hospital)->user)->name 
+        ?: (optional($consultation->hospital)->name 
+        ?: 'Hôpital Général'));
 
     $motifFull = $consultation->motif_consultation ?? optional($consultation->admission)->motif_consultation ?? (optional($regCur)->motif_consultation ?? 'Non renseigné');
     $diagnosticFull = optional($regCur)->diagnostic_retenu ?? optional($consultation->hospitalisation)->diagnostic ?? 'Aucun diagnostic renseigné';
@@ -119,9 +137,11 @@
                         <span class="badge bg-info-light text-info fw-bold px-3 py-1 fs-12">Intervention : {{ $consultation->code_consultation ?? ('CONS-' . $consultation->id) }}</span>
                     </div>
                     <p class="text-muted mb-2 fs-13">
+                        <span class="fw-semibold text-dark"><i class="fa-solid fa-hospital text-danger me-1"></i> Hôpital : {{ $hospitalName }}</span>
+                        &nbsp;•&nbsp;
                         <span class="fw-semibold text-dark"><i class="fa-solid fa-calendar-day text-primary me-1"></i> Date : {{ $dateStr }}</span>
                         &nbsp;•&nbsp;
-                        <span class="fw-semibold text-dark"><i class="fa-solid fa-hospital text-info me-1"></i> Service : {{ $serviceName }}</span>
+                        <span class="fw-semibold text-dark"><i class="fa-solid fa-stethoscope text-info me-1"></i> Service : {{ $serviceName }}</span>
                         &nbsp;•&nbsp;
                         <span><i class="fa-solid fa-cake-candles text-muted me-1"></i> {{ $ageStr }} ({{ ucfirst($patient->gender) }})</span>
                     </p>

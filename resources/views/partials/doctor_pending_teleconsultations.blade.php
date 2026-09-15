@@ -33,6 +33,7 @@
                         <th class="ps-4 py-3" style="min-width: 180px;">Patient</th>
                         <th class="py-3" style="min-width: 160px;">Date & Heure souhaitées</th>
                         <th class="py-3" style="min-width: 150px;">Motif / Prestation</th>
+                        <th class="py-3 text-center" style="min-width: 150px;">Dossier médical</th>
                         <th class="py-3 text-center" style="min-width: 120px;">Statut</th>
                         <th class="pe-4 py-3 text-end" style="min-width: 160px;">Action</th>
                     </tr>
@@ -40,7 +41,7 @@
                 <tbody id="pendingOnlineList">
                     <!-- État initial sans demandes -->
                     <tr id="noPendingRow">
-                        <td colspan="5" class="text-center py-4 px-3">
+                        <td colspan="6" class="text-center py-4 px-3">
                             <div class="py-3">
                                 <div class="mx-auto mb-3 d-flex align-items-center justify-content-center rounded-circle" style="width: 54px; height: 54px; background: rgba(13, 148, 136, 0.1); color: #0d9488;">
                                     <i class="fa-solid fa-video-slash fs-22"></i>
@@ -207,7 +208,7 @@ async function loadPendingOnlineRequests() {
                 if (list.length === 0) {
                     container.innerHTML = `
                         <tr id="noPendingRow">
-                            <td colspan="5" class="text-center py-4 px-3">
+                            <td colspan="6" class="text-center py-4 px-3">
                                 <div class="py-3">
                                     <div class="mx-auto mb-3 d-flex align-items-center justify-content-center rounded-circle" style="width: 54px; height: 54px; background: rgba(13, 148, 136, 0.1); color: #0d9488;">
                                         <i class="fa-solid fa-video-slash fs-22"></i>
@@ -257,6 +258,13 @@ async function loadPendingOnlineRequests() {
                             <span>Appeler le patient</span>
                            </button>`;
 
+                    const dossierBtn = req.patient_id
+                        ? `<a href="/doctor/patient/dossier_medical/${req.patient_id}" class="btn btn-sm btn-outline-info rounded-pill fw-bold shadow-xs px-3 py-1.5 text-nowrap d-inline-flex align-items-center gap-1.5" title="Ouvrir le dossier médical complet">
+                            <i class="fa-solid fa-folder-open fs-13"></i>
+                            <span>Dossier médical</span>
+                           </a>`
+                        : `<span class="text-muted fs-11">-</span>`;
+
                     html += `
                         <tr>
                             <td class="ps-4 py-3">
@@ -275,6 +283,9 @@ async function loadPendingOnlineRequests() {
                                 <span class="badge bg-teal-subtle text-teal-800 fw-medium px-2.5 py-1.5 rounded-8 fs-12" style="background: rgba(13, 148, 136, 0.1); color: #0f766e;">
                                     <i class="fa-solid fa-stethoscope me-1"></i> ${req.motif || 'Téléconsultation'}
                                 </span>
+                            </td>
+                            <td class="py-3 text-center">
+                                ${dossierBtn}
                             </td>
                             <td class="py-3 text-center">
                                 ${statusHtml}
@@ -343,6 +354,55 @@ async function finishPendingCall(consultationId) {
     } catch (e) {
         console.error("Erreur clôture consultation:", e);
     }
+}
+
+if (typeof window.openCardModal !== 'function') {
+    window.openCardModal = function(url) {
+        if (typeof Swal === 'undefined') {
+            window.open(url, '_blank');
+            return;
+        }
+        Swal.fire({
+            html: '<div id="swal-card-container" style="min-height: 600px; overflow: hidden;"></div>',
+            width: '1500px',
+            maxWidth: '95vw',
+            padding: '2em',
+            background: 'transparent',
+            showConfirmButton: false,
+            showCloseButton: true,
+            didOpen: () => {
+                Swal.getPopup().style.overflow = 'hidden';
+                Swal.showLoading();
+                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then(response => {
+                        if (!response.ok) throw new Error("Network response was not ok");
+                        return response.text();
+                    })
+                    .then(html => {
+                        Swal.hideLoading();
+                        const container = document.getElementById('swal-card-container');
+                        container.innerHTML = html;
+
+                        const scripts = container.querySelectorAll("script");
+                        scripts.forEach(oldScript => {
+                            const newScript = document.createElement("script");
+                            Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                            newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                            oldScript.parentNode.replaceChild(newScript, oldScript);
+                        });
+                    })
+                    .catch(err => {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erreur',
+                            text: 'Impossible de charger la carte.',
+                            confirmButtonColor: '#3596f7'
+                        });
+                        console.error(err);
+                    });
+            }
+        });
+    };
 }
 
 if (typeof window.pendingOnlineInterval !== 'undefined') {

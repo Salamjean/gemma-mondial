@@ -1,10 +1,8 @@
 @extends('layouts.dashboard', ['title' => 'Liste des consultations'])
 
 @section('content')
-    <!-- Section Demandes de Téléconsultation en ligne en attente -->
-    @include('partials.doctor_pending_teleconsultations')
-
-    <div class="box border-0 shadow-sm rounded-20 bg-white">
+    <!-- 1. Vos consultations du jour en cours (EN HAUT) -->
+    <div class="box border-0 shadow-sm rounded-20 bg-white mb-4">
         <div class="box-header with-border p-20 d-flex align-items-center justify-content-between flex-wrap gap-2">
             <div>
                 <h4 class="box-title mb-0 fw-bold text-dark fs-16">
@@ -28,16 +26,17 @@
                 </a>
             </div>
         </div>
-        <div class="box-body">
+        <div class="box-body p-20">
             <div class="table-responsive">
-                <table id="example" class="table table-striped table-hover display nowrap margin-top-10 w-p100">
-                    <thead>
-                        <tr>
-                            <th class="bb-2">Reference</th>
-                            <th class="bb-2">Nom du Patient</th>
-                            <th class="bb-2">Motif</th>
-                            <th class="bb-2">Status</th>
-                            <th class="bb-2 text-center">Actions</th>
+                <table id="example" class="table table-striped table-hover display nowrap margin-top-10 w-p100 align-middle border">
+                    <thead style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                        <tr class="text-dark fw-bold fs-13">
+                            <th class="py-3 px-3 text-dark fw-bold" style="min-width: 120px;">Référence</th>
+                            <th class="py-3 px-3 text-dark fw-bold" style="min-width: 180px;">Nom du Patient</th>
+                            <th class="py-3 px-3 text-dark fw-bold" style="min-width: 160px;">Motif</th>
+                            <th class="py-3 px-3 text-dark fw-bold text-center" style="min-width: 150px;">Dossier médical</th>
+                            <th class="py-3 px-3 text-dark fw-bold" style="min-width: 120px;">Statut</th>
+                            <th class="py-3 px-3 text-dark fw-bold text-center" style="min-width: 150px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -48,42 +47,46 @@
                                 $isConsultationService = (stripos($srvLibelle, 'consultation') !== false) || (stripos($prestLibelle, 'consultation') !== false);
                             @endphp
                             <tr>
-                                <td><b>{{ $item->patient->code_patient }}</b></td>
+                                <td><b>{{ optional($item->patient)->code_patient }}</b></td>
                                 <td>
-                                    {{ $item->patient->user->name }}&nbsp; {{ $item->patient->user->prenom }}
+                                    {{ optional(optional($item->patient)->user)->name }}&nbsp; {{ optional(optional($item->patient)->user)->prenom }}
                                 </td>
                                 <td class="" style="width: 200px;">
-                                    {{ $item->prestationHospital->prestationService->libelle }}
+                                    {{ optional(optional($item->prestationHospital)->prestationService)->libelle ?? 'Consultation' }}
+                                </td>
 
+                                <td class="text-center">
+                                    @if (optional($item->patient)->id)
+                                        <a href="{{ route('doctor.patient.dossier_medical', $item->patient->id) }}"
+                                            class="btn btn-sm btn-outline-info rounded-pill fw-bold shadow-xs px-3 py-1.5 text-nowrap d-inline-flex align-items-center gap-1.5" title="Ouvrir le dossier médical complet">
+                                            <i class="fa-solid fa-folder-open fs-13"></i>
+                                            <span>Dossier médical</span>
+                                        </a>
+                                    @else
+                                        <span class="text-muted fs-11">-</span>
+                                    @endif
                                 </td>
 
                                 <td class="">
                                     @if ($item->status == 0)
                                         <span class="badge badge-danger">En attente</span>
                                     @else
-                                        <span class="badge badge-success">Terminée</span> <br>
-
+                                        <span class="badge badge-success">Terminée</span>
                                     @endif
                                 </td>
 
                                 <td class="text-center">
-
                                     @if ($item->status == 0)
                                         <a href="{{ route('doctor.consultation.formulaire', $item->id) }}"
-                                            class="btn btn-sm btn-info" id="menu" title="Menu">
-                                            <span class="">Commencer la consultation</span>
-
+                                            class="btn btn-sm btn-info text-white fw-bold px-3 py-1.5 rounded-8" id="menu" title="Menu">
+                                            <span>Commencer la consultation</span>
                                         </a>
                                     @else
-                                        <a href="{{ route('doctor.consultation.detail', $item->id) }}" class="btn btn-sm btn-info"
+                                        <a href="{{ route('doctor.consultation.detail', $item->id) }}" class="btn btn-sm btn-info text-white fw-bold px-3 py-1.5 rounded-8"
                                             title="detail consultation">
-                                            <span class="">Détail</span>
+                                            <span>Détail</span>
                                         </a>
                                     @endif
-                                    <a href="javascript:void(0)"
-                                        onclick="openCardModal('{{ route('doctor.consultation.patient.card', $item->patient->id) }}')"
-                                        class="btn btn-sm btn-warning" title="Carte numérique"><i
-                                            class="fa-solid fa-id-card"></i></a>
                                 </td>
                             </tr>
                         @endforeach
@@ -92,52 +95,13 @@
             </div>
         </div>
     </div>
+
+    <!-- 2. Section Demandes de Téléconsultation en ligne en attente (EN BAS) -->
+    <div class="mt-4">
+        @include('partials.doctor_pending_teleconsultations')
+    </div>
 @endsection
 
 @push('js')
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script>
-        function openCardModal(url) {
-            Swal.fire({
-                html: '<div id="swal-card-container" style="min-height: 600px; overflow: hidden;"></div>',
-                width: '1500px',
-                maxWidth: '95vw',
-                padding: '2em',
-                background: 'transparent',
-                showConfirmButton: false,
-                showCloseButton: true,
-                didOpen: () => {
-                    Swal.getPopup().style.overflow = 'hidden';
-                    Swal.showLoading();
-                    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                        .then(response => {
-                            if (!response.ok) throw new Error("Network response was not ok");
-                            return response.text();
-                        })
-                        .then(html => {
-                            Swal.hideLoading();
-                            const container = document.getElementById('swal-card-container');
-                            container.innerHTML = html;
-
-                            const scripts = container.querySelectorAll("script");
-                            scripts.forEach(oldScript => {
-                                const newScript = document.createElement("script");
-                                Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-                                newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-                                oldScript.parentNode.replaceChild(newScript, oldScript);
-                            });
-                        })
-                        .catch(err => {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Erreur',
-                                text: 'Impossible de charger la carte.',
-                                confirmButtonColor: '#3596f7'
-                            });
-                            console.error(err);
-                        });
-                }
-            });
-        }
-    </script>
 @endpush

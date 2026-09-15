@@ -1,10 +1,8 @@
 @extends('layouts.dashboard', ['title' => 'Toutes les consultations en attente'])
 
 @section('content')
-    <!-- Section Demandes de Téléconsultation en ligne en attente -->
-    @include('partials.doctor_pending_teleconsultations')
-
-    <div class="box border-0 shadow-sm rounded-20 bg-white">
+    <!-- 1. Tableau File d'Attente Globale Médecin - Tous les Patients (EN HAUT) -->
+    <div class="box border-0 shadow-sm rounded-20 bg-white mb-4">
         <div class="box-header with-border p-20 d-flex align-items-center justify-content-between flex-wrap gap-2">
             <div>
                 <h3 class="box-title fw-bold text-dark mb-1 fs-20">
@@ -26,16 +24,17 @@
 
         <div class="box-body p-20">
             <div class="table-responsive">
-                <table id="example1" class="table table-striped table-hover display nowrap margin-top-10 w-p100 align-middle">
-                    <thead class="table-dark">
-                        <tr>
-                            <th class="bb-2">Date & Heure</th>
-                            <th class="bb-2">Code Patient</th>
-                            <th class="bb-2">Nom & Prénom(s)</th>
-                            <th class="bb-2">Prestation / Service</th>
-                            <th class="bb-2">Statut Soins Infirmier</th>
-                            <th class="bb-2 text-center">Statut Médecin</th>
-                            <th class="bb-2 text-center">Actions</th>
+                <table id="example1" class="table table-striped table-hover display nowrap margin-top-10 w-p100 align-middle border">
+                    <thead style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                        <tr class="text-dark fw-bold fs-13">
+                            <th class="py-3 px-3 text-dark fw-bold" style="min-width: 140px;">Date & Heure</th>
+                            <th class="py-3 px-3 text-dark fw-bold" style="min-width: 110px;">Code Patient</th>
+                            <th class="py-3 px-3 text-dark fw-bold" style="min-width: 180px;">Nom & Prénom(s)</th>
+                            <th class="py-3 px-3 text-dark fw-bold" style="min-width: 160px;">Prestation / Service</th>
+                            <th class="py-3 px-3 text-dark fw-bold text-center" style="min-width: 150px;">Dossier médical</th>
+                            <th class="py-3 px-3 text-dark fw-bold" style="min-width: 160px;">Statut Soins Infirmier</th>
+                            <th class="py-3 px-3 text-dark fw-bold text-center" style="min-width: 130px;">Statut Médecin</th>
+                            <th class="py-3 px-3 text-dark fw-bold text-center" style="min-width: 140px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -62,6 +61,17 @@
                                     <span class="badge bg-light-primary text-primary fw-semibold fs-12">
                                         {{ optional(optional($item->prestationHospital)->prestationService)->libelle ?? 'Consultation' }}
                                     </span>
+                                </td>
+                                <td class="text-center">
+                                    @if (optional($item->patient)->id)
+                                        <a href="{{ route('doctor.patient.dossier_medical', $item->patient->id) }}"
+                                            class="btn btn-sm btn-outline-info rounded-pill fw-bold shadow-xs px-3 py-1.5 text-nowrap d-inline-flex align-items-center gap-1.5" title="Ouvrir le dossier médical complet">
+                                            <i class="fa-solid fa-folder-open fs-13"></i>
+                                            <span>Dossier médical</span>
+                                        </a>
+                                    @else
+                                        <span class="text-muted fs-11">-</span>
+                                    @endif
                                 </td>
                                 <td>
                                     @if ($item->status_inf == 1)
@@ -96,16 +106,11 @@
                                             <i class="fa-solid fa-eye me-1"></i> Détail
                                         </a>
                                     @endif
-                                    <a href="javascript:void(0)"
-                                        onclick="openCardModal('{{ route('doctor.consultation.patient.card', optional($item->patient)->id ?? 0) }}')"
-                                        class="btn btn-sm btn-warning text-dark rounded-8 fw-semibold" title="Carte numérique">
-                                        <i class="fa-solid fa-id-card"></i>
-                                    </a>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="text-center py-4 text-muted fs-14">
+                                <td colspan="8" class="text-center py-4 text-muted fs-14">
                                     <i class="fa-solid fa-check-circle fs-24 text-success d-block mb-2"></i>
                                     Aucune consultation en attente dans la file d'attente globale.
                                 </td>
@@ -116,52 +121,13 @@
             </div>
         </div>
     </div>
+
+    <!-- 2. Section Demandes de Téléconsultation en ligne en attente (EN BAS) -->
+    <div class="mt-4">
+        @include('partials.doctor_pending_teleconsultations')
+    </div>
 @endsection
 
 @push('js')
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script>
-        function openCardModal(url) {
-            Swal.fire({
-                html: '<div id="swal-card-container" style="min-height: 600px; overflow: hidden;"></div>',
-                width: '1500px',
-                maxWidth: '95vw',
-                padding: '2em',
-                background: 'transparent',
-                showConfirmButton: false,
-                showCloseButton: true,
-                didOpen: () => {
-                    Swal.getPopup().style.overflow = 'hidden';
-                    Swal.showLoading();
-                    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                        .then(response => {
-                            if (!response.ok) throw new Error("Network response was not ok");
-                            return response.text();
-                        })
-                        .then(html => {
-                            Swal.hideLoading();
-                            const container = document.getElementById('swal-card-container');
-                            container.innerHTML = html;
-
-                            const scripts = container.querySelectorAll("script");
-                            scripts.forEach(oldScript => {
-                                const newScript = document.createElement("script");
-                                Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-                                newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-                                oldScript.parentNode.replaceChild(newScript, oldScript);
-                            });
-                        })
-                        .catch(err => {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Erreur',
-                                text: 'Impossible de charger la carte.',
-                                confirmButtonColor: '#3596f7'
-                            });
-                            console.error(err);
-                        });
-                }
-            });
-        }
-    </script>
 @endpush

@@ -18,6 +18,7 @@ Route::middleware(['auth'])->group(function() {
             Route::get('setting', 'PatientController@setting')->name('setting');
             Route::post('update', 'PatientController@update')->name('update');
             Route::get('consultations', 'PatientController@consultations')->name('consultations');
+            Route::get('parcours/{id}', '\App\Http\Controllers\Doctor\PatientController@parcoursIntervention')->name('parcours');
             Route::get('declarations', 'PatientController@declarations')->name('declarations');
             Route::get('rendez-vous', 'PatientController@rendezVous')->name('rendez.vous');
 

@@ -675,3 +675,23 @@ function getLogInUser()
     return Auth::user();
 }
 
+if (!function_exists('pdf_img')) {
+    function pdf_img($path)
+    {
+        if (empty($path)) {
+            return '';
+        }
+
+        $cleanPath = ltrim($path, '/');
+        $fullPath = public_path($cleanPath);
+
+        if (file_exists($fullPath) && is_file($fullPath)) {
+            $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+            $mime = $ext === 'png' ? 'image/png' : ($ext === 'jpg' || $ext === 'jpeg' ? 'image/jpeg' : 'image/' . $ext);
+            return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($fullPath));
+        }
+
+        return asset($path);
+    }
+}
+

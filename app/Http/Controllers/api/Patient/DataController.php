@@ -1033,4 +1033,96 @@ class DataController extends Controller
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
     }
+
+    public function parcoursDetail($id)
+    {
+        try {
+            $patient = Auth::user()->patient;
+            if (!$patient) {
+                return response()->json(['status' => 'error', 'message' => 'Patient non trouvé'], 404);
+            }
+
+            $consultation = \App\Models\Consultation::with([
+                'patient.user',
+                'patient.lieuNaissance',
+                'patient.currentResidence',
+                'hospital.user',
+                'doctor.user',
+                'infirmier.user',
+                'admission.infirmier.user',
+                'admission.doctor.user',
+                'admission.cashier.user',
+                'admission.secretariat.user',
+                'prestationHospital.prestationService.service',
+                'registre.registreConsultationCurative',
+                'registre.registreAccouchement',
+                'registre.registreConsultationPreNatale',
+                'registre.registreConsultationPostNatale',
+                'ordonnance.prescriptions.drug',
+                'ordonnance.prescriptions.drugHospital.drug',
+                'ordonnances.prescriptions.drug',
+                'ordonnances.prescriptions.drugHospital.drug',
+                'examen.examens',
+                'arret',
+                'declaration',
+                'hospitalisation'
+            ])
+            ->where('patient_id', $patient->id)
+            ->findOrFail($id);
+
+            $hospitalName = optional($consultation->hospital)->label 
+                ?: (optional(optional($consultation->hospital)->user)->name 
+                ?: (optional($consultation->hospital)->name 
+                ?: 'Hôpital Général'));
+
+            $serviceName = optional(optional($consultation->prestationHospital)->prestationService)->libelle 
+                ?? optional(optional(optional(optional($consultation->prestationHospital)->prestationService)->service))->libelle 
+                ?? 'Consultation générale';
+
+            $isOnline = !empty($consultation->call_channel) || !empty($consultation->desired_date) || empty($consultation->admission_id);
+
+            // 1. Doctor
+            $doctorUser = optional($consultation->doctor)->user ?: optional(optional($consultation->admission)->doctor)->user;
+            $doctorName = $doctorUser ? trim(($doctorUser->name ?? '') . ' ' . ($doctorUser->prenom ?? '')) : null;
+            if ($doctorName) {
+                $doctorName = 'Dr. ' . $doctorName;
+            } else {
+                $doctorName = 'En attente d\'attribution';
+            }
+
+            // 2. Infirmier
+            $infirmierUser = optional($consultation->infirmier)->user ?: optional(optional($consultation->admission)->infirmier)->user;
+            $infirmierName = $infirmierUser ? trim(($infirmierUser->name ?? '') . ' ' . ($infirmierUser->prenom ?? '')) : null;
+            if (!$infirmierName) {
+                $infirmierName = $isOnline ? 'Non applicable (Consultation en ligne)' : 'Non attribué lors du tri';
+            }
+
+            // 3. Secrétariat / Caisse
+            $cashierUser = optional(optional($consultation->admission)->cashier)->user;
+            $secretariatUser = optional(optional($consultation->admission)->secretariat)->user;
+            $caissiereName = $cashierUser ? trim(($cashierUser->name ?? '') . ' ' . ($cashierUser->prenom ?? '')) : null;
+            if (!$caissiereName && $secretariatUser) {
+                $caissiereName = trim(($secretariatUser->name ?? '') . ' ' . ($secretariatUser->prenom ?? ''));
+            }
+
+            if (!$caissiereName) {
+                $caissiereName = $isOnline ? 'Paiement numérique (En ligne)' : 'Accueil Hôpital / Guichet Général';
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'consultation' => $consultation,
+                'meta' => [
+                    'hospital_name' => $hospitalName,
+                    'service_name' => $serviceName,
+                    'doctor_name' => $doctorName,
+                    'infirmier_name' => $infirmierName,
+                    'caissiere_name' => $caissiereName,
+                    'is_online' => $isOnline,
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Consultation introuvable: ' . $e->getMessage()], 404);
+        }
+    }
 }

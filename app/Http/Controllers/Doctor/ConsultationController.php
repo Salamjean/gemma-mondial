@@ -790,7 +790,8 @@ class ConsultationController extends Controller
 
         $doctor = $user->doctor;
 
-        $pending = Consultation::where(function ($q) use ($doctor) {
+        $pending = Consultation::whereNotNull('call_channel')
+            ->where(function ($q) use ($doctor) {
                 $q->whereNull('doctor_id')->orWhere('doctor_id', $doctor->id);
             })
             ->where('status', 0)
@@ -856,6 +857,7 @@ class ConsultationController extends Controller
 
                 return [
                     'id' => $c->id,
+                    'patient_id' => $c->patient_id,
                     'patient_name' => $name,
                     'patient_initials' => $initials ?: 'PT',
                     'patient_code' => optional($c->patient)->code_patient ?? '',

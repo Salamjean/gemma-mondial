@@ -79,7 +79,7 @@
 
 <body>
     <div id="watermark">
-        <img class="img__content" src="{{ asset('assets/uploads/arret.jpg') }}" />
+        <img class="img__content" src="{{ pdf_img('assets/uploads/arret.jpg') }}" />
     </div>
     <footer>
         Art. 285. Quiconque se rend coupable de fraude ou de fausse déclaration ou se fait délivrer un des documents
@@ -91,13 +91,13 @@
     <div class="container">
         <div class="header__section">
             @if ($arret->consultation->hospital->img_url != null)
-                <img src="{{ asset('assets/uploads/hospital/' . $arret->consultation->hospital->img_url) }}"
+                <img src="{{ pdf_img('assets/uploads/hospital/' . $arret->consultation->hospital->img_url) }}"
                     alt="hôpital" width="100">
             @else
-                <div><img src="{{ asset('assets/uploads/ministere.jpg') }}" alt=""></div>
+                <div><img src="{{ pdf_img('assets/uploads/ministere.jpg') }}" alt=""></div>
             @endif
             <h1>Arrêt de travail</h1>
-            <div style="position: absolute; top:0; right :0;"><img src="{{ asset('assets/uploads/republique.png') }}"
+            <div style="position: absolute; top:0; right :0;"><img src="{{ pdf_img('assets/uploads/republique.png') }}"
                     alt=""></div>
 
         </div>

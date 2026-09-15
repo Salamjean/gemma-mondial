@@ -55,6 +55,7 @@ class PatientController extends Controller
 
     public function Impression($post, $id)
     {
+        set_time_limit(120);
         if ($post == 'ordonnance')
         $pdf =  Pdf::loadView('users.doctor.consultation.formulaire.post-consultation.pdf.ordonnance', ['ordonnance' => Ordonnance::findOrFail($id)]);
         elseif ($post == 'examen')

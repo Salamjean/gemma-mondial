@@ -12,7 +12,7 @@
 
 <body>
     <div id="watermark">
-        <img class="img__content" w src="{{ asset('assets/uploads/ordonnance.jpg') }}" />
+        <img class="img__content" w src="{{ pdf_img('assets/uploads/ordonnance.jpg') }}" />
     </div>
     <footer>
         Art. 285. Quiconque se rend coupable de fraude ou de fausse déclaration ou se fait délivrer un des documents
@@ -23,7 +23,7 @@
     <div class="container">
         <div class="hospital-info">
             @if ($ordonnance->consultation->hospital->img_url != null)
-                <img src="{{ asset('assets/uploads/hospital/' . $ordonnance->consultation->hospital->img_url) }}"
+                <img src="{{ pdf_img('assets/uploads/hospital/' . $ordonnance->consultation->hospital->img_url) }}"
                     alt="hôpital" width="100">
             @else
             @endif
@@ -33,7 +33,7 @@
             <p style=""> Date d’édition : {{ dateCompletFr($ordonnance->created_at) }} </p>
         </div>
         <div class="ministry-logo">
-            <img src="{{ asset('assets/uploads/republique.png') }}"alt="">
+            <img src="{{ pdf_img('assets/uploads/republique.png') }}" alt="">
         </div>
         <div style="clear: both;"></div>
 

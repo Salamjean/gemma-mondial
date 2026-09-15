@@ -82,8 +82,23 @@ class PatientRepository
                       ->orWhereNotNull('issue_consultation_id')
                       ->orWhereHas('registre');
             })
-            ->with('admission', 'doctor.user', 'hospital.user', 'ordonnance.prescriptions', 'examen.examens', 'arret', 'registre', 'declaration.deces', 'declaration.naissance', 'declaration.decesPatient')
-            ->with('hospitalisation.daysHospitalisation.therapeutiqueProtocols')
+            ->with([
+                'admission',
+                'doctor.user',
+                'hospital.user',
+                'prestationHospital.prestationService.service',
+                'ordonnance.prescriptions.drug',
+                'ordonnance.prescriptions.drugHospital.drug',
+                'ordonnances.prescriptions.drug',
+                'ordonnances.prescriptions.drugHospital.drug',
+                'examen.examens',
+                'arret',
+                'registre.registreConsultationCurative',
+                'declaration.deces',
+                'declaration.naissance',
+                'declaration.decesPatient',
+                'hospitalisation.daysHospitalisation.therapeutiqueProtocols'
+            ])
             ->get();
     }
 
