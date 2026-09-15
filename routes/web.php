@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [\App\Http\Controllers\HomeController::class, 'index'])->name('accueil');
 Route::get('/apropos', [\App\Http\Controllers\HomeController::class, 'about'])->name('apropos');
+Route::get('/contact', [\App\Http\Controllers\HomeController::class, 'contact'])->name('contact');
 Route::get('impression/{type}/{id}', [\App\Http\Controllers\Patient\PatientController::class, 'Impression'])->name('impression');
 Route::get('patient/impression/{type}/{id}', [\App\Http\Controllers\Patient\PatientController::class, 'Impression']);
 

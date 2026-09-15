@@ -57,7 +57,7 @@
                                     <ul id="navigation">
                                         <li><a href="/">Accueil</a></li>
                                         <li><a href="{{route('apropos')}}">A propos</a></li>
-                                        <li><a href="#">Contact</a></li>
+                                        <li><a href="{{route('contact')}}">Contact</a></li>
                                     </ul>
                                 </nav>
                             </div>

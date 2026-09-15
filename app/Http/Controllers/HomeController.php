@@ -14,7 +14,7 @@ class HomeController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('auth')->except('index','about');
+        $this->middleware('auth')->except('index', 'about', 'contact');
     }
 
 
@@ -36,9 +36,14 @@ class HomeController extends Controller
         return view('home.apropos');
     }
 
+    public function contact()
+    {
+
+        return view('home.contact');
+    }
+
     public function reset()
     {
         return view('auth.passwords.reset');
     }
-
 }

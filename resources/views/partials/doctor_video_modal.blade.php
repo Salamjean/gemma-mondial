@@ -1,4 +1,41 @@
 <!-- Modal Consultation Vidéo en Ligne (LiveKit Cloud) Design Premium Light pour Médecin -->
+<style>
+    #remote-video-container {
+        position: relative !important;
+        width: 100% !important;
+        height: 100% !important;
+        min-width: 100% !important;
+        min-height: 100% !important;
+        flex: 1 1 auto !important;
+        overflow: hidden !important;
+        background: #0f172a !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    #remote-video-container video {
+        width: 100% !important;
+        height: 100% !important;
+        min-width: 100% !important;
+        min-height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+        object-fit: cover !important;
+        object-position: center !important;
+        display: block !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+    }
+    #local-video-container video {
+        width: 100% !important;
+        height: 100% !important;
+        min-width: 100% !important;
+        min-height: 100% !important;
+        object-fit: cover !important;
+        display: block !important;
+    }
+</style>
 <div class="modal fade" id="doctorVideoCallModal" tabindex="-1" aria-labelledby="doctorVideoCallModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-xl modal-dialog-centered my-1" style="max-width: 98vw !important; width: 98vw !important; transition: all 0.3s ease-in-out;">
         <div class="modal-content border-0 shadow-2xl rounded-4" style="overflow: hidden !important; background: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 16px !important; box-shadow: 0 25px 60px rgba(0,0,0,0.3) !important;">
@@ -293,12 +330,17 @@
             videoEl.autoplay = true;
             videoEl.playsInline = true;
             videoEl.setAttribute('playsinline', 'true');
-            videoEl.style.width = '100%';
-            videoEl.style.height = '100%';
-            videoEl.style.minWidth = '100%';
-            videoEl.style.minHeight = '100%';
-            videoEl.style.objectFit = 'cover';
-            videoEl.style.display = 'block';
+            videoEl.style.setProperty('width', '100%', 'important');
+            videoEl.style.setProperty('height', '100%', 'important');
+            videoEl.style.setProperty('min-width', '100%', 'important');
+            videoEl.style.setProperty('min-height', '100%', 'important');
+            videoEl.style.setProperty('max-width', '100%', 'important');
+            videoEl.style.setProperty('max-height', '100%', 'important');
+            videoEl.style.setProperty('object-fit', 'cover', 'important');
+            videoEl.style.setProperty('display', 'block', 'important');
+            videoEl.style.setProperty('position', 'absolute', 'important');
+            videoEl.style.setProperty('top', '0', 'important');
+            videoEl.style.setProperty('left', '0', 'important');
             container.appendChild(videoEl);
             videoEl.play().catch(e => console.warn("Doctor remote video play error:", e));
         } else if (track.kind === 'audio') {
