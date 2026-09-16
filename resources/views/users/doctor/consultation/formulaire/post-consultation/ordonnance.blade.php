@@ -9,16 +9,14 @@
                 @csrf
                 <section>
                     <input type="hidden" name="consultation_id" value="{{ $consultation->id }}">
-                    <form id="ordonnanceForm">
-                        <div class="container___fuild">
+                    <div class="container___fuild">
 
-                        </div>
-                        <div class="container__button">
-                            <button type="button" id="addMedicationButton" class="btn btn-add"> Ajouter un
-                                médicament</button>
-                            <button type="submit" class="btn btn-primary btn-submit">Valider l'ordonnance</button>
-                        </div>
-                    </form>
+                    </div>
+                    <div class="container__button">
+                        <button type="button" id="addMedicationButton" class="btn btn-add"> Ajouter un
+                            médicament</button>
+                        <button type="submit" class="btn btn-primary btn-submit">Valider l'ordonnance</button>
+                    </div>
                     <br />
                 </section>
             </form>

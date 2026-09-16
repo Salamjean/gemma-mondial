@@ -273,89 +273,120 @@ class ConsultationController extends Controller
 
     public function storeConsultationCurative(Request $request)
     {
+        if (!$request->has('mode_sortie') || empty($request->mode_sortie)) {
+            $request->merge(['mode_sortie' => 'sortie']);
+        }
+        if (!$request->has('motif_consultation') || empty($request->motif_consultation)) {
+            $request->merge(['motif_consultation' => 'Consultation curative']);
+        }
+
         $request->validate([
             'mode_sortie' => 'required',
             'motif_consultation' => 'required',
         ]);
 
 
+        $getStr = function ($key) use ($request) {
+            $val = $request->input($key);
+            if (is_array($val)) {
+                return count($val) > 0 ? (string) reset($val) : null;
+            }
+            return $val;
+        };
+
+        $modeSortie = $getStr('mode_sortie');
+
         $consultationObj = Consultation::find($request->consultation_id);
         if ($consultationObj) {
             if ($request->filled('poids') && empty($consultationObj->poids)) {
-                $consultationObj->poids = $request->poids;
+                $consultationObj->poids = $getStr('poids');
             }
             if ($request->filled('taille') && empty($consultationObj->taille)) {
-                $consultationObj->taille = $request->taille;
+                $consultationObj->taille = $getStr('taille');
             }
             if ($request->filled('imc') && empty($consultationObj->imc)) {
-                $consultationObj->imc = $request->imc;
+                $consultationObj->imc = $getStr('imc');
             }
             if ($request->filled('temperature') && empty($consultationObj->temperature)) {
-                $consultationObj->temperature = $request->temperature;
+                $consultationObj->temperature = $getStr('temperature');
             }
             if ($request->filled('ta') && empty($consultationObj->tension_arterielle)) {
-                $consultationObj->tension_arterielle = $request->ta;
+                $consultationObj->tension_arterielle = $getStr('ta');
             }
             if ($request->filled('pouls') && empty($consultationObj->pouls)) {
-                $consultationObj->pouls = $request->pouls;
+                $consultationObj->pouls = $getStr('pouls');
             }
             $consultationObj->save();
+        }
+
+        $consultation = Consultation::find($request->consultation_id);
+        if ($consultation) {
+            $consultation->status = 1;
+            $consultation->save();
+        }
+
+        $curativeData = [
+            "mode_entree" => $getStr("mode_entree"),
+            "motif_consultation" => $getStr("motif_consultation"),
+            "en_cours_de_scolarisation" => $getStr("en_cours_de_scolarisation"),
+            "tdr_paludisme" => $getStr("tdr_paludisme"),
+            "goutte_epaise" => $getStr("goutte_epaise"),
+            "milda_enfant_eligible" => $getStr("milda_enfant_eligible"),
+            "remise_milda_enfant" => $getStr("remise_milda_enfant"),
+            "cdip_propose" => $getStr("cdip_propose"),
+            "cdip_realise" => $getStr("cdip_realise"),
+            "code_depistage_client" => $getStr("code_depistage_client"),
+            "glycemie_a_jeun" => $getStr("glycemie_a_jeun"),
+            "glycemie_non_a_jeun" => $getStr("glycemie_non_a_jeun"),
+            "zcore" => $getStr("zscore"),
+            "temperature" => $getStr("temperature"),
+            "frequence_respiratoire" => $getStr("frequence_respiratoire"),
+            "ta" => $getStr("ta"),
+            "hta" => $getStr("hta"),
+            "pouls" => $getStr("pouls"),
+            "perimetre_brachial" => $getStr("perimetre_brachial"),
+            "perimetre_cranien" => $getStr("perimetre_cranien"),
+            "tuberculose" => $getStr("tuberculose"),
+            "traitement_medicamenteux" => $getStr("traitement_medicamenteux"),
+            "antecedent_medical" => $getStr("antecedent_medical"),
+            "antecedent_chirurgical" => $getStr("antecedent_chirurgical"),
+            "gyneco_obstetrico" => $getStr("gyneco_obstetrico"),
+            "ddr" => $getStr("ddr"),
+            "en_cours_de_grossesse" => $getStr("en_cours_de_grossesse"),
+            "description_grossesse" => $getStr("description_grossesse"),
+            "mode_de_vie" => $getStr("mode_de_vie"),
+            "tabac" => $getStr("tabac"),
+            "alcool" => $getStr("alcool"),
+            "taille" => $getStr("taille"),
+            "poids" => $getStr("poids"),
+            "imc" => $getStr("imc"),
+            "drepanocytaire" => $getStr("drepanocytaire"),
+            "saturation_oxygene" => $getStr("saturation_oxygene"),
+            "type_visite" => $getStr("type_visite"),
+            "examen_physique" => $getStr("examen_physique"),
+            "diagnostic_retenu" => $getStr("diagnostic_retenu"),
+            "autre_pathologie_associee" => $getStr("autre_pathologie_associee"),
+            "autre_antecedent_medical" => $getStr("autre_antecedent_medical"),
+            "autre_antecedent_chirurgical" => $getStr("autre_antecedent_chirurgical"),
+            "nom_operation" => $getStr("nom_operation"),
+        ];
+
+        foreach ($curativeData as $k => $v) {
+            if (is_array($v)) {
+                $curativeData[$k] = count($v) > 0 ? (string) reset($v) : null;
+            }
         }
 
         if (Registre::where('consultation_id', $request->consultation_id)->exists()) {
             $registre = Registre::where('consultation_id', $request->consultation_id)->first();
 
-            $registre->issue_consultation = $request->mode_sortie;
+            $registre->issue_consultation = $modeSortie;
             $registre->save();
 
-            RegistreConsultationCurative::where('registre_id', $registre->id)
-                ->update([
-                    "mode_entree" => $request->mode_entree,
-                    //"type_population" => $request->type_population,
-                    "motif_consultation" => $request->motif_consultation,
-                    "en_cours_de_scolarisation" => $request->en_cours_de_scolarisation,
-                    "tdr_paludisme" => $request->tdr_paludisme,
-                    "goutte_epaise" => $request->goutte_epaise,
-                    "milda_enfant_eligible" => $request->milda_enfant_eligible,
-                    "remise_milda_enfant" => $request->remise_milda_enfant,
-                    "cdip_propose" => $request->cdip_propose,
-                    "cdip_realise" => $request->cdip_realise,
-                    "code_depistage_client" => $request->code_depistage_client,
-                    "glycemie_a_jeun" => $request->glycemie_a_jeun,
-                    "glycemie_non_a_jeun" => $request->glycemie_non_a_jeun,
-                    "zcore" => $request->zscore,
-                    "temperature" => $request->temperature,
-                    "frequence_respiratoire" => $request->frequence_respiratoire,
-                    "ta" => $request->ta,
-                    "hta" => $request->hta,
-                    "pouls" => $request->pouls,
-                    "perimetre_brachial" => $request->perimetre_brachial,
-                    "perimetre_cranien" => $request->perimetre_cranien,
-                    "tuberculose" => $request->tuberculose,
-                    "traitement_medicamenteux" => $request->traitement_medicamenteux,
-                    "antecedent_medical" => $request->antecedent_medical,
-                    "antecedent_chirurgical" => $request->antecedent_chirurgical,
-                    "gyneco_obstetrico" => $request->gyneco_obstetrico,
-                    "ddr" => $request->ddr,
-                    "en_cours_de_grossesse" => $request->en_cours_de_grossesse,
-                    "description_grossesse" => $request->description_grossesse,
-                    "mode_de_vie" => $request->mode_de_vie,
-                    "tabac" => $request->tabac,
-                    "alcool" => $request->alcool,
-                    "taille" => $request->taille,
-                    "poids" => $request->poids,
-                    "imc" => $request->imc,
-                    "drepanocytaire" => $request->drepanocytaire,
-                    "saturation_oxygene" => $request->saturation_oxygene,
-                    "type_visite" => $request->type_visite,
-                    "examen_physique" => $request->examen_physique,
-                    "diagnostic_retenu" => $request->diagnostic_retenu,
-                    "autre_pathologie_associee" => $request->autre_pathologie_associee,
-                    "autre_antecedent_medical" => $request->autre_antecedent_medical,
-                    "autre_antecedent_chirurgical" => $request->autre_antecedent_chirurgical,
-                    "nom_operation" => $request->nom_operation,
-
-                ]);
+            RegistreConsultationCurative::updateOrCreate(
+                ['registre_id' => $registre->id],
+                $curativeData
+            );
         } else {
             //consultation
             $consultation = Consultation::findOrFail($request->consultation_id);
@@ -364,64 +395,13 @@ class ConsultationController extends Controller
                 "code" => codeRegistre($consultation->patient->code_patient, $consultation->patient->id),
                 "type_consultation" => "consultation curative",
                 "consultation_id" => $request->consultation_id,
-                "issue_consultation" => $request->mode_sortie,
+                "issue_consultation" => $modeSortie,
             ]);
 
-            $consultationcurative = RegistreConsultationCurative::create([
-                "registre_id" => $registre->id,
-                "mode_entree" => $request->mode_entree,
-                //"type_population" => $request->type_population,
-                "motif_consultation" => $request->motif_consultation,
-                "en_cours_de_scolarisation" => $request->en_cours_de_scolarisation,
-                "tdr_paludisme" => $request->tdr_paludisme,
-                "goutte_epaise" => $request->goutte_epaise,
-                "milda_enfant_eligible" => $request->milda_enfant_eligible,
-                "remise_milda_enfant" => $request->remise_milda_enfant,
-                "cdip_propose" => $request->cdip_propose,
-                "cdip_realise" => $request->cdip_realise,
-                "code_depistage_client" => $request->code_depistage_client,
-                "glycemie_a_jeun" => $request->glycemie_a_jeun,
-                "glycemie_non_a_jeun" => $request->glycemie_non_a_jeun,
-                "zcore" => $request->zscore,
-                "temperature" => $request->temperature,
-                "frequence_respiratoire" => $request->frequence_respiratoire,
-                "ta" => $request->ta,
-                "hta" => $request->hta,
-                "pouls" => $request->pouls,
-                "perimetre_brachial" => $request->perimetre_brachial,
-                "perimetre_cranien" => $request->perimetre_cranien,
-                "tuberculose" => $request->tuberculose,
-                "traitement_medicamenteux" => $request->traitement_medicamenteux,
-                "antecedent_medical" => $request->antecedent_medical,
-                "antecedent_chirurgical" => $request->antecedent_chirurgical,
-                "gyneco_obstetrico" => $request->gyneco_obstetrico,
-                "ddr" => $request->ddr,
-                "en_cours_de_grossesse" => $request->en_cours_de_grossesse,
-                "description_grossesse" => $request->description_grossesse,
-                "mode_de_vie" => $request->mode_de_vie,
-                "tabac" => $request->tabac,
-                "alcool" => $request->alcool,
-                "taille" => $request->taille,
-                "poids" => $request->poids,
-                "imc" => $request->imc,
-                "drepanocytaire" => $request->drepanocytaire,
-                "saturation_oxygene" => $request->saturation_oxygene,
-                "type_visite" => $request->type_visite,
-                "examen_physique" => $request->examen_physique,
-                "diagnostic_retenu" => $request->diagnostic_retenu,
-                "autre_pathologie_associee" => $request->autre_pathologie_associee,
-                "autre_antecedent_medical" => $request->autre_antecedent_medical,
-                "autre_antecedent_chirurgical" => $request->autre_antecedent_chirurgical,
-                "nom_operation" => $request->nom_operation,
-
-            ]);
-
-            if ($consultationcurative) {
-
-                $consultation = Consultation::where('id', $request->consultation_id)->findOrFail($request->consultation_id);
-                $consultation->status = 1;
-                $consultation->save();
-            }
+            $consultationcurative = RegistreConsultationCurative::create(array_merge(
+                ["registre_id" => $registre->id],
+                $curativeData
+            ));
         }
 
 

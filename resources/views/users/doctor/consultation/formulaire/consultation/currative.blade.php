@@ -49,7 +49,7 @@
                                 <div class="col-md-3">
                                     <div class="form-group">
                                         @php
-                                            $valeur = $consultation->registre == null ? '' : $consultation->registre->registreConsultationCurative->hta;
+                                            $valeur = optional(optional($consultation->registre)->registreConsultationCurative)->hta ?? '';
                                         @endphp
                                         <label class="form-label fw-bold"> HTA :</label>
                                         <div class="c-inputs-stacked">
@@ -65,7 +65,7 @@
                                 <div class="col-md-3">
                                     <div class="form-group">
                                         @php
-                                            $valeur = $consultation->registre == null ? '' : $consultation->registre->registreConsultationCurative->diabete;
+                                            $valeur = optional(optional($consultation->registre)->registreConsultationCurative)->diabete ?? '';
                                         @endphp
                                         <label class="form-label fw-bold">DIABETE :</label>
                                         <div class="c-inputs-stacked">
@@ -339,12 +339,13 @@
 
                             <div class="row">
                                 @php
-                                    $valPoids = $consultation->poids ?: ($consultation->registre->registreConsultationCurative->poids ?? '');
-                                    $valTaille = $consultation->taille ?: ($consultation->registre->registreConsultationCurative->taille ?? '');
-                                    $valImc = $consultation->imc ?: ($consultation->registre->registreConsultationCurative->imc ?? '');
-                                    $valTemp = $consultation->temperature ?: ($consultation->registre->registreConsultationCurative->temperature ?? '');
-                                    $valTA = $consultation->tension_arterielle ?: ($consultation->registre->registreConsultationCurative->ta ?? '');
-                                    $valPouls = $consultation->pouls ?: ($consultation->registre->registreConsultationCurative->pouls ?? '');
+                                    $regCur = optional(optional($consultation->registre)->registreConsultationCurative);
+                                    $valPoids = $consultation->poids ?: ($regCur->poids ?? '');
+                                    $valTaille = $consultation->taille ?: ($regCur->taille ?? '');
+                                    $valImc = $consultation->imc ?: ($regCur->imc ?? '');
+                                    $valTemp = $consultation->temperature ?: ($regCur->temperature ?? '');
+                                    $valTA = $consultation->tension_arterielle ?: ($regCur->ta ?? '');
+                                    $valPouls = $consultation->pouls ?: ($regCur->pouls ?? '');
                                 @endphp
                                 <div class="col-md-2">
                                     <div class="form-group">
@@ -567,9 +568,9 @@
                                     <div class="form-group row">
                                         <label class="form-label fw-bold col-3"> TDR Paludisme:</label>
                                         <div class="c-inputs-stacked col-9">
-                                            @php
-                                                $valeur = $consultation->registre == null ? '' : $consultation->registre->registreConsultationCurative->tdr_paludisme;
-                                            @endphp
+                                             @php
+                                                $valeur = optional(optional($consultation->registre)->registreConsultationCurative)->tdr_paludisme ?? '';
+                                             @endphp
                                             <input type="radio" {{ $valeur == 'Positif' ? 'checked' : '' }}
                                                 id="TDRpositif" value="Positif" name="tdr_paludisme">
                                             <label for="TDRpositif" class="me-30">Positif</label>
@@ -589,9 +590,9 @@
                                     <div class="form-group row">
                                         <label class="form-label fw-bold col-3"> Goutte Epaisse:</label>
                                         <div class="c-inputs-stacked col-9">
-                                            @php
-                                                $valeur = $consultation->registre == null ? '' : $consultation->registre->registreConsultationCurative->goutte_epaise;
-                                            @endphp
+                                             @php
+                                                $valeur = optional(optional($consultation->registre)->registreConsultationCurative)->goutte_epaise ?? '';
+                                             @endphp
                                             <input type="radio" {{ $valeur == 'Positive' ? 'checked' : '' }}
                                                 id="GEpositif" value="Positive" name="goutte_epaise">
                                             <label for="GEpositif" class="me-30">Positive</label>
@@ -612,9 +613,9 @@
                                         <label class="form-label fw-bold col-7"> MILDA Enfant de 12 à 59 mois :
                                             Eligible<span class="text-danger">*</span></label>
                                         <div class="c-inputs-stacked col-5">
-                                            @php
-                                                $valeur = $consultation->registre == null ? '' : $consultation->registre->registreConsultationCurative->milda_enfant_eligible;
-                                            @endphp
+                                             @php
+                                                $valeur = optional(optional($consultation->registre)->registreConsultationCurative)->milda_enfant_eligible ?? '';
+                                             @endphp
                                             <input type="radio" {{ $valeur == 'Oui' ? 'checked' : '' }} id="ouiMILDA"
                                                 value="Oui" name="milda_enfant_eligible">
                                             <label for="ouiMILDA" class="me-30">Oui</label>
@@ -633,9 +634,9 @@
                                         <label class="form-label fw-bold col-7"> Remise MILDA Enfant de 12 - 59 mois
                                             :</label>
                                         <div class="c-inputs-stacked col-5">
-                                            @php
-                                                $valeur = $consultation->registre == null ? '' : $consultation->registre->registreConsultationCurative->remise_milda_enfant;
-                                            @endphp
+                                             @php
+                                                $valeur = optional(optional($consultation->registre)->registreConsultationCurative)->remise_milda_enfant ?? '';
+                                             @endphp
                                             <input type="radio" {{ $valeur == 'Oui' ? 'checked' : '' }}
                                                 id="ouiremiseMILDA" value="Oui" name="remise_milda_enfant">
                                             <label for="ouiremiseMILDA" class="me-30">Oui</label>
@@ -653,9 +654,9 @@
                                     <div class="form-group row">
                                         <label class="form-label fw-bold col-4"> CDIP proposé :</label>
                                         <div class="c-inputs-stacked col-8">
-                                            @php
-                                                $valeur = $consultation->registre == null ? '' : $consultation->registre->registreConsultationCurative->cdip_propose;
-                                            @endphp
+                                             @php
+                                                $valeur = optional(optional($consultation->registre)->registreConsultationCurative)->cdip_propose ?? '';
+                                             @endphp
                                             <input type="radio" {{ $valeur == 'Oui' ? 'checked' : '' }} id="ouiCDIP"
                                                 value="Oui" name="cdip_propose">
                                             <label for="ouiCDIP" class="me-30">Oui</label>
@@ -672,9 +673,9 @@
                                     <div class="form-group row">
                                         <label class="form-label fw-bold col-4"> CDIP réalisé :</label>
                                         <div class="c-inputs-stacked col-8">
-                                            @php
-                                                $valeur = $consultation->registre == null ? '' : $consultation->registre->registreConsultationCurative->cdip_realise;
-                                            @endphp
+                                             @php
+                                                $valeur = optional(optional($consultation->registre)->registreConsultationCurative)->cdip_realise ?? '';
+                                             @endphp
                                             <input type="radio" {{ $valeur == 'Oui' ? 'checked' : '' }}
                                                 id="ouiCDIPrealise" value="Oui" name="cdip_realise">
                                             <label for="ouiCDIPrealise" class="me-30">Oui</label>
@@ -691,17 +692,17 @@
                                     <div class="form-group row">
                                         <label class="form-label col-5"> Code dépistage client :</label>
                                         <div class="col-7">
-                                            <input type="text" class="form-control" name="code_depistage_client"
-                                                value="{{ $consultation->registre == null ? '' : $consultation->registre->registreConsultationCurative->code_depistage_client }}">
+                                             <input type="text" class="form-control" name="code_depistage_client"
+                                                value="{{ optional(optional($consultation->registre)->registreConsultationCurative)->code_depistage_client ?? '' }}">
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-6 mt-5">
                                     <p> <span class="fw-bold">Glycémie:</span> à jeûn : <input type="text"
                                             class="col-sm-2" name="glycemie_a_jeun"
-                                            value="{{ $consultation->registre == null ? '' : $consultation->registre->registreConsultationCurative->glycemie_a_jeun }}">
+                                            value="{{ optional(optional($consultation->registre)->registreConsultationCurative)->glycemie_a_jeun ?? '' }}">
                                         g/l, non à jeûn : <input type="text" class="col-sm-2" name="glycemie_non_a_jeun"
-                                            value="{{ $consultation->registre == null ? '' : $consultation->registre->registreConsultationCurative->glycemie_non_a_jeun }}">
+                                            value="{{ optional(optional($consultation->registre)->registreConsultationCurative)->glycemie_non_a_jeun ?? '' }}">
                                         g/l , <label for="naGlycemie me-30">NA</label><input type="radio"
                                             id="naGlycemeie" name="naglycemeie"></p>
                                 </div>

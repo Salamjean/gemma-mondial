@@ -212,6 +212,16 @@
         @include('partials.doctor_incoming_call_modal')
     @endif
 
+    @if((auth()->check() && auth()->user()->role_as === 'doctor') || request()->has('embed'))
+        <script src="{{ asset('js/offline-consultations.js') }}?v={{ time() }}"></script>
+        <script>
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register("{{ asset('sw-doctor.js') }}?v={{ time() }}")
+                    .catch(function(err) { console.warn('ServiceWorker registration failed:', err); });
+            }
+        </script>
+    @endif
+
     @stack('js')
 
 

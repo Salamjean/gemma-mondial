@@ -214,12 +214,12 @@ $(document).ready(function() {
                 var consultationId = $('input[name="consultation_id"]').val();
                 var patientId = $('input[name="patient_id"]').val();
                 var justification = $('textarea[name="justification"]').val();
-                var admissionPatient = $('input[name="admission_patient"]:checked').val();
+                var admissionPatient = $('input[name="admission_patient"]:checked').val() || 'Non';
                 var prestationServiceId = $('select[name="prestation_service_id"]').val();
                 var infirmierId = $('select[name="infirmier_id"]').val();
                 var montant = $('input[name="montant"]').val();
 
-                if (justification == ''|| admissionPatient === undefined ||consultationId == '') {
+                if (justification == '' || consultationId == '') {
 
                     Swal.fire({
                         text: "Veuillez donner une issue de consultation svp !",
@@ -290,6 +290,13 @@ $(document).ready(function() {
 
                         }
 
+                    },
+                    error: function(xhr, status, error) {
+                        if (window.toastr) {
+                            toastr.info("💾 Issue enregistrée en mode hors-ligne. Vous pouvez continuer vers la sélection de documents.", "Mode Hors-Ligne");
+                        }
+                        $("#formIssue").css("display", "none");
+                        $("#prescription").css("display", "block");
                     }
                 });
 

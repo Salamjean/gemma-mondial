@@ -1,3 +1,6 @@
+@php
+    $regCur = optional(optional($consultation->registre)->registreConsultationCurative);
+@endphp
 <div class="row bg-gray-300 container">
     <div class="col-md-12">
         <div class="form-group">
@@ -193,8 +196,8 @@
                             <label for="lieu_de_naissance" class="form-label"> <b> IMC: </b></label>
                             <div class="input-group mb-3">
 
-                                <input type="text" name="lieu_de_naissance" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->imc }}" readonly>
+                                 <input type="text" name="lieu_de_naissance" class="form-control"
+                                    value="{{ $regCur->imc }}" readonly>
                             </div>
                         </div>
                     </div>
@@ -204,7 +207,7 @@
                             <div class="input-group mb-3">
 
                                 <input type="text" name="lieu_de_naissance" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->zcore }}"
+                                    value="{{ $regCur->zcore }}"
                                     readonly>
                             </div>
                         </div>
@@ -215,7 +218,7 @@
                             <div class="input-group mb-3">
 
                                 <input type="text" name="lieu_de_naissance" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->temperature }}"
+                                    value="{{ $regCur->temperature }}"
                                     readonly>
                             </div>
                         </div>
@@ -227,7 +230,7 @@
                             <div class="input-group mb-3">
 
                                 <input type="text" name="lieu_de_naissance" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->frequence_respiratoire }}"
+                                    value="{{ $regCur->frequence_respiratoire }}"
                                     readonly>
                             </div>
                         </div>
@@ -238,7 +241,7 @@
                             <div class="input-group mb-3">
 
                                 <input type="text" name="lieu_de_naissance" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->ta }}" readonly>
+                                    value="{{ $regCur->ta }}" readonly>
                             </div>
                         </div>
                     </div>
@@ -248,7 +251,7 @@
                             <div class="input-group mb-3">
 
                                 <input type="text" name="lieu_de_naissance" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->pouls }}"
+                                    value="{{ $regCur->pouls }}"
                                     readonly>
                             </div>
                         </div>
@@ -259,7 +262,7 @@
                             <div class="input-group mb-3">
 
                                 <input type="text" name="lieu_de_naissance" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->perimetre_brachial }}"
+                                    value="{{ $regCur->perimetre_brachial }}"
                                     readonly>
                             </div>
                         </div>
@@ -270,7 +273,7 @@
                             <div class="input-group mb-3">
 
                                 <input type="text" name="lieu_de_naissance" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->perimetre_cranien }}"
+                                    value="{{ $regCur->perimetre_cranien }}"
                                     readonly>
                             </div>
                         </div>
@@ -282,7 +285,7 @@
                             <div class="input-group mb-3">
 
                                 <input type="text" name="lieu_de_naissance" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->tuberculose }}"
+                                    value="{{ $regCur->tuberculose }}"
                                     readonly>
                             </div>
                         </div>
@@ -293,7 +296,7 @@
                             <label class="form-label"> <b>Examen physique :</b> </label>
                             <div class="input-group">
                                 <textarea name="observation" class="form-control" id="observation" cols="10" rows="5" disabled>
-                                                {{ $consultation->registre->registreConsultationCurative->examen_physique }}
+                                                {{ $regCur->examen_physique }}
                                             </textarea>
                             </div>
                         </div>
@@ -303,7 +306,7 @@
                             <label class="form-label"> <b>Diagnostic retenu :</b> </label>
                             <div class="input-group">
                                 <textarea name="observation" class="form-control" id="observation" cols="10" rows="5" disabled>
-                                                {{ $consultation->registre->registreConsultationCurative->diagnostic_retenu }}
+                                                {{ $regCur->diagnostic_retenu }}
                                             </textarea>
                             </div>
                         </div>
@@ -313,7 +316,7 @@
                             <label class="form-label"> <b>Autres pathologies associées :</b> </label>
                             <div class="input-group">
                                 <textarea name="observation" class="form-control" id="observation" cols="10" rows="5" disabled>
-                                                {{ $consultation->registre->registreConsultationCurative->autre_pathologie_associee }}
+                                                {{ $regCur->autre_pathologie_associee }}
                                             </textarea>
                             </div>
                         </div>
@@ -344,7 +347,7 @@
                             <div class="input-group mb-3">
 
                                 <input type="text" name="lieu_de_naissance" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->hta }}" readonly>
+                                    value="{{ $regCur->hta ?? '' }}" readonly>
                             </div>
                         </div>
                     </div>
@@ -354,7 +357,7 @@
                             <div class="input-group mb-3">
 
                                 <input type="text" name="lieu_de_naissance" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->diabete }}"
+                                    value="{{ $regCur->diabete ?? '' }}"
                                     readonly>
                             </div>
                         </div>
@@ -365,7 +368,7 @@
                                 </b></label>
                             <div class="input-group mb-3">
                                 <input type="text" name="lieu_de_naissance" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->antecedent_medical }}"
+                                    value="{{ $regCur->antecedent_medical }}"
                                     readonly>
                             </div>
 
@@ -377,7 +380,7 @@
                             <label class="form-label"> <b>Chirurgicaux :</b> </label>
                             <div class="input-group">
                                 <textarea name="observation" class="form-control" id="observation" cols="10" rows="5" disabled>
-                                                {{ $consultation->registre->registreConsultationCurative->antecedent_chirurgical }}
+                                                {{ $regCur->antecedent_chirurgical }}
                                             </textarea>
                             </div>
                         </div>
@@ -389,29 +392,18 @@
                                     </b></label>
                                 <div class="input-group mb-3">
                                     <input type="text" name="gyneco_obstetrico" class="form-control"
-                                        value="{{ $consultation->registre->registreConsultationCurative->gyneco_obstetrico }}"
+                                        value="{{ $regCur->gyneco_obstetrico }}"
                                         readonly>
                                 </div>
                             </div>
                         </div>
-                        {{-- <div class="col-md-4">
-                        <div class="form-group">
-                            <label for="lieu_de_naissance" class="form-label"> <b> DDR:
-                                </b></label>
-                            <div class="input-group mb-3">
-                                <input type="text" name="ddr" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->ddr }}"
-                                    readonly>
-                            </div>
-                        </div>
-                    </div> --}}
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label for="lieu_de_naissance" class="form-label"> <b> Grossesse en cours:
                                     </b></label>
                                 <div class="input-group mb-3">
                                     <input type="text" name="gyneco_obstetrico" class="form-control"
-                                        value="{{ $consultation->registre->registreConsultationCurative->en_cours_de_grossesse }}"
+                                        value="{{ $regCur->en_cours_de_grossesse }}"
                                         readonly>
                                 </div>
                             </div>
@@ -422,7 +414,7 @@
                                     </b></label>
                                 <div class="input-group mb-3">
                                     <input type="text" name="gyneco_obstetrico" class="form-control"
-                                        value="{{ $consultation->registre->registreConsultationCurative->description_grossesse }}"
+                                        value="{{ $regCur->description_grossesse }}"
                                         readonly>
                                 </div>
                             </div>
@@ -435,7 +427,7 @@
                                 </b></label>
                             <div class="input-group mb-3">
                                 <input type="text" name="gyneco_obstetrico" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->tabac }}"
+                                    value="{{ $regCur->tabac }}"
                                     readonly>
                             </div>
                         </div>
@@ -446,7 +438,7 @@
                                 </b></label>
                             <div class="input-group mb-3">
                                 <input type="text" name="gyneco_obstetrico" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->alcool }}"
+                                    value="{{ $regCur->alcool }}"
                                     readonly>
                             </div>
                         </div>
@@ -457,7 +449,7 @@
                                 </b></label>
                             <div class="input-group mb-3">
                                 <input type="text" name="gyneco_obstetrico" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->type_visite }}"
+                                    value="{{ $regCur->type_visite }}"
                                     readonly>
                             </div>
                         </div>
@@ -478,7 +470,7 @@
                                 </b></label>
                             <div class="input-group mb-3">
                                 <input type="text" name="gyneco_obstetrico" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->tdr_paludisme }}"
+                                    value="{{ $regCur->tdr_paludisme }}"
                                     readonly>
                             </div>
                         </div>
@@ -489,7 +481,7 @@
                                 </b></label>
                             <div class="input-group mb-3">
                                 <input type="text" name="gyneco_obstetrico" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->goutte_epaise }}"
+                                    value="{{ $regCur->goutte_epaise }}"
                                     readonly>
                             </div>
                         </div>
@@ -501,7 +493,7 @@
                                 </b></label>
                             <div class="input-group mb-3">
                                 <input type="text" name="gyneco_obstetrico" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->milda_enfant_eligible }}"
+                                    value="{{ $regCur->milda_enfant_eligible }}"
                                     readonly>
                             </div>
                         </div>
@@ -513,7 +505,7 @@
                                 </b></label>
                             <div class="input-group mb-3">
                                 <input type="text" name="gyneco_obstetrico" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->remise_milda_enfant }}"
+                                    value="{{ $regCur->remise_milda_enfant }}"
                                     readonly>
                             </div>
                         </div>
@@ -525,7 +517,7 @@
                                 </b></label>
                             <div class="input-group mb-3">
                                 <input type="text" name="gyneco_obstetrico" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->cdip_propose }}"
+                                    value="{{ $regCur->cdip_propose }}"
                                     readonly>
                             </div>
                         </div>
@@ -537,7 +529,7 @@
                                 </b></label>
                             <div class="input-group mb-3">
                                 <input type="text" name="gyneco_obstetrico" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->cdip_realise }}"
+                                    value="{{ $regCur->cdip_realise }}"
                                     readonly>
                             </div>
                         </div>
@@ -548,7 +540,7 @@
                                 </b></label>
                             <div class="input-group mb-3">
                                 <input type="text" name="gyneco_obstetrico" class="form-control"
-                                    value="{{ $consultation->registre->registreConsultationCurative->code_depistage_client }}"
+                                    value="{{ $regCur->code_depistage_client }}"
                                     readonly>
                             </div>
                         </div>
@@ -559,7 +551,7 @@
                             <label for="numero_gestante" class="form-label"> <b>à jeûn (g/l): </b>
                             </label>
                             <input type="text" class="form-control"
-                                value="{{ $consultation->registre->registreConsultationCurative->glycemie_a_jeun }}"
+                                value="{{ $regCur->glycemie_a_jeun }}"
                                 disabled>
                         </div>
                     </div>
@@ -568,7 +560,7 @@
                             <label for="numero_gestante" class="form-label"> <b>non à jeûn (g/l): </b>
                             </label>
                             <input type="text" class="form-control"
-                                value="{{ $consultation->registre->registreConsultationCurative->glycemie_non_a_jeun }}"
+                                value="{{ $regCur->glycemie_non_a_jeun }}"
                                 disabled>
                         </div>
                     </div>
@@ -577,7 +569,7 @@
                             <label for="numero_gestante" class="form-label"> <b>Glycémie NA: </b>
                             </label>
                             <input type="text" class="form-control"
-                                value="{{ $consultation->registre->registreConsultationCurative->naglycemeie }}"
+                                value="{{ $regCur->naglycemeie }}"
                                 disabled>
                         </div>
                     </div>
@@ -586,7 +578,7 @@
                             <label class="form-label"> <b>Autres examens :</b> </label>
                             <div class="input-group">
                                 <textarea name="observation" class="form-control" id="observation" cols="10" rows="5" disabled>
-                                                {{ $consultation->registre->registreConsultationCurative->autre_examen }}
+                                                {{ $regCur->autre_examen }}
                                             </textarea>
                             </div>
                         </div>

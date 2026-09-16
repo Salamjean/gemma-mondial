@@ -10,6 +10,7 @@ Route::get('/apropos', [\App\Http\Controllers\HomeController::class, 'about'])->
 Route::get('/contact', [\App\Http\Controllers\HomeController::class, 'contact'])->name('contact');
 Route::get('impression/{type}/{id}', [\App\Http\Controllers\Patient\PatientController::class, 'Impression'])->name('impression');
 Route::get('patient/impression/{type}/{id}', [\App\Http\Controllers\Patient\PatientController::class, 'Impression']);
+Route::get('/api/ping', function() { return response()->json(['status' => 'online', 'pong' => true]); });
 
 
 // Auth::routes();

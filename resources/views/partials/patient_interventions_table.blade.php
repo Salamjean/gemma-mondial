@@ -88,7 +88,15 @@
                                 $issueStr = optional($reg)->issue_consultation ?? 'En cours';
                                 $hasJustif = !empty(optional($reg)->issue_consultation_justification);
                                 $hasOrdo = ($item->ordonnances_count > 0 || count($item->ordonnances ?? []) > 0);
-                                $isDone = ($item->status == 1) && ($hasJustif || $hasOrdo || $item->examen_count > 0 || $item->arret_count > 0 || $item->hospitalisation);
+                                $isDone = ($item->status == 1 || $item->status == '1') 
+                                    || in_array($item->call_status, ['completed', 'ended', 'complete'])
+                                    || (!empty(optional($reg)->issue_consultation) && optional($reg)->issue_consultation !== 'En cours')
+                                    || $hasJustif 
+                                    || $hasOrdo 
+                                    || ($item->examen_count > 0 || !empty($item->examen)) 
+                                    || ($item->arret_count > 0 || !empty($item->arret)) 
+                                    || !empty($item->hospitalisation)
+                                    || ($item->declaration_count > 0 || !empty($item->declaration));
 
                                 // Constantes
                                 $valPoids = $item->poids ?: (optional($regCur)->poids ?? 'N/A');

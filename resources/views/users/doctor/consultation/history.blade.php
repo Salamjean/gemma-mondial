@@ -33,8 +33,16 @@
                                 $hasDeclaration = ($item->declaration_count > 0);
                                 $hasHospitalisation = \App\Models\Hospitalisation::where('consultation_id', $item->id)->exists();
 
-                                // Une consultation est véritablement terminée si status == 1 ET qu'au moins une étape post-consultation / issue / ordonnance / hospitalisation est enregistrée
-                                $isTerminee = ($item->status == 1) && ($hasJustification || $hasOrdonnance || $hasExamen || $hasArret || $hasDeclaration || $hasHospitalisation);
+                                // Une consultation est véritablement terminée si status == 1 OU qu'au moins une étape post-consultation / issue / ordonnance / hospitalisation est enregistrée
+                                $isTerminee = ($item->status == 1 || $item->status == '1') 
+                                    || in_array($item->call_status, ['completed', 'ended', 'complete'])
+                                    || (!empty(optional($item->registre)->issue_consultation) && optional($item->registre)->issue_consultation !== 'En cours')
+                                    || $hasJustification 
+                                    || $hasOrdonnance 
+                                    || $hasExamen 
+                                    || $hasArret 
+                                    || $hasDeclaration 
+                                    || $hasHospitalisation;
                             @endphp
                             <tr>
                                 <td>

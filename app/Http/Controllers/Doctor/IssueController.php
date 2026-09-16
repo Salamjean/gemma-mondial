@@ -64,7 +64,7 @@ class IssueController extends Controller
         $res = $this->instance()->storeJustification($request);
 
         if ($res['status'] == 'error')
-            return response()->json(['status' => $res['status']], 200);
+            return response()->json(['status' => $res['status'], 'message' => $res['message'] ?? 'Erreur'], 422);
 
         return response()->json(['status' => $res['status']], 200);
     }

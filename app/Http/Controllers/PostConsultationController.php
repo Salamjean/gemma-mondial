@@ -69,12 +69,16 @@ class PostConsultationController extends Controller
             "consultation_id" => $request->consultation_id,
         ]);
         $exam = [];
+        $natureExamen = is_array($request->nature_examen) ? $request->nature_examen : ($request->filled('nature_examen') ? [$request->nature_examen] : []);
 
-        foreach ($request->nature_examen as $key => $exams) {
-            $exam['code_examen'] = codeExamen($consultation->patient->code_patient, $consultation->patient->id);
-            $exam['bulletin_examen_id'] = $bulletin->id;
-            $exam['nature_examen'] = $request->nature_examen[$key];
-            Examen::create($exam);
+        if (!empty($natureExamen)) {
+            foreach ($natureExamen as $key => $exams) {
+                if (empty($exams)) continue;
+                $exam['code_examen'] = codeExamen($consultation->patient->code_patient, $consultation->patient->id);
+                $exam['bulletin_examen_id'] = $bulletin->id;
+                $exam['nature_examen'] = $exams;
+                Examen::create($exam);
+            }
         }
         return response()->json(['success' => 'Examen enregistré avec succès.', 'id' => $bulletin->id], 200);
     }

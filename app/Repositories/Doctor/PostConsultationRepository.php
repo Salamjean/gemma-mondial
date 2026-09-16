@@ -47,19 +47,28 @@ class PostConsultationRepository
             ]);
 
             //save prescriptions
-            foreach ($request->medicamentCode as $index => $item) {
+            $medicamentCodes = is_array($request->medicamentCode) ? $request->medicamentCode : ($request->filled('medicamentCode') ? [$request->medicamentCode] : []);
+            $quantities = is_array($request->medicamentQte) ? $request->medicamentQte : ($request->filled('medicamentQte') ? [$request->medicamentQte] : []);
+            $posologies = is_array($request->medicamentPosologie) ? $request->medicamentPosologie : ($request->filled('medicamentPosologie') ? [$request->medicamentPosologie] : []);
+            $routes = is_array($request->routeAdministration) ? $request->routeAdministration : ($request->filled('routeAdministration') ? [$request->routeAdministration] : []);
+            $durations = is_array($request->duration) ? $request->duration : ($request->filled('duration') ? [$request->duration] : []);
+            $advices = is_array($request->healthDieteticAdvice) ? $request->healthDieteticAdvice : ($request->filled('healthDieteticAdvice') ? [$request->healthDieteticAdvice] : []);
 
-                $drug = Drug::find($item);
+            if (!empty($medicamentCodes)) {
+                foreach ($medicamentCodes as $index => $item) {
+                    if (empty($item)) continue;
+                    $drug = Drug::find($item);
 
-                $prescription = new Prescription();
-                $prescription->ordonnance_id = $ordonnance->id;
-                $prescription->drug_id = $item;
-                $prescription->quantity = $request->medicamentQte[$index] ?? 1;
-                $prescription->dosage = $request->medicamentPosologie[$index] ?? $drug->posology;
-                $prescription->route_administration = $request->routeAdministration[$index] ?? null;
-                $prescription->duration = $request->duration[$index] ?? null;
-                $prescription->health_dietetic_advice = $request->healthDieteticAdvice[$index] ?? null;
-                $prescription->save();
+                    $prescription = new Prescription();
+                    $prescription->ordonnance_id = $ordonnance->id;
+                    $prescription->drug_id = $item;
+                    $prescription->quantity = $quantities[$index] ?? 1;
+                    $prescription->dosage = $posologies[$index] ?? ($drug ? $drug->posology : null);
+                    $prescription->route_administration = $routes[$index] ?? null;
+                    $prescription->duration = $durations[$index] ?? null;
+                    $prescription->health_dietetic_advice = $advices[$index] ?? null;
+                    $prescription->save();
+                }
             }
 
             return ['status' => 'success', 'message' => 'Ordonnance enregistrée avec succès.', 'id' => $ordonnance->id];
@@ -97,26 +106,36 @@ class PostConsultationRepository
 
             $price = 0;
             //save prescriptions
-            foreach ($request->medicamentCodeI as $index => $item) {
+            $medicamentCodesI = is_array($request->medicamentCodeI) ? $request->medicamentCodeI : ($request->filled('medicamentCodeI') ? [$request->medicamentCodeI] : []);
+            $quantitiesI = is_array($request->medicamentQteI) ? $request->medicamentQteI : ($request->filled('medicamentQteI') ? [$request->medicamentQteI] : []);
+            $posologiesI = is_array($request->medicamentPosologieI) ? $request->medicamentPosologieI : ($request->filled('medicamentPosologieI') ? [$request->medicamentPosologieI] : []);
+            $routesI = is_array($request->routeAdministrationI) ? $request->routeAdministrationI : ($request->filled('routeAdministrationI') ? [$request->routeAdministrationI] : []);
+            $durationsI = is_array($request->durationI) ? $request->durationI : ($request->filled('durationI') ? [$request->durationI] : []);
+            $advicesI = is_array($request->healthDieteticAdviceI) ? $request->healthDieteticAdviceI : ($request->filled('healthDieteticAdviceI') ? [$request->healthDieteticAdviceI] : []);
 
-                $drug = DrugHospital::find($item);
+            if (!empty($medicamentCodesI)) {
+                foreach ($medicamentCodesI as $index => $item) {
+                    if (empty($item)) continue;
+                    $drug = DrugHospital::find($item);
 
-                $prescription = new Prescription();
-                $prescription->ordonnance_id = $ordonnance->id;
-                $prescription->drug_id = $item;
-                $prescription->quantity = $request->medicamentQteI[$index] ?? 1;
-                $prescription->dosage = $request->medicamentPosologieI[$index] ?? $drug->posology;
-                $prescription->route_administration = $request->routeAdministrationI[$index] ?? null;
-                $prescription->duration = $request->durationI[$index] ?? null;
-                $prescription->health_dietetic_advice = $request->healthDieteticAdviceI[$index] ?? null;
-                $prescription->save();
+                    $prescription = new Prescription();
+                    $prescription->ordonnance_id = $ordonnance->id;
+                    $prescription->drug_id = $item;
+                    $prescription->quantity = $quantitiesI[$index] ?? 1;
+                    $prescription->dosage = $posologiesI[$index] ?? ($drug ? $drug->posology : null);
+                    $prescription->route_administration = $routesI[$index] ?? null;
+                    $prescription->duration = $durationsI[$index] ?? null;
+                    $prescription->health_dietetic_advice = $advicesI[$index] ?? null;
+                    $prescription->save();
 
-                $price += ($request->medicamentQteI[$index] ?? 1) * $drug->price;
+                    $price += ($quantitiesI[$index] ?? 1) * ($drug ? $drug->price : 0);
+                }
             }
 
+            $hospitalId = (Auth::check() && Auth::user()->doctor) ? Auth::user()->doctor->hospital_id : (Auth::user()->hospital_id ?? 1);
             $drugSale = new DrugSale();
             $drugSale->type = 'ordonnance';
-            $drugSale->hospital_id = Auth::user()->doctor->hospital_id;
+            $drugSale->hospital_id = $hospitalId;
             $drugSale->ordonnance_id = $ordonnance->id;
             $drugSale->price = $price;
             $drugSale->save();  
@@ -129,6 +148,16 @@ class PostConsultationRepository
 
     public function storeArretTravail($request)
     {
+        if (!$request->filled('date_debut')) {
+            $request->merge(['date_debut' => date('Y-m-d')]);
+        }
+        if (!$request->filled('date_fin')) {
+            $request->merge(['date_fin' => date('Y-m-d', strtotime('+3 days'))]);
+        }
+        if (!$request->filled('nb_jour')) {
+            $request->merge(['nb_jour' => 3]);
+        }
+
         $request->validate([
             'consultation_id' => 'required',
             'date_debut' => 'required',

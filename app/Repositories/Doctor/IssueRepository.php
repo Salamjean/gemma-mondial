@@ -83,50 +83,64 @@ class IssueRepository
 
     public function storeJustification(Request $request)
     {
+        $getScalar = function ($key, $default = null) use ($request) {
+            $val = $request->input($key, $default);
+            if (is_array($val)) {
+                return count($val) > 0 ? (string) reset($val) : $default;
+            }
+            return $val ?? $default;
+        };
 
-        $request->validate([
-            'consultation_id' => 'required',
-            'justification' => 'required',
-            'admission_patient' => 'required|in:Oui,Non',
-            'prestation_service_id' => 'required_if:admission_patient,Oui',
-            'infirmier_id' => 'required_if:admission_patient,Oui',
-        ]);
+        $admissionPatient = $getScalar('admission_patient', 'Non');
+        $justification = $getScalar('justification', 'Sortie effectuée');
+        $consultationId = $getScalar('consultation_id');
 
-        $doctor = Doctor::where('user_id', auth()->user()->id)->first();
-        if ($request->admission_patient == 'Oui') {
+        $consultation = Consultation::find($consultationId);
+        if (!$consultation) {
+            return ['status' => 'error', 'message' => 'Consultation introuvable.'];
+        }
+
+        if ($admissionPatient == 'Oui' && $request->filled('prestation_service_id')) {
+            $doctor = Doctor::where('user_id', auth()->user()->id)->first();
+            $hospitalId = ($doctor && $doctor->hospital) ? $doctor->hospital->id : (auth()->user()->hospital_id ?? 1);
+            $doctorId = $doctor ? $doctor->id : null;
+
             $admission = Admission::create([
                 'code_admission' => codeAdmission(),
                 'date_admission' => Carbon::now()->format('Y-m-d H:i:s'),
-                'doctor_id' => $doctor->id,
-                'hospital_id' => $doctor->hospital->id,
-                'patient_id' => $request->patient_id,
-                'infirmier_id' => $request->infirmier_id,
+                'doctor_id' => $doctorId,
+                'hospital_id' => $hospitalId,
+                'patient_id' => $getScalar('patient_id', $consultation->patient_id),
+                'infirmier_id' => $getScalar('infirmier_id'),
                 'caissiere_id' => null,
-                'prestation_hopital_id' => $request->prestation_service_id,
-                'type_admission' => $request->type_admission_id,
-                'montant' => $request->montant,
-                'montant_normal' => $request->montant,
-                'motif_consultation' => $request->justification,
+                'prestation_hopital_id' => $getScalar('prestation_service_id'),
+                'type_admission' => $getScalar('type_admission_id', 'Soins Infirmier'),
+                'montant' => $getScalar('montant', 0),
+                'montant_normal' => $getScalar('montant', 0),
+                'motif_consultation' => $justification,
             ]);
 
-            // Enregistrement du paiement
             $payment = new Payment();
             $payment->date = Carbon::now()->format('Y-m-d');
             $payment->type = 'admission';
-            $payment->prix = $request->montant;
-            $payment->hospital_id = $doctor->hospital->id;
+            $payment->prix = $getScalar('montant', 0);
+            $payment->hospital_id = $hospitalId;
             $payment->admission_id = $admission->id;
             $payment->save();
         }
 
-        $consultation = Consultation::find($request->consultation_id);
-        if (!Registre::where('consultation_id', $consultation->id)->exists())
-            return ['status' => 'error', 'message' => 'Pas de consultation effectué pour cette admission.'];
+        if (Registre::where('consultation_id', $consultation->id)->exists()) {
+            $registre = Registre::where('consultation_id', $consultation->id)->first();
+        } else {
+            $registre = Registre::create([
+                "code" => codeRegistre($consultation->patient->code_patient, $consultation->patient->id),
+                "type_consultation" => "consultation curative",
+                "consultation_id" => $consultation->id,
+                "issue_consultation" => "sortie",
+            ]);
+        }
 
-
-        $registre = Registre::where('consultation_id', $consultation->id)->first();
-
-        $registre->issue_consultation_justification = $request->justification;
+        $registre->issue_consultation_justification = $justification;
         $registre->save();
 
         $consultation->status = 1;
@@ -143,9 +157,19 @@ class IssueRepository
             'duree' => 'required',
         ]);
 
+        $consultation = Consultation::find($request->consultation_id);
+        if (!$consultation) {
+            return ['status' => 'error', 'message' => 'Consultation introuvable.'];
+        }
 
-        if (!Registre::where('consultation_id', $request->consultation_id)->exists())
-            return ['status' => 'error', 'message' => 'Pas de consultation effectué pour cette admission.'];
+        if (!Registre::where('consultation_id', $consultation->id)->exists()) {
+            Registre::create([
+                "code" => codeRegistre($consultation->patient->code_patient, $consultation->patient->id),
+                "type_consultation" => "consultation curative",
+                "consultation_id" => $consultation->id,
+                "issue_consultation" => "observation",
+            ]);
+        }
 
         //patologie
         parse_str($request->nom_pathologie, $PNom);
