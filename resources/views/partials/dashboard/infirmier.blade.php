@@ -307,6 +307,181 @@
                 </div>
             </div>
         </div>
+
+        <!-- Section Téléconsultations assignées aux médecins (Infirmier) -->
+        @php
+            $infTeleconsultations = \App\Models\Consultation::where(function ($q) {
+                    $q->whereIn('orientation_infirmier', ['teleconsultation', 'urgence'])
+                      ->orWhere('is_urgence', 1);
+                })
+                ->where(function ($q) use ($infirmierId) {
+                    $q->where('infirmier_id', $infirmierId)
+                      ->orWhereNull('infirmier_id');
+                })
+                ->where('status', 0)
+                ->whereNotIn('call_status', ['completed', 'cancelled'])
+                ->with(['doctor.user', 'patient.user', 'prestationHospital.prestationService'])
+                ->latest('created_at')
+                ->get();
+        @endphp
+        <div class="col-xl-12 col-lg-12 col-12 mb-3" id="infirmierTeleconsultSection" style="{{ $infTeleconsultations->count() > 0 ? '' : 'display: none;' }}">
+            <div class="box border-0 shadow-sm rounded-16 bg-white overflow-hidden" style="border: 1px solid rgba(13, 148, 136, 0.25) !important;">
+                <div style="height: 4px; background: linear-gradient(90deg, #0d9488 0%, #14b8a6 50%, #2dd4bf 100%);"></div>
+                <div class="box-header border-0 bg-white p-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0" style="width: 44px; height: 44px; background: rgba(13, 148, 136, 0.12); color: #0d9488;">
+                            <i class="fa-solid fa-headset fs-18"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold text-dark mb-0 fs-16 d-flex align-items-center gap-2">
+                                <span>TÉLÉCONSULTATIONS AVEC LES MÉDECINS</span>
+                                <span id="infTeleconsultCountBadge" class="badge bg-teal-subtle text-teal-800 rounded-pill fs-11" style="background: rgba(13,148,136,0.12); color: #0f766e;">
+                                    {{ $infTeleconsultations->count() }} en cours / programmée(s)
+                                </span>
+                            </h5>
+                            <p class="text-muted fs-12 mb-0">Appels vidéo médicaux assignés pour vos patients</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="box-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                <tr class="fs-12 text-uppercase text-secondary fw-bold">
+                                    <th class="ps-4 py-3">Patient</th>
+                                    <th class="py-3">Médecin assigné</th>
+                                    <th class="py-3">Date & Heure souhaitées</th>
+                                    <th class="py-3">Motif</th>
+                                    <th class="py-3 text-center">Statut</th>
+                                    <th class="pe-4 py-3 text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="infTeleconsultTableBody">
+                                @foreach ($infTeleconsultations as $t)
+                                    @php
+                                        $tPatUser = optional(optional($t->patient)->user);
+                                        $tPatName = trim(($tPatUser->name ?? '') . ' ' . ($tPatUser->prenom ?? '')) ?: 'Patient';
+                                        $tDocUser = optional(optional($t->doctor)->user);
+                                        $hasAssignedDoc = !empty($t->doctor_id) && !empty($tDocUser->name);
+                                        $tDocName = $hasAssignedDoc ? ('Dr. ' . trim($tDocUser->name . ' ' . ($tDocUser->prenom ?? ''))) : 'Médecins de garde';
+                                        $livekitUrl = config('services.livekit.url', 'wss://gemma-14fckk2m.livekit.cloud');
+                                        $infName = trim((auth()->user()->name ?? '') . ' ' . (auth()->user()->prenom ?? ''));
+                                        $token = !empty($t->call_channel) ? \App\Services\LiveKitTokenService::generateToken($t->call_channel, 'infirmier_' . auth()->user()->id, 'Inf. ' . $infName) : '';
+                                        $isEmergency = ($t->orientation_infirmier === 'urgence' || $t->is_urgence == 1);
+                                    @endphp
+                                    <tr id="inf-teleconsult-row-{{ $t->id }}">
+                                        <td class="ps-4 py-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="rounded-circle me-3 d-flex align-items-center justify-content-center fw-bold fs-13 flex-shrink-0" style="width: 38px; height: 38px; background: {{ $isEmergency ? '#fee2e2' : '#ccfbf1' }}; color: {{ $isEmergency ? '#b91c1c' : '#0f766e' }}; border: 2px solid {{ $isEmergency ? '#ef4444' : '#0d9488' }};">
+                                                    {{ $isEmergency ? 'URG' : 'PT' }}
+                                                </div>
+                                                <div>
+                                                    <h6 class="fw-bold text-dark mb-0 fs-14 d-flex align-items-center gap-1.5">
+                                                        <span>{{ $tPatName }}</span>
+                                                        @if($isEmergency)
+                                                            <span class="badge bg-danger text-white rounded-pill fs-10 px-2 py-0.5">Urgence</span>
+                                                        @endif
+                                                    </h6>
+                                                    <span class="badge bg-light text-secondary border fs-11">{{ optional($t->patient)->code_patient }}</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="py-3 fw-semibold text-dark fs-13">
+                                            <i class="fa-solid fa-user-doctor me-1 text-teal" style="color: #0d9488;"></i> {{ $tDocName }}
+                                        </td>
+                                        <td class="py-3 text-dark fs-13 fw-semibold">
+                                            <i class="fa-regular fa-calendar-check me-1 text-teal" style="color: #0d9488;"></i> {{ $t->desired_date ? date('d/m/Y', strtotime($t->desired_date)) : ($t->date_consultation ? date('d/m/Y', strtotime($t->date_consultation)) : 'Aujourd\'hui') }} à {{ $t->desired_time ?: ($t->created_at ? $t->created_at->format('H:i') : '') }}
+                                        </td>
+                                        <td class="py-3">
+                                            <span class="badge bg-light text-dark border fs-12">
+                                                {{ optional(optional($t->prestationHospital)->prestationService)->libelle ?? $t->motif_consultation ?? ($isEmergency ? 'Urgence médicale' : 'Téléconsultation') }}
+                                            </span>
+                                        </td>
+                                        <td class="py-3 text-center">
+                                            @if($t->is_call_active && in_array($t->call_status, ['calling', 'accepted', 'in_call']))
+                                                @if($hasAssignedDoc || in_array($t->call_status, ['accepted', 'in_call']))
+                                                    <span class="badge bg-success text-white rounded-pill px-3 py-1.5 fs-11 fw-semibold">
+                                                        <i class="fa-solid fa-circle-check me-1"></i> Médecin connecté
+                                                    </span>
+                                                @else
+                                                    <span class="badge bg-warning text-dark rounded-pill px-3 py-1.5 fs-11 fw-semibold">
+                                                        <span class="spinner-grow spinner-grow-sm me-1" style="width: 7px; height: 7px;"></span> Appel en cours...
+                                                    </span>
+                                                @endif
+                                            @else
+                                                <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-1.5 fs-11 fw-semibold" style="background: rgba(13,148,136,0.12); color: #0d9488;">
+                                                    En attente médecin
+                                                </span>
+                                            @endif
+                                        </td>
+                                        <td class="pe-4 py-3 text-end">
+                                            <button type="button" class="btn text-white btn-sm rounded-pill px-3.5 py-1.5 fw-bold shadow-sm d-inline-flex align-items-center gap-1.5" onclick="openInfirmierVideoCall({{ $t->id }}, '{{ $token }}', '{{ $livekitUrl }}', '{{ addslashes($tDocName) }}', '{{ addslashes($tPatName) }}', '{{ $t->call_channel }}')" style="background: linear-gradient(135deg, #0d9488 0%, #059669 100%); border: none;">
+                                                <i class="fa-solid fa-video fs-13"></i>
+                                                <span>Rejoindre la vidéo</span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let lastKnownTeleconsultIds = @json($infTeleconsultations->pluck('id'));
+
+            setInterval(async () => {
+                try {
+                    const res = await fetch('/infirmier/consultation/teleconsultation/active-list', {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        const list = data.teleconsultations || [];
+                        const currentIds = list.map(item => item.id);
+
+                        // Si des consultations ont été terminées par le médecin, retirer les lignes
+                        const removedIds = lastKnownTeleconsultIds.filter(id => !currentIds.includes(id));
+                        if (removedIds.length > 0) {
+                            removedIds.forEach(id => {
+                                const row = document.getElementById(`inf-teleconsult-row-${id}`);
+                                if (row) {
+                                    row.style.transition = 'all 0.4s ease';
+                                    row.style.opacity = '0';
+                                    row.style.transform = 'scale(0.95)';
+                                    setTimeout(() => row.remove(), 400);
+                                }
+                            });
+                        }
+
+                        lastKnownTeleconsultIds = currentIds;
+
+                        const badge = document.getElementById('infTeleconsultCountBadge');
+                        if (badge) {
+                            badge.innerText = `${list.length} en cours / programmée(s)`;
+                        }
+
+                        const section = document.getElementById('infirmierTeleconsultSection');
+                        if (section) {
+                            if (list.length === 0) {
+                                setTimeout(() => {
+                                    if (lastKnownTeleconsultIds.length === 0) section.style.display = 'none';
+                                }, 500);
+                            } else {
+                                section.style.display = 'block';
+                            }
+                        }
+                    }
+                } catch(e) {}
+            }, 3500);
+        });
+        </script>
         <div class="row">
             <div class="col-md-9">
                 <div class="col-xl-12 col-lg-12 col-12">

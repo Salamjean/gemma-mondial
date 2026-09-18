@@ -39,6 +39,9 @@ Route::middleware(['auth'])->group(function () {
                 Route::get('call/status/{id}', 'ConsultationController@callStatus')->name('call.status');
                 Route::get('call/history', 'ConsultationController@callHistory')->name('call.history');
                 Route::get('online/patient-info/{id}', 'ConsultationController@onlinePatientInfo')->name('online.patient.info');
+                Route::post('online/save-complete', 'ConsultationController@saveCompleteOnlineConsultation')->name('online.save.complete');
+                Route::get('teleconsultation/invite-link/{id}', 'ConsultationController@getInviteLink')->name('teleconsultation.invite_link');
+                Route::get('call/invite-link/{id}', 'ConsultationController@getInviteLink')->name('call.invite_link');
 
 
                 //store consultation

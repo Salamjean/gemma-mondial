@@ -18,7 +18,7 @@ class RedirectIfNotSecretariatMiddleware
     {
         if(Auth::check())
         {
-            if(Auth::user()->role_as == 'secretariat')
+            if(in_array(Auth::user()->role_as, ['secretariat', 'infirmier', 'doctor', 'hospital', 'super']))
             {
                 return $next($request);
             }

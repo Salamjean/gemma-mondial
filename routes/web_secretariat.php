@@ -48,6 +48,8 @@ Route::middleware(['auth'])->group(function () {
             Route::get('availabilities', [SecretariatController::class, 'getAvailabilities'])->name('availabilities');
 
             Route::prefix('patient')->name('patient.')->group(function () {
+                Route::get('search', [PatientController::class, 'searchPatients'])->name('search');
+                Route::get('searchPatient', [SecretariatController::class, 'searchPatient'])->name('searchPatient');
                 Route::get('list', [PatientController::class, 'list'])->name('list');
                 Route::get('search/patient/code/{data}', [PatientController::class, 'searchPatientByCode'])->name('searchcode');
                 Route::get('search/patient/fullname/{data}', [PatientController::class, 'searchPatientByFullName'])->name('searchfullname');

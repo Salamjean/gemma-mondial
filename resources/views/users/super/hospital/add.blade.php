@@ -131,9 +131,18 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="row">
-
-
+                        <div class="row mt-10">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <div class="form-check form-switch d-flex align-items-center gap-3 p-10 bg-light rounded-10 border">
+                                        <input class="form-check-input ms-0" type="checkbox" role="switch" id="is_teleconsultation_active" name="is_teleconsultation_active" value="1" {{ old('is_teleconsultation_active', '1') == '1' ? 'checked' : '' }} style="width: 2.5em; height: 1.3em;">
+                                        <label class="form-check-label fw-bold text-dark mb-0 ms-2" for="is_teleconsultation_active">
+                                            <i class="fa-solid fa-headset text-success me-1"></i> Activer le service de Téléconsultation
+                                            <small class="text-muted d-block fw-normal">Permet aux médecins et infirmiers de cet hôpital d'utiliser la téléconsultation.</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <h4 class="box-title text-success mb-0 mt-20"><i class="ti-lock  me-15"></i> Infos de connexion
                         </h4>

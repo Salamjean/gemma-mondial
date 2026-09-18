@@ -43,6 +43,23 @@
                                     <div class="form-label"><strong>Adresse :</strong> {{ $hospital->localiteH->name ?? null}}
                                     </div>
                                 </div>
+                                <div class="col-md-6">
+                                    <div class="form-label">
+                                        <strong>Téléconsultation :</strong> 
+                                        @if($hospital->is_teleconsultation_active)
+                                            <span class="badge bg-success-light text-success fw-bold px-2 py-1"><i class="fa-solid fa-circle-check me-1"></i> Activée</span>
+                                        @else
+                                            <span class="badge bg-danger-light text-danger fw-bold px-2 py-1"><i class="fa-solid fa-circle-xmark me-1"></i> Désactivée</span>
+                                        @endif
+                                        <a href="javascript:void(0);" 
+                                           class="btn btn-xs btn-toggle-teleconsultation {{ $hospital->is_teleconsultation_active ? 'btn-outline-danger' : 'btn-outline-success' }} ms-2 rounded-pill"
+                                           data-url="{{ route('super.hospital.toggle_teleconsultation', $hospital->id) }}"
+                                           data-name="{{ addslashes($hospital->label ?? 'cet établissement') }}"
+                                           data-active="{{ $hospital->is_teleconsultation_active ? '1' : '0' }}">
+                                            <i class="fa-solid fa-power-off me-1"></i> {{ $hospital->is_teleconsultation_active ? 'Désactiver' : 'Activer' }}
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
 
                             <h4 class="box-title text-success pt-25"><i class="ti-user me-15"></i> Modifier les données
@@ -135,6 +152,17 @@
                                             </select>
                                         </div>
                                     </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label class="form-label">Service Téléconsultation</label>
+                                            <div class="form-check form-switch d-flex align-items-center gap-3 p-10 bg-light rounded-10 border">
+                                                <input class="form-check-input ms-0" type="checkbox" role="switch" id="is_teleconsultation_active_edit" name="is_teleconsultation_active" value="1" {{ old('is_teleconsultation_active', $hospital->is_teleconsultation_active) ? 'checked' : '' }} style="width: 2.5em; height: 1.3em;">
+                                                <label class="form-check-label fw-bold text-dark mb-0 ms-2" for="is_teleconsultation_active_edit">
+                                                    <i class="fa-solid fa-headset text-success me-1"></i> Téléconsultation active
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <h4 class="box-title text-success mb-0 mt-20"><i class="ti-lock  me-15"></i> Infos de
                                     connexion</h4>
@@ -221,4 +249,43 @@
         <!-- /.box -->
     </div>
     </div>
+
+    <!-- SweetAlert2 Script pour la confirmation de l'activation/désactivation de la téléconsultation -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        $(document).on('click', '.btn-toggle-teleconsultation', function(e) {
+            e.preventDefault();
+            var url = $(this).data('url');
+            var name = $(this).data('name') || 'cet établissement';
+            var isActive = $(this).data('active') == '1';
+
+            var title = isActive ? 'Désactiver la téléconsultation ?' : 'Activer la téléconsultation ?';
+            var text = isActive 
+                ? `Voulez-vous vraiment désactiver la téléconsultation pour l'établissement <b>${name}</b> ?<br><small class="text-muted mt-2 d-block">Les infirmiers et médecins de cet hôpital n'auront plus accès au module de téléconsultation.</small>`
+                : `Voulez-vous activer la téléconsultation pour l'établissement <b>${name}</b> ?<br><small class="text-muted mt-2 d-block">Le personnel de santé aura accès aux consultations vidéo et aux fonctionnalités associées.</small>`;
+            var confirmText = isActive ? '<i class="fa-solid fa-power-off me-1"></i> Oui, désactiver' : '<i class="fa-solid fa-circle-check me-1"></i> Oui, activer';
+            var confirmColor = isActive ? '#dc3545' : '#0d9488';
+            var icon = isActive ? 'warning' : 'question';
+
+            Swal.fire({
+                title: title,
+                html: text,
+                icon: icon,
+                showCancelButton: true,
+                confirmButtonColor: confirmColor,
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: confirmText,
+                cancelButtonText: 'Annuler',
+                reverseButtons: true,
+                focusCancel: isActive,
+                customClass: {
+                    popup: 'rounded-16 shadow-lg'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = url;
+                }
+            });
+        });
+    </script>
 @endsection

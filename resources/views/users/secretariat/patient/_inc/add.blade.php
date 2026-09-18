@@ -214,7 +214,13 @@
                     </div>
                     <br />
                     <div class="row mb-10">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="num_cmu" class="form-label"> <b>N° CMU (Sécurité Sociale) : </b></label>
+                                <input type="text" class="form-control" name="num_cmu" id="num_cmu" placeholder="Ex: 12345678901">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
                             <div class="form-group">
                                 <label for="type_piece" class="form-label"> <b>Type de pièce d'identité: </b>
                                     <span class="danger">*</span></label>
@@ -231,15 +237,15 @@
 
                             </div>
                         </div>
-                        <div class="col-md-4" id="no_piece">
+                        <div class="col-md-3" id="no_piece">
                             <div class="form-group">
-                                <label for="numero_identite" class="form-label"> <b>N° Pièce d'identité: </b>
+                                <label for="numero_identite" class="form-label" id="label_numero_identite"> <b>N° Pièce d'identité: </b>
                                 </label>
                                 <input type="text" class="form-control" name="numero_identite" id="numero_identite"
                                     placeholder="CI12899312AP002">
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="form-group">
                                 <label for="ethnie" class="form-label"> <b>Ethnie: </b>
                                     <span class="danger">*</span></label>
@@ -393,7 +399,7 @@
                                     <input type="hidden" name="type_admission_id" value="Consultation" />
                                     <div class="box-body">
                                         <div class="row">
-                                            <div class="col-md-3">
+                                            <div class="col-md-3 service-field-add" id="col_service_add">
                                                 <div class="form-group">
                                                     <label for="service_id" class="form-label fw-bold"> Service :
                                                         <span class="danger">*</span> </label>
@@ -401,7 +407,7 @@
                                                     </select>
                                                 </div>
                                             </div>
-                                            <div class="col-md-3">
+                                            <div class="col-md-3 service-field-add" id="col_prestation_add">
                                                 <div class="form-group">
                                                     <label for="prestation_service_id"
                                                         class="form-label fw-bold">Prestation de service : <span
@@ -411,21 +417,21 @@
                                                     </select>
                                                 </div>
                                             </div>
-                                            <div class="col-md-3">
+                                            <div class="col-md-3 service-field-add" id="col_infirmier_add">
                                                 <div class="form-group">
                                                     <label for="infirmier_id" class="form-label fw-bold"> Infirmier :
                                                         <span class="danger">*</span> </label>
                                                     <select class="form-select" id="infirmier_id" name="infirmier_id"
-                                                        style="width: 100%;">
+                                                        style="width: 100%;" required>
                                                     </select>
                                                 </div>
                                             </div>
-                                            <div class="col-md-3" id="formDoctor">
+                                            <div class="col-md-3 service-field-add" id="formDoctor">
                                                 <div class="form-group">
                                                     <label for="doctor_id" class="form-label fw-bold"> Médecin en
-                                                        charge : </label>
+                                                        charge : <span class="danger text-danger" id="doctor_required_star">*</span></label>
                                                     <select class="form-select" id="doctor_id" name="doctor_id"
-                                                        style="width: 100%;">
+                                                        style="width: 100%;" required>
                                                     </select>
                                                 </div>
                                             </div>
@@ -442,15 +448,16 @@
                                                             <label for="E07" class="me-30">Venue lui
                                                                 même</label>
                                                             <input type="radio" id="E06"
-                                                                value="Référée par un centre de santé"
+                                                                value="Transféré d'un autre établissement"
                                                                 name="mode_entree">
-                                                            <label for="E06" class="me-30">Référée par un centre
-                                                                de santé</label>
-                                                            <input type="radio" id="E05"
-                                                                value="Référée par un tradipraticien"
+                                                            <label for="E06" class="me-30">Transféré d'un autre
+                                                                établissement</label>
+                                                            <input type="radio" id="E08" value="Évacué"
                                                                 name="mode_entree">
-                                                            <label for="E05" class="me-30">Référée par un
-                                                                tradipraticien</label>
+                                                            <label for="E08" class="me-30">Évacué</label>
+                                                            <input type="radio" id="E09" value="Référé"
+                                                                name="mode_entree">
+                                                            <label for="E09" class="me-30">Référé</label>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -485,8 +492,8 @@
                     <button type="button" class="btn btn-warning me-1" onclick="history.back()">
                         <i class="ti-arrow-left"></i> Annuler
                     </button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="ti-save-alt"></i> Enregister
+                    <button type="submit" class="btn btn-primary" id="btnSubmitAdd">
+                        <i class="ti-save-alt"></i> Enregistrer
                     </button>
                 </div>
             </div>
@@ -495,19 +502,29 @@
 </div>
 <script src="{{ asset('js/corrections-ultimes.js') }}"></script>
 <script>
-    const serviceId = document.getElementById("service_id")
-    const formDoctor = document.getElementById("formDoctor")
-    formDoctor.style.display = "block";
+    const serviceId = document.getElementById("service_id");
+    const formDoctor = document.getElementById("formDoctor");
+    if (formDoctor) formDoctor.style.display = "block";
 
-    serviceId.addEventListener("change", function (e) {
-        if (serviceId.value == '4') {
+    function checkServiceDoctorVisibility(val) {
+        if (!formDoctor) return;
+        var s = (val || '').toString().toLowerCase();
+        if (s.includes('infirmier') || s.includes('soin') || s === '4') {
             formDoctor.style.display = "none";
-
+            $('#doctor_id').prop('required', false).val('');
+            $('.service-field-add:not(#formDoctor)').removeClass('col-md-3').addClass('col-md-4');
         } else {
             formDoctor.style.display = "block";
+            $('#doctor_id').prop('required', true);
+            $('.service-field-add').removeClass('col-md-4').addClass('col-md-3');
         }
+    }
 
-    });
+    if (serviceId) {
+        serviceId.addEventListener("change", function (e) {
+            checkServiceDoctorVisibility(serviceId.value);
+        });
+    }
     // pays
     const country = document.getElementById("pays")
     const precision = document.getElementById("precision")
@@ -535,12 +552,15 @@
     $(document).ready(function () {
         $('#formAdd').submit(function (e) {
             e.preventDefault();
+            var $btn = $('#btnSubmitAdd');
+            $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Enregistrement en cours...');
             var formData = $(this).serialize();
             $.ajax({
                 url: "{{ route('secretariat.patient.addpatient') }}",
                 method: 'POST',
                 data: formData,
                 success: function (response) {
+                    $btn.prop('disabled', false).html('<i class="ti-save-alt"></i> Enregistrer');
                     Swal.fire({
                         text: response.success,
                         icon: "success",
@@ -555,7 +575,8 @@
                     $('#formAdd')[0].reset();
                 },
                 error: function (xhr) {
-                    var errors = xhr.responseJSON.errors;
+                    $btn.prop('disabled', false).html('<i class="ti-save-alt"></i> Enregistrer');
+                    var errors = xhr.responseJSON ? xhr.responseJSON.errors : {};
                     for (var key in errors) {
                         var errorMessage = errors[key][0];
                         var inputElement = document.getElementById(key);
@@ -642,12 +663,12 @@
                     for (var key in errors) {
                         errorMessage += errors[key][0] + '<br/>';
                     }
-                    if (errors) {
+                    if (errors && Object.keys(errors).length > 0) {
                         Swal.fire({
                             icon: 'error',
                             title: 'Erreur de validation',
                             html: '<div class="text-danger">' + errorMessage +
-                                '</div>', // Added '+' operator here
+                                '</div>',
                         });
                     }
                 }
@@ -846,14 +867,13 @@
     fetch('{{ asset('assets/src/countries-FR.json') }}')
         .then(response => response.json())
         .then(data => {
-            const selectPays = document.getElementById('autre_pays');
+            const $selectPays = $('#autre_pays');
+            $selectPays.empty().append('<option value="">Selectionner</option>');
             for (const code in data) {
                 const nom = data[code];
-                const option = document.createElement('option');
-                option.value = nom;
-                option.textContent = nom;
-                selectPays.appendChild(option);
+                $selectPays.append(new Option(nom, nom, false, false));
             }
+            $selectPays.trigger('change');
         })
         .catch(error => console.error('Erreur de chargement du fichier JSON :', error));
 
@@ -861,30 +881,40 @@
     fetch('{{ asset('assets/src/profession.json') }}')
         .then(response => response.json())
         .then(data => {
-            const selectProfession = document.getElementById('profession');
+            const $selectProfession = $('#profession');
+            $selectProfession.empty().append('<option value="">Selectionner</option>');
             for (const libelle in data) {
                 const nom = data[libelle];
-                const option = document.createElement('option');
-                option.value = nom;
-                option.textContent = nom;
-                selectProfession.appendChild(option);
+                $selectProfession.append(new Option(nom, nom, false, false));
             }
+            $selectProfession.trigger('change');
         })
         .catch(error => console.error('Erreur de chargement du fichier JSON :', error));
 
     fetch('{{ asset('assets/src/ethnies.json') }}')
         .then(response => response.json())
         .then(data => {
-            const selectEthnie = document.getElementById('ethnie');
+            const $selectEthnie = $('#ethnie');
+            $selectEthnie.empty().append('<option value="">Selectionner</option>');
             for (const libelle in data) {
                 const nom = data[libelle];
-                const option = document.createElement('option');
-                option.value = nom;
-                option.textContent = nom;
-                selectEthnie.appendChild(option);
+                $selectEthnie.append(new Option(nom, nom, false, false));
             }
+            $selectEthnie.trigger('change');
         })
         .catch(error => console.error('Erreur de chargement du fichier JSON :', error));
+
+    // Dynamic Label for Type de pièce (CNI -> N° NNI)
+    $('#type_piece').on('change', function () {
+        var val = $(this).val();
+        if (val === 'CNI') {
+            $('#label_numero_identite').html('<b>N° NNI : </b>');
+            $('#numero_identite').attr('placeholder', 'Ex: 12345678901');
+        } else {
+            $('#label_numero_identite').html('<b>N° Pièce d\'identité: </b>');
+            $('#numero_identite').attr('placeholder', 'CI12899312AP002');
+        }
+    });
 </script>
 <script>
     // ==============================================

@@ -82,6 +82,7 @@ class HospitalController extends Controller
         $hospital -> label = $request -> label;
         $hospital -> district_sanitaire = $request -> district;
         $hospital -> nom_direction_generale = $request -> direction_generale ?? null;
+        $hospital -> is_teleconsultation_active = $request->has('is_teleconsultation_active') ? (bool)$request->is_teleconsultation_active : false;
         $hospital -> save();
 
         // Envoyer l'email de confirmation
@@ -115,6 +116,7 @@ class HospitalController extends Controller
         $hospital -> contact = $request -> contact;
         $hospital -> district_sanitaire = $request -> district;
         $hospital -> nom_direction_generale = $request -> direction_generale ?? $hospital -> nom_direction_general;
+        $hospital -> is_teleconsultation_active = $request->has('is_teleconsultation_active');
 
         if($request -> hasFile('image'))
         {
@@ -134,6 +136,16 @@ class HospitalController extends Controller
         $hospital->save();
 
         return back()->with('success',"Status modifié avec succès.");
+    }
+
+    public function toggleTeleconsultation($id)
+    {
+        $hospital = Hospital::findOrFail($id);
+        $hospital->is_teleconsultation_active = !$hospital->is_teleconsultation_active;
+        $hospital->save();
+
+        $statusLabel = $hospital->is_teleconsultation_active ? 'activée' : 'désactivée';
+        return back()->with('success', "Téléconsultation {$statusLabel} avec succès pour {$hospital->label}.");
     }
 
     public function HospReport($id)

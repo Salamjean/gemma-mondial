@@ -76,12 +76,17 @@
                             <div class="col-md-4">
                                 <label class="form-label"><b>Résidence Actuelle</b></label>
                                 <input type="text" class="form-control"
-                                    value="{{ $care->admission->patient->residenceActuelle->name }}" readonly />
+                                    value="{{ $care->admission->patient->residenceActuelle->name ?? 'N/A' }}" readonly />
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label"><b>Contact</b></label>
                                 <input type="text" class="form-control"
                                     value="{{ $care->admission->patient->telephone }}" readonly />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label"><b>N° CMU</b></label>
+                                <input type="text" class="form-control text-primary font-bold"
+                                    value="{{ $care->admission->patient->num_cmu ?? 'N/A' }}" readonly />
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label"><b>N° Assurance</b></label>

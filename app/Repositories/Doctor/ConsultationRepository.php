@@ -34,7 +34,13 @@ class ConsultationRepository
     {
         return Consultation::where('doctor_id', auth()->user()->doctor->id)
             ->where('date_consultation', date('Y-m-d'))
+            ->where('status_inf', 1)
             ->whereNull('call_channel')
+            ->where('status', 0)
+            ->where(function ($q) {
+                $q->whereNull('orientation_infirmier')
+                  ->orWhere('orientation_infirmier', '');
+            })
             ->get();
     }
 

@@ -54,7 +54,12 @@ class PatientController extends Controller
         $patient = Patient::findOrFail($id);
         $user = User::findOrFail($patient->user->id);
 
-        $request->validate([
+        $isSoinsInfirmiers = false;
+        if ($request->filled('service_id_up')) {
+            $isSoinsInfirmiers = preg_match('/infirmier|soin/i', $request->service_id_up) || $request->service_id_up == '4';
+        }
+
+        $rules = [
             'email_up' => ['nullable'],
             'residence_actuelle_up' => 'nullable',
             'situation_matrimoniale_up' => 'nullable',
@@ -62,14 +67,28 @@ class PatientController extends Controller
             'numero_identite' => ['nullable', Rule::unique('patients')->ignore($patient->id)],
             'telephone' => ['required', Rule::unique('patients')->ignore($patient->id)],
             'contact2' => ['nullable', Rule::unique('patients')->ignore($patient->id)],
-
             'admission_patient_up' => 'nullable',
-
             'prestation_service_id' => 'nullable',
             'infirmier_id' => 'nullable',
             'doctor_id' => 'nullable',
             'motif_consultation' => 'nullable',
-        ]);
+        ];
+
+        if ($request->admission_patient_up == 'Oui') {
+            $rules['prestation_service_id'] = 'required';
+            $rules['infirmier_id'] = 'required';
+            if (!$isSoinsInfirmiers) {
+                $rules['doctor_id'] = 'required';
+            }
+        }
+
+        $messages = [
+            'infirmier_id.required' => 'La sélection d\'un(e) infirmier(ère) est obligatoire.',
+            'doctor_id.required' => 'La sélection d\'un médecin traitant est obligatoire pour ce service.',
+            'prestation_service_id.required' => 'La sélection d\'une prestation médicale est obligatoire.',
+        ];
+
+        $request->validate($rules, $messages);
 
         if ($request->filled('name_up')) {
             $user->name = $request->name_up;
@@ -104,6 +123,7 @@ class PatientController extends Controller
         }
 
         $patient->contact2 = $request->contact2;
+        $patient->num_cmu = $request->num_cmu_up ?? $request->num_cmu;
         $patient->ethnie = $request->ethnie_up;
         $patient->type_piece = $request->type_piece_up;
         $patient->numero_identite = $request->numero_identite_up;
@@ -119,11 +139,12 @@ class PatientController extends Controller
         $user->save();
         $patient->save();
 
+        $hospitalId = auth()->user()->secretariat->hospital_id ?? auth()->user()->infirmier->hospital_id ?? auth()->user()->hospital_id ?? 1;
         //specifié le passage du patient dans l'hopital
-        if (!PassagePatient::where('hospital_id', auth()->user()->secretariat->hospital_id)->where('patient_id', $patient->id)->exists()) {
+        if (!PassagePatient::where('hospital_id', $hospitalId)->where('patient_id', $patient->id)->exists()) {
             $passage = new PassagePatient();
             $passage->libelle = 'Passage compte';
-            $passage->hospital_id = auth()->user()->secretariat->hospital_id;
+            $passage->hospital_id = $hospitalId;
             $passage->patient_id = $patient->id;
             $passage->date = date('Y-m-d');
             $passage->save();
@@ -246,11 +267,16 @@ class PatientController extends Controller
         $telephone = $request->input('telephone');
         $fullname = $request->input('fullname');
         $birth_date = $request->input('birth_date');
+        $num_cmu = $request->input('num_cmu');
 
         $data = Patient::query();
 
         if ($telephone) {
             $data->where('telephone', $telephone);
+        }
+
+        if ($num_cmu) {
+            $data->where('num_cmu', 'like', '%' . $num_cmu . '%');
         }
 
         if ($fullname) {
@@ -287,7 +313,12 @@ class PatientController extends Controller
     public function addPatient(Request $request)
     {
 
-        $validator = Validator::make($request->all(), [
+        $isSoinsInfirmiers = false;
+        if ($request->filled('service_id')) {
+            $isSoinsInfirmiers = preg_match('/infirmier|soin/i', $request->service_id) || $request->service_id == '4';
+        }
+
+        $rules = [
             'name' => 'required',
             'prenom' => 'required',
             'email' => 'nullable|email|unique:users',
@@ -307,12 +338,27 @@ class PatientController extends Controller
             'infirmier_id' => 'required_if:admission_patient,Oui',
             'motif_consultation' => 'required_if:admission_patient,Oui',
             'img_url' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'profession' => 'nullable',
+            'num_cmu' => 'nullable',
             'fingerprint_left_template' => 'nullable|string',
             'fingerprint_right_template' => 'nullable|string',
             'fingerprint_left_image' => 'nullable|string',
             'fingerprint_right_image' => 'nullable|string',
             'fingerprint_device' => 'nullable|string',
-        ]);
+        ];
+
+        if ($request->admission_patient == 'Oui' && !$isSoinsInfirmiers) {
+            $rules['doctor_id'] = 'required';
+        }
+
+        $messages = [
+            'infirmier_id.required_if' => 'La sélection d\'un(e) infirmier(ère) est obligatoire.',
+            'infirmier_id.required' => 'La sélection d\'un(e) infirmier(ère) est obligatoire.',
+            'doctor_id.required' => 'La sélection d\'un médecin traitant est obligatoire pour ce service.',
+            'prestation_service_id.required_if' => 'La sélection d\'une prestation médicale est obligatoire.',
+        ];
+
+        $validator = Validator::make($request->all(), $rules, $messages);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
@@ -340,12 +386,15 @@ class PatientController extends Controller
         $code = ($request->pays == 'Côte d\'Ivoire') ? 225 : 100;
         $codePatient = "DM$dataNaissRef$countNaissRef$code";
 
+        $hospitalId = $secretaire->hospital->id ?? auth()->user()->infirmier->hospital_id ?? auth()->user()->hospital_id ?? 1;
+
         $patient = Patient::create([
             'user_id' => $user->id,
-            'secretaire_id' => $secretaire->id,
-            'hospital_id' => $secretaire->hospital->id,
+            'secretaire_id' => $secretaire->id ?? null,
+            'hospital_id' => $hospitalId,
             'gender' => $request->gender,
             'no_assurance' => $request->no_assurance,
+            'num_cmu' => $request->num_cmu,
             'profession' => $request->profession,
             'lieu_de_naissance_id' => $request->lieu_de_naissance,
             'birth_date' => $request->birth_date,
@@ -412,7 +461,7 @@ class PatientController extends Controller
         if ($patient) {
             $passage = new PassagePatient();
             $passage->libelle = 'Création du compte';
-            $passage->hospital_id = auth()->user()->secretariat->hospital_id;
+            $passage->hospital_id = $hospitalId;
             $passage->date = date('Y-m-d');
             $passage->patient_id = $patient->id;
             $passage->save();

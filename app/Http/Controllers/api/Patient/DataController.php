@@ -392,7 +392,11 @@ class DataController extends Controller
             }
 
             $activeConsultation = \App\Models\Consultation::where('patient_id', $patient->id)
-                ->where('is_call_active', 1)
+                ->where('status', 0)
+                ->where(function ($q) {
+                    $q->where('is_call_active', 1)
+                      ->orWhereIn('call_status', ['calling', 'accepted', 'in_call']);
+                })
                 ->latest('updated_at')
                 ->first();
 
@@ -400,27 +404,40 @@ class DataController extends Controller
                 return response()->json(['has_active_call' => false], 200);
             }
 
+            $docUser = optional(optional($activeConsultation->doctor)->user);
+            $doctorName = trim(($docUser->name ?? '') . ' ' . ($docUser->prenom ?? ''));
+            $docNameFull = $doctorName ? ('Dr. ' . $doctorName) : 'Médecin de garde';
 
-
-            $doctorUser = optional(optional($activeConsultation->doctor)->user);
-            $docNameTrimmed = trim(($doctorUser->name ?? '') . ' ' . ($doctorUser->prenom ?? ''));
-            $doctorName = $docNameTrimmed ? $docNameTrimmed : "Recherche d'un médecin disponible...";
-            
             $livekitUrl = config('services.livekit.url', 'wss://gemma-14fckk2m.livekit.cloud');
-            $patientName = optional(Auth::user())->name ?? 'Patient';
-            $token = \App\Services\LiveKitTokenService::generateToken($activeConsultation->call_channel, 'patient_' . $patient->id, $patientName);
+            $patientUser = Auth::user();
+            $patientName = trim(($patientUser->name ?? '') . ' ' . ($patientUser->prenom ?? '')) ?: 'Patient';
+
+            $channel = $activeConsultation->call_channel ?: ('consultation_' . $activeConsultation->id . '_' . \Illuminate\Support\Str::random(10));
+            if (empty($activeConsultation->call_channel)) {
+                $activeConsultation->call_channel = $channel;
+                $activeConsultation->save();
+            }
+
+            $token = \App\Services\LiveKitTokenService::generateToken(
+                $channel,
+                'patient_' . $patient->id,
+                $patientName
+            );
 
             return response()->json([
                 'has_active_call' => true,
                 'call' => [
                     'consultation_id' => $activeConsultation->id,
-                    'channel' => $activeConsultation->call_channel,
-                    'livekit_url' => $livekitUrl,
-                    'token' => $token,
-                    'doctor_name' => $doctorName,
                     'doctor_id' => $activeConsultation->doctor_id,
-                    'call_status' => $activeConsultation->call_status,
-                    'prestation' => optional(optional($activeConsultation->prestationHospital)->prestationService)->libelle ?? 'Consultation',
+                    'doctor_name' => $docNameFull,
+                    'doctor_photo' => ($docUser && $docUser->photo) ? asset('storage/' . $docUser->photo) : null,
+                    'patient_name' => $patientName,
+                    'prestation' => optional(optional($activeConsultation->prestationHospital)->prestationService)->libelle ?? $activeConsultation->motif_consultation ?? 'Téléconsultation en direct',
+                    'channel' => $channel,
+                    'token' => $token,
+                    'livekit_url' => $livekitUrl,
+                    'call_status' => $activeConsultation->call_status ?: 'calling',
+                    'is_call_active' => (bool) $activeConsultation->is_call_active,
                 ]
             ], 200);
         } catch (\Exception $e) {

@@ -96,8 +96,10 @@
     }
 
     async function checkDoctorIncomingCalls() {
-        // Si le médecin est déjà en visioconférence, ne pas afficher d'autre modal d'appel entrant
-        if ($('#doctorVideoCallModal').is(':visible')) {
+        // Si le médecin est déjà en visioconférence ou si le modal d'appel vidéo est actif, ne pas afficher d'appel entrant
+        if ($('#doctorVideoCallModal').hasClass('show') || $('#doctorVideoCallModal').is(':visible')) {
+            stopRingtoneSound();
+            $('#doctorIncomingCallModal').modal('hide');
             return;
         }
 
@@ -127,6 +129,21 @@
                     if (currentIncomingConsultationId !== data.consultation_id) {
                         currentIncomingConsultationId = data.consultation_id;
                         document.getElementById('incomingPatientName').innerText = data.patient_name || 'Patient';
+                        
+                        const titleEl = document.querySelector('#doctorIncomingCallModal h4');
+                        const subtitleEl = document.querySelector('#doctorIncomingCallModal .modal-body > p');
+                        const accentEl = document.querySelector('#doctorIncomingCallModal .modal-content > div:first-child');
+                        
+                        if (data.is_emergency) {
+                            if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-danger me-2"></i> Appel d\'Urgence Médicale';
+                            if (subtitleEl) subtitleEl.innerHTML = '<span class="text-danger fw-bold">Priorité Haute</span> &bull; Service : <strong>' + (data.service_name || 'Général') + '</strong>';
+                            if (accentEl) accentEl.style.background = 'linear-gradient(90deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%)';
+                        } else {
+                            if (titleEl) titleEl.innerHTML = 'Appel de Téléconsultation';
+                            if (subtitleEl) subtitleEl.innerText = 'Un patient sollicite une consultation en ligne immédiate';
+                            if (accentEl) accentEl.style.background = 'linear-gradient(90deg, #0d9488 0%, #14b8a6 50%, #2dd4bf 100%)';
+                        }
+
                         $('#doctorIncomingCallModal').modal('show');
                         playRingtoneSound();
                     }
@@ -146,10 +163,13 @@
         if (!currentIncomingConsultationId) return;
 
         const consultationId = currentIncomingConsultationId;
+        ignoredIncomingConsultationIds.add(consultationId);
+        currentIncomingConsultationId = null;
+        stopRingtoneSound();
+        $('#doctorIncomingCallModal').modal('hide');
+
         const btnAccept = document.getElementById('btnAcceptIncomingCall');
         if (btnAccept) btnAccept.disabled = true;
-
-        stopRingtoneSound();
 
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -162,8 +182,6 @@
             });
 
             const data = await res.json();
-            $('#doctorIncomingCallModal').modal('hide');
-            currentIncomingConsultationId = null;
 
             if (data.status === 'success') {
                 if (typeof window.openDoctorVideoCall === 'function') {

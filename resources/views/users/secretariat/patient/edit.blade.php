@@ -221,7 +221,13 @@
                                 </div>
                                 <br />
                                 <div class="row mb-10">
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="num_cmu_up" class="form-label"> <b>N° CMU (Sécurité Sociale) : </b> </label>
+                                            <input type="text" class="form-control" name="num_cmu_up" id="num_cmu_up" value="{{ old('num_cmu_up', $patient->num_cmu) }}" placeholder="Ex: 12345678901">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
                                         <div class="form-group">
                                             <label for="type_piece_up" class="form-label"> <b>Type de pièce d'identité: </b> <span class="danger">*</span></label>
                                             <select class="form-select" id="type_piece_up" name="type_piece_up" required>
@@ -236,13 +242,13 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="col-md-4" id="no_piece_up">
+                                    <div class="col-md-3" id="no_piece_up">
                                         <div class="form-group">
-                                            <label for="numero_identite_up" class="form-label"> <b>N° Pièce d'identité: </b> </label>
-                                            <input type="text" class="form-control" name="numero_identite_up" id="numero_identite_up" value="{{ old('numero_identite_up', $patient->numero_identite) }}" placeholder="CI12899312AP002">
+                                            <label for="numero_identite_up" class="form-label" id="label_numero_identite_up"> <b>{{ $patient->type_piece == 'CNI' ? 'N° NNI :' : "N° Pièce d'identité:" }} </b> </label>
+                                            <input type="text" class="form-control" name="numero_identite_up" id="numero_identite_up" value="{{ old('numero_identite_up', $patient->numero_identite) }}" placeholder="{{ $patient->type_piece == 'CNI' ? 'Ex: 12345678901' : 'CI12899312AP002' }}">
                                         </div>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
                                         <div class="form-group">
                                             <label for="ethnie_up" class="form-label"> <b>Ethnie: </b> <span class="danger">*</span></label>
                                             <select class="form-control select2" id="ethnie_up" name="ethnie_up" style="width: 100%"></select>
@@ -421,6 +427,18 @@
                     }
                     select.trigger('change');
                 });
+
+            // Change dynamic label for type_piece_up
+            $('#type_piece_up').on('change', function () {
+                var val = $(this).val();
+                if (val === 'CNI') {
+                    $('#label_numero_identite_up').html('<b>N° NNI : </b>');
+                    $('#numero_identite_up').attr('placeholder', 'Ex: 12345678901');
+                } else {
+                    $('#label_numero_identite_up').html('<b>N° Pièce d\'identité: </b>');
+                    $('#numero_identite_up').attr('placeholder', 'CI12899312AP002');
+                }
+            });
 
             // 7. Soumission AJAX du formulaire
             $('#formEditPatient').on('submit', function(e) {

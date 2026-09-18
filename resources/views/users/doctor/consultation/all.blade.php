@@ -123,9 +123,11 @@
     </div>
 
     <!-- 2. Section Demandes de Téléconsultation en ligne en attente (EN BAS) -->
-    <div class="mt-4">
-        @include('partials.doctor_pending_teleconsultations')
-    </div>
+    @if(optional(optional(auth()->user()->doctor)->hospital)->is_teleconsultation_active ?? true)
+        <div class="mt-4">
+            @include('partials.doctor_pending_teleconsultations')
+        </div>
+    @endif
 @endsection
 
 @push('js')

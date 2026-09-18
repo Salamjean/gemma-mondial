@@ -193,11 +193,8 @@ async function loadPendingOnlineRequests() {
                 const list = data.requests || [];
                 const container = document.getElementById('pendingOnlineList');
                 const countBadge = document.getElementById('pendingCountBadge');
-                if (countBadge) countBadge.innerText = `${list.length} demande(s) en attente`;
-
-                // Déclencher la sonnerie uniquement pour les appels en direct (live ringing)
-                const hasActiveRingingRequest = list.some(req => req.is_call_active && req.call_status === 'calling' && !req.is_taken_by_me);
-                if (hasActiveRingingRequest) {
+                const hasCallingRequest = list.some(req => !req.is_taken_by_me && (req.is_call_active || req.call_status === 'calling'));
+                if (hasCallingRequest) {
                     playDoctorRingtone();
                 } else {
                     stopDoctorRingtone();
@@ -255,7 +252,7 @@ async function loadPendingOnlineRequests() {
                            </div>`
                         : `<button type="button" onclick="pickupPendingCall(${req.id})" class="btn btn-pickup-call btn-sm rounded-pill px-3.5 py-1.5 fw-bold shadow-sm d-inline-flex align-items-center gap-1.5">
                             <i class="fa-solid fa-phone-volume fs-13"></i>
-                            <span>Appeler le patient</span>
+                            <span>Appeler l'infirmier(ère)</span>
                            </button>`;
 
                     const dossierBtn = req.patient_id
@@ -272,7 +269,10 @@ async function loadPendingOnlineRequests() {
                                     ${avatarHtml}
                                     <div>
                                         <h6 class="fw-bold text-dark mb-0 fs-14">${req.patient_name}</h6>
-                                        ${req.patient_code ? `<span class="badge bg-light text-secondary border fs-11 mt-0.5">${req.patient_code}</span>` : ''}
+                                        <div class="d-flex align-items-center gap-1 mt-0.5 flex-wrap">
+                                            ${req.patient_code ? `<span class="badge bg-light text-secondary border fs-10">${req.patient_code}</span>` : ''}
+                                            ${req.infirmier_name ? `<span class="badge bg-teal-subtle text-teal-800 border fs-10" style="background: rgba(13,148,136,0.1); color: #0f766e;"><i class="fa-solid fa-user-nurse me-1"></i>${req.infirmier_name}</span>` : ''}
+                                        </div>
                                     </div>
                                 </div>
                             </td>

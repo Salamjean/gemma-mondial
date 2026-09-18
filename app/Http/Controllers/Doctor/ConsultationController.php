@@ -15,6 +15,7 @@ use App\Models\RegistreConsultationCurative;
 use App\Repositories\Doctor\ConsultationRepository;
 use App\Repositories\Doctor\IssueRepository;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ConsultationController extends Controller
 {
@@ -39,8 +40,13 @@ class ConsultationController extends Controller
         $doctorId = auth()->user()->doctor->id;
         $consultations = Consultation::orderByDESC('created_at')
             ->where('doctor_id', $doctorId)
+            ->where('status_inf', 1)
             ->where('status', 0)
             ->whereNull('call_channel')
+            ->where(function ($q) {
+                $q->whereNull('orientation_infirmier')
+                  ->orWhere('orientation_infirmier', '');
+            })
             ->get();
 
         return view('users.doctor.consultation.all', compact('consultations'));
@@ -109,6 +115,41 @@ class ConsultationController extends Controller
             ?? optional(optional(optional($consultation->admission)->infirmier)->user)->name 
             ?? 'Non renseigné';
 
+        // Médicaments pour prescription
+        $doctor = auth()->user()->doctor ?? null;
+        $hospitalId = $doctor ? $doctor->hospital_id : ($consultation->hospital_id ?? 1);
+
+        $drugs = \App\Models\Drug::select('id', 'name', 'code', 'unite')->orderBy('name')->get();
+        $drugsHospital = \App\Models\DrugHospital::with('drug')
+            ->where('hospital_id', $hospitalId)
+            ->get()
+            ->map(function ($dh) {
+                return [
+                    'id' => $dh->id,
+                    'name' => optional($dh->drug)->name ?? 'Médicament',
+                    'code' => optional($dh->drug)->code ?? '',
+                    'unite' => optional($dh->drug)->unite ?? '',
+                    'price' => $dh->price,
+                ];
+            });
+
+        // Documents existants
+        $ordExterne = \App\Models\Ordonnance::with('prescriptions.drug')
+            ->where('consultation_id', $consultation->id)
+            ->where('type', 'externe')
+            ->first();
+
+        $ordInterne = \App\Models\Ordonnance::with('prescriptions.drugHospital.drug')
+            ->where('consultation_id', $consultation->id)
+            ->where('type', 'interne')
+            ->first();
+
+        $bulletinExamen = \App\Models\BulletinExamen::with('examens')
+            ->where('consultation_id', $consultation->id)
+            ->first();
+
+        $arretTravail = \App\Models\ArretTravail::where('consultation_id', $consultation->id)->first();
+
         return response()->json([
             'patient_id' => optional($patient)->id,
             'name'       => $name,
@@ -133,10 +174,10 @@ class ConsultationController extends Controller
             'pouls'      => $consultation->pouls ?? optional($reg)->pouls ?? '',
             'temperature'=> $consultation->temperature ?? optional($reg)->temperature ?? '',
             'saturation_oxygene' => $consultation->saturation_oxygene ?? optional($reg)->saturation_oxygene ?? '',
-            'frequence_respiratoire' => $consultation->frequence_respiratoire ?? optional($reg)->frequence_respiratoire ?? '',
-            'perimetre_brachial' => $consultation->perimetre_brachial ?? optional($reg)->perimetre_brachial ?? '',
-            'perimetre_cranien' => $consultation->perimetre_cranien ?? optional($reg)->perimetre_cranien ?? '',
-            'zscore'     => $consultation->zscore ?? optional($reg)->zcore ?? '',
+            'frequence_respiratoire' => optional($reg)->frequence_respiratoire ?? '',
+            'perimetre_brachial' => $consultation->perimetre_brach ?? optional($reg)->perimetre_brachial ?? '',
+            'perimetre_cranien' => optional($reg)->perimetre_cranien ?? '',
+            'zscore'     => optional($reg)->zcore ?? '',
             'ordre_no'   => '0' . (function_exists('noOrdreConsultation') ? noOrdreConsultation() : '1'),
             'date_du_jour' => \Carbon\Carbon::now()->format('d/m/Y'),
             // Antécédents existants
@@ -171,6 +212,326 @@ class ConsultationController extends Controller
             'glycemie_a_jeun' => optional($reg)->glycemie_a_jeun ?? '',
             'glycemie_non_a_jeun' => optional($reg)->glycemie_non_a_jeun ?? '',
             'mode_sortie' => optional(optional($consultation->registre))->issue_consultation ?? '',
+            'issue_justification' => optional(optional($consultation->registre))->issue_consultation_justification ?? '',
+            // Listes de médicaments & Documents existants
+            'drugs' => $drugs,
+            'hospital_drugs' => $drugsHospital,
+            'existing_ordonnance_externe' => $ordExterne,
+            'existing_ordonnance_interne' => $ordInterne,
+            'existing_bulletin_examen' => $bulletinExamen,
+            'existing_arret_travail' => $arretTravail,
+        ]);
+    }
+
+    /**
+     * Enregistrement complet atomique de la téléconsultation avec Issue et Prescriptions/Documents
+     */
+    public function saveCompleteOnlineConsultation(Request $request)
+    {
+        $request->validate([
+            'consultation_id' => 'required',
+            'mode_sortie' => 'required',
+            'motif_consultation' => 'required',
+        ]);
+
+        $getStr = function ($key, $default = null) use ($request) {
+            $val = $request->input($key, $default);
+            if (is_array($val)) {
+                return count($val) > 0 ? (string) reset($val) : $default;
+            }
+            return $val ?? $default;
+        };
+
+        $consultation = Consultation::with('patient')->findOrFail($request->consultation_id);
+        $patient = $consultation->patient;
+
+        // Mise à jour constantes existantes sur la table consultations
+        if ($request->filled('poids')) $consultation->poids = $getStr('poids');
+        if ($request->filled('taille')) $consultation->taille = $getStr('taille');
+        if ($request->filled('imc')) $consultation->imc = $getStr('imc');
+        if ($request->filled('temperature')) $consultation->temperature = $getStr('temperature');
+        if ($request->filled('ta')) $consultation->tension_arterielle = $getStr('ta');
+        if ($request->filled('pouls')) $consultation->pouls = $getStr('pouls');
+        if ($request->filled('saturation_oxygene')) $consultation->saturation_oxygene = $getStr('saturation_oxygene');
+        if ($request->filled('perimetre_brachial')) $consultation->perimetre_brach = $getStr('perimetre_brachial');
+        if ($request->filled('glycemie_a_jeun')) $consultation->gly_a_jeun = $getStr('glycemie_a_jeun');
+        if ($request->filled('glycemie_non_a_jeun')) $consultation->gly_nn_jeun = $getStr('glycemie_non_a_jeun');
+        if ($request->filled('motif_consultation')) $consultation->motif_consultation = $getStr('motif_consultation');
+        $consultation->status = 1;
+        $consultation->save();
+
+        $modeSortie = $getStr('mode_sortie');
+
+        $curativeData = [
+            "mode_entree" => $getStr("mode_entree", "Consultation"),
+            "motif_consultation" => $getStr("motif_consultation"),
+            "en_cours_de_scolarisation" => $getStr("en_cours_de_scolarisation"),
+            "tdr_paludisme" => $getStr("tdr_paludisme"),
+            "goutte_epaise" => $getStr("goutte_epaise"),
+            "milda_enfant_eligible" => $getStr("milda_enfant_eligible"),
+            "remise_milda_enfant" => $getStr("remise_milda_enfant"),
+            "cdip_propose" => $getStr("cdip_propose"),
+            "cdip_realise" => $getStr("cdip_realise"),
+            "code_depistage_client" => $getStr("code_depistage_client"),
+            "glycemie_a_jeun" => $getStr("glycemie_a_jeun"),
+            "glycemie_non_a_jeun" => $getStr("glycemie_non_a_jeun"),
+            "zcore" => $getStr("zscore"),
+            "temperature" => $getStr("temperature"),
+            "frequence_respiratoire" => $getStr("frequence_respiratoire"),
+            "ta" => $getStr("ta"),
+            "hta" => $getStr("hta"),
+            "pouls" => $getStr("pouls"),
+            "perimetre_brachial" => $getStr("perimetre_brachial"),
+            "perimetre_cranien" => $getStr("perimetre_cranien"),
+            "tuberculose" => $getStr("tuberculose"),
+            "traitement_medicamenteux" => $getStr("traitement_medicamenteux"),
+            "traitement_medicamenteux_anterieur" => $getStr("traitement_medicamenteux_anterieur"),
+            "antecedent_medical" => $getStr("antecedent_medical"),
+            "autre_antecedent_medical" => $getStr("autre_antecedent_medical"),
+            "antecedent_chirurgical" => $getStr("antecedent_chirurgical"),
+            "autre_antecedent_chirurgical" => $getStr("autre_antecedent_chirurgical"),
+            "nom_operation" => $getStr("nom_operation"),
+            "gyneco_obstetrico" => $getStr("gyneco_obstetrico"),
+            "ddr" => $getStr("ddr"),
+            "en_cours_de_grossesse" => $getStr("en_cours_de_grossesse"),
+            "description_grossesse" => $getStr("description_grossesse"),
+            "mode_de_vie" => $getStr("mode_de_vie"),
+            "tabac" => $getStr("tabac"),
+            "alcool" => $getStr("alcool"),
+            "taille" => $getStr("taille"),
+            "poids" => $getStr("poids"),
+            "imc" => $getStr("imc"),
+            "drepanocytaire" => $getStr("drepanocytaire"),
+            "saturation_oxygene" => $getStr("saturation_oxygene"),
+            "type_visite" => $getStr("type_visite", "Curative"),
+            "examen_physique" => $getStr("examen_physique"),
+            "diagnostic_retenu" => $getStr("diagnostic_retenu"),
+            "autre_pathologie_associee" => $getStr("autre_pathologie_associee"),
+        ];
+
+        foreach ($curativeData as $k => $v) {
+            if (is_array($v)) {
+                $curativeData[$k] = count($v) > 0 ? (string) reset($v) : null;
+            }
+        }
+
+        // Justification selon issue
+        $justification = $getStr('issue_justification', '');
+        if ($modeSortie === 'observation') {
+            $obsCond = $getStr('observation_conduite', '');
+            $obsDur = $getStr('observation_duree', '');
+            $obsCons = $getStr('observation_consigne', '');
+            $justification = "Mise en observation" . ($obsDur ? " (Durée: $obsDur)" : "") . ($obsCond ? " - Conduite: $obsCond" : "") . ($obsCons ? " - Consignes: $obsCons" : "");
+        } elseif ($modeSortie === 'a-revoir') {
+            $rdvDate = $getStr('date_rdv_prochain', '');
+            $rdvMotif = $getStr('motif_rdv_prochain', '');
+            $justification = "À revoir" . ($rdvDate ? " le: $rdvDate" : "") . ($rdvMotif ? " - Motif: $rdvMotif" : "");
+        }
+
+        if (Registre::where('consultation_id', $consultation->id)->exists()) {
+            $registre = Registre::where('consultation_id', $consultation->id)->first();
+            $registre->issue_consultation = $modeSortie;
+            if (!empty($justification)) {
+                $registre->issue_consultation_justification = $justification;
+            }
+            $registre->save();
+
+            RegistreConsultationCurative::updateOrCreate(
+                ['registre_id' => $registre->id],
+                $curativeData
+            );
+        } else {
+            $registre = Registre::create([
+                "code" => codeRegistre($patient->code_patient, $patient->id),
+                "type_consultation" => "consultation curative",
+                "consultation_id" => $consultation->id,
+                "issue_consultation" => $modeSortie,
+                "issue_consultation_justification" => $justification,
+            ]);
+
+            RegistreConsultationCurative::create(array_merge(
+                ["registre_id" => $registre->id],
+                $curativeData
+            ));
+        }
+
+        // Gestion des Prescriptions & Documents si mode_sortie == 'sortie' ou si demandé
+        $docs = [];
+
+        // 1. Ordonnance Externe
+        if ($request->input('has_ordonnance_externe') == '1' || $request->has('medicamentCode')) {
+            $medCodes = (array) $request->input('medicamentCode', []);
+            if (!empty(array_filter($medCodes))) {
+                if (\App\Models\Ordonnance::where('type', 'externe')->where('consultation_id', $consultation->id)->exists()) {
+                    $exist = \App\Models\Ordonnance::where('type', 'externe')->where('consultation_id', $consultation->id)->first();
+                    $exist->prescriptions()->delete();
+                    $exist->delete();
+                }
+
+                $ordExterne = \App\Models\Ordonnance::create([
+                    "reference" => codeOrdonnance($patient->code_patient, $patient->id),
+                    "type" => 'externe',
+                    "consultation_id" => $consultation->id,
+                    "status" => 1,
+                    "date" => date('Y-m-d')
+                ]);
+
+                $quantities = (array) $request->input('medicamentQte', []);
+                $posologies = (array) $request->input('medicamentPosologie', []);
+                $routes = (array) $request->input('routeAdministration', []);
+                $durations = (array) $request->input('duration', []);
+                $advices = (array) $request->input('healthDieteticAdvice', []);
+
+                foreach ($medCodes as $index => $item) {
+                    if (empty($item)) continue;
+                    $drug = \App\Models\Drug::find($item);
+
+                    $prescription = new \App\Models\Prescription();
+                    $prescription->ordonnance_id = $ordExterne->id;
+                    $prescription->drug_id = $item;
+                    $prescription->quantity = $quantities[$index] ?? 1;
+                    $prescription->dosage = $posologies[$index] ?? ($drug ? $drug->posology : null);
+                    $prescription->route_administration = $routes[$index] ?? null;
+                    $prescription->duration = $durations[$index] ?? null;
+                    $prescription->health_dietetic_advice = $advices[$index] ?? null;
+                    $prescription->save();
+                }
+
+                $docs['ordonnance_externe'] = [
+                    'id' => $ordExterne->id,
+                    'reference' => $ordExterne->reference,
+                    'url' => route('consultation.imprimer.post', ['post' => 'ordonnance', 'id' => $ordExterne->id]),
+                ];
+            }
+        }
+
+        // 2. Ordonnance Interne
+        if ($request->input('has_ordonnance_interne') == '1' || $request->has('medicamentCodeI')) {
+            $medCodesI = (array) $request->input('medicamentCodeI', []);
+            if (!empty(array_filter($medCodesI))) {
+                if (\App\Models\Ordonnance::where('type', 'interne')->where('consultation_id', $consultation->id)->exists()) {
+                    $exist = \App\Models\Ordonnance::where('type', 'interne')->where('consultation_id', $consultation->id)->first();
+                    $exist->prescriptions()->delete();
+                    $exist->delete();
+                }
+
+                $ordInterne = \App\Models\Ordonnance::create([
+                    "reference" => codeOrdonnance($patient->code_patient, $patient->id),
+                    "type" => 'interne',
+                    "consultation_id" => $consultation->id,
+                    "date" => date('Y-m-d')
+                ]);
+
+                $quantitiesI = (array) $request->input('medicamentQteI', []);
+                $posologiesI = (array) $request->input('medicamentPosologieI', []);
+                $routesI = (array) $request->input('routeAdministrationI', []);
+                $durationsI = (array) $request->input('durationI', []);
+                $advicesI = (array) $request->input('healthDieteticAdviceI', []);
+
+                $price = 0;
+                foreach ($medCodesI as $index => $item) {
+                    if (empty($item)) continue;
+                    $drug = \App\Models\DrugHospital::find($item);
+
+                    $prescription = new \App\Models\Prescription();
+                    $prescription->ordonnance_id = $ordInterne->id;
+                    $prescription->drug_id = $item;
+                    $prescription->quantity = $quantitiesI[$index] ?? 1;
+                    $prescription->dosage = $posologiesI[$index] ?? ($drug ? $drug->posology : null);
+                    $prescription->route_administration = $routesI[$index] ?? null;
+                    $prescription->duration = $durationsI[$index] ?? null;
+                    $prescription->health_dietetic_advice = $advicesI[$index] ?? null;
+                    $prescription->save();
+
+                    $price += ($quantitiesI[$index] ?? 1) * ($drug ? $drug->price : 0);
+                }
+
+                $hospitalId = auth()->user()->doctor ? auth()->user()->doctor->hospital_id : ($consultation->hospital_id ?? 1);
+                $drugSale = new \App\Models\DrugSale();
+                $drugSale->type = 'ordonnance';
+                $drugSale->hospital_id = $hospitalId;
+                $drugSale->ordonnance_id = $ordInterne->id;
+                $drugSale->price = $price;
+                $drugSale->save();
+
+                $docs['ordonnance_interne'] = [
+                    'id' => $ordInterne->id,
+                    'reference' => $ordInterne->reference,
+                    'url' => route('consultation.imprimer.post', ['post' => 'ordonnance', 'id' => $ordInterne->id]),
+                ];
+            }
+        }
+
+        // 3. Bulletin d'examen
+        if ($request->input('has_bulletin_examen') == '1' || $request->has('nature_examen')) {
+            $natureExamen = (array) $request->input('nature_examen', []);
+            if (!empty(array_filter($natureExamen))) {
+                if (\App\Models\BulletinExamen::where('consultation_id', $consultation->id)->exists()) {
+                    $exist = \App\Models\BulletinExamen::where('consultation_id', $consultation->id)->first();
+                    $exist->delete();
+                }
+
+                $bulletin = \App\Models\BulletinExamen::create([
+                    "code_bulletin" => codeBulletin($patient->code_patient, $patient->id),
+                    "consultation_id" => $consultation->id,
+                ]);
+
+                foreach ($natureExamen as $exams) {
+                    if (empty($exams)) continue;
+                    \App\Models\Examen::create([
+                        'code_examen' => codeExamen($patient->code_patient, $patient->id),
+                        'bulletin_examen_id' => $bulletin->id,
+                        'nature_examen' => $exams,
+                    ]);
+                }
+
+                $docs['bulletin_examen'] = [
+                    'id' => $bulletin->id,
+                    'code' => $bulletin->code_bulletin,
+                    'url' => route('consultation.imprimer.post', ['post' => 'examen', 'id' => $bulletin->id]),
+                ];
+            }
+        }
+
+        // 4. Arrêt de travail
+        if ($request->input('has_arret_travail') == '1' || $request->filled('arret_date_debut') || $request->filled('date_debut')) {
+            $dateDebut = $getStr('arret_date_debut', $getStr('date_debut', date('Y-m-d')));
+            $dateFin = $getStr('arret_date_fin', $getStr('date_fin', date('Y-m-d', strtotime('+3 days'))));
+            $nbJour = $getStr('arret_nb_jour', $getStr('nb_jour', 3));
+
+            if (!empty($dateDebut) && !empty($dateFin)) {
+                if (\App\Models\ArretTravail::where('consultation_id', $consultation->id)->exists()) {
+                    $exist = \App\Models\ArretTravail::where('consultation_id', $consultation->id)->first();
+                    $exist->delete();
+                }
+
+                $arret = new \App\Models\ArretTravail();
+                $arret->code = codeArret($patient->code_patient, $patient->id);
+                $arret->consultation_id = $consultation->id;
+                $arret->date_debut = $dateDebut;
+                $arret->date_fin = $dateFin;
+                $arret->nb_jour = $nbJour;
+                $arret->save();
+
+                $docs['arret_travail'] = [
+                    'id' => $arret->id,
+                    'code' => $arret->code,
+                    'url' => route('consultation.imprimer.post', ['post' => 'arret', 'id' => $arret->id]),
+                ];
+            }
+        }
+
+        // Mise à jour éventuelle du rendez-vous
+        \App\Models\RendezVous::where('consultation_id', $consultation->id)->update([
+            'status' => 'complete',
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Consultation médicale et prescriptions enregistrées avec succès !',
+            'consultation_id' => $consultation->id,
+            'mode_sortie' => $modeSortie,
+            'documents' => $docs,
         ]);
     }
 
@@ -453,21 +814,30 @@ class ConsultationController extends Controller
 
     public function startCall(Request $request, $id)
     {
-        $consultation = Consultation::findOrFail($id);
-        $channel = 'consultation_room_' . $consultation->id;
-        $consultation->update([
+        $consultation = Consultation::with(['infirmier.user', 'patient.user'])->findOrFail($id);
+        $channel = $consultation->call_channel ?: ('consultation_room_' . $consultation->id);
+        
+        $doctorUser = auth()->user();
+        $doctorDoc = $doctorUser ? $doctorUser->doctor : null;
+        $doctorId = $doctorDoc ? $doctorDoc->id : null;
+        $doctorName = $doctorUser ? trim($doctorUser->name . ' ' . ($doctorUser->prenom ?? '')) : 'Médecin';
+
+        $updateData = [
             'is_call_active' => true,
             'call_status' => 'calling',
             'call_channel' => $channel,
             'call_started_at' => now(),
-        ]);
-
-        $doctorUser = auth()->user();
-        $doctorName = $doctorUser ? trim($doctorUser->name . ' ' . ($doctorUser->prenom ?? '')) : 'Médecin';
-        $doctorId = $doctorUser ? $doctorUser->id : rand(100, 999);
+        ];
+        if ($doctorId && empty($consultation->doctor_id)) {
+            $updateData['doctor_id'] = $doctorId;
+        }
+        $consultation->update($updateData);
 
         $livekitUrl = config('services.livekit.url', 'wss://gemma-14fckk2m.livekit.cloud');
-        $token = \App\Services\LiveKitTokenService::generateToken($channel, 'doctor_' . $doctorId, 'Dr. ' . $doctorName);
+        $token = \App\Services\LiveKitTokenService::generateToken($channel, 'doctor_' . ($doctorUser ? $doctorUser->id : rand(100, 999)), 'Dr. ' . $doctorName);
+
+        $infUser = optional(optional($consultation->infirmier)->user);
+        $infName = trim(($infUser->name ?? '') . ' ' . ($infUser->prenom ?? ''));
 
         return response()->json([
             'status' => 'success',
@@ -476,6 +846,7 @@ class ConsultationController extends Controller
             'token' => $token,
             'consultation_id' => $consultation->id,
             'doctor_name' => $doctorName,
+            'infirmier_name' => $infName ? ('Inf. ' . $infName) : 'Infirmier(ère)',
             'patient_name' => optional(optional($consultation->patient)->user)->name . ' ' . optional(optional($consultation->patient)->user)->prenom,
         ]);
     }
@@ -496,7 +867,7 @@ class ConsultationController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Appel terminé',
+            'message' => 'Appel raccroché avec succès',
         ]);
     }
 
@@ -598,6 +969,11 @@ class ConsultationController extends Controller
     {
         if (!$doctor || !$consultation) return false;
 
+        // Si la consultation est directement attribuée à ce médecin
+        if ($consultation->doctor_id && (int)$consultation->doctor_id === (int)$doctor->id) {
+            return true;
+        }
+
         // Filtrer strictement par hôpital : s'assurer que la demande correspond à l'hôpital du médecin
         if ($consultation->hospital_id && $doctor->hospital_id && (int)$consultation->hospital_id !== (int)$doctor->hospital_id) {
             return false;
@@ -622,6 +998,9 @@ class ConsultationController extends Controller
         $ph = $consultation->prestationHospital;
         if (!$ph && $consultation->prestation_hospital_id) {
             $ph = \App\Models\PrestationHospital::with(['prestationService.service', 'serviceHospital.service'])->find($consultation->prestation_hospital_id);
+        }
+        if (!$ph && $consultation->admission) {
+            $ph = $consultation->admission->prestationHospital;
         }
 
         // A. Correspondance par prestation_doctors
@@ -667,10 +1046,26 @@ class ConsultationController extends Controller
             return response()->json(['has_incoming' => false]);
         }
 
+        $docHospital = $user->doctor->hospital;
+        if ($docHospital && !$docHospital->is_teleconsultation_active) {
+            return response()->json(['has_incoming' => false]);
+        }
+
         $activeCalls = Consultation::whereNull('doctor_id')
             ->where('is_call_active', 1)
-            ->whereIn('call_status', ['calling', 'payment_pending', 'pending'])
-            ->with(['patient.user', 'prestationHospital.prestationService.service', 'prestationHospital.serviceHospital.service'])
+            ->where('call_status', 'calling')
+            ->where(function ($q) {
+                $q->whereNull('orientation_infirmier')
+                  ->orWhere('orientation_infirmier', '!=', 'teleconsultation')
+                  ->orWhere('orientation_infirmier', 'urgence')
+                  ->orWhere('is_urgence', 1);
+            })
+            ->with([
+                'patient.user',
+                'prestationHospital.prestationService.service',
+                'prestationHospital.serviceHospital.service',
+                'admission.prestationHospital.serviceHospital.service'
+            ])
             ->latest('updated_at')
             ->get();
 
@@ -692,11 +1087,19 @@ class ConsultationController extends Controller
         $patientUser = optional(optional($incoming->patient)->user);
         $patientName = trim(($patientUser->name ?? '') . ' ' . ($patientUser->prenom ?? ''));
 
+        $serviceName = optional(optional(optional($incoming->prestationHospital)->serviceHospital)->service)->libelle
+            ?? optional(optional(optional($incoming->prestationHospital)->prestationService)->service)->libelle
+            ?? optional(optional(optional(optional($incoming->admission)->prestationHospital)->serviceHospital)->service)->libelle
+            ?? 'Consultation Générale';
+
         return response()->json([
             'has_incoming' => true,
             'consultation_id' => $incoming->id,
             'patient_name' => $patientName ?: 'Patient',
             'channel' => $incoming->call_channel,
+            'is_emergency' => ($incoming->orientation_infirmier === 'urgence' || $incoming->is_urgence == 1),
+            'service_name' => $serviceName,
+            'motif' => $incoming->motif_consultation ?: $serviceName,
             'created_at' => $incoming->created_at ? $incoming->created_at->format('H:i:s') : now()->format('H:i:s'),
         ]);
     }
@@ -718,16 +1121,18 @@ class ConsultationController extends Controller
             ], 403);
         }
 
-        // Transaction/Atomic update : premier médecin disponible à cliquer pour prendre en charge la consultation payée
+        // Transaction/Atomic update : médecin prend l'appel et passe la session en communication
         $affected = Consultation::where('id', $id)
             ->where(function ($q) use ($doctor) {
                 $q->whereNull('doctor_id')->orWhere('doctor_id', $doctor->id);
             })
-            ->where('status', 0)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', 0);
+            })
             ->update([
                 'doctor_id' => $doctor->id,
                 'is_call_active' => true,
-                'call_status' => 'accepted',
+                'call_status' => 'calling',
                 'call_started_at' => now(),
             ]);
 
@@ -738,7 +1143,11 @@ class ConsultationController extends Controller
             ]);
         }
 
-        $consultation = Consultation::findOrFail($id);
+        $consultation = Consultation::with(['infirmier.user', 'patient.user'])->findOrFail($id);
+        if (empty($consultation->call_channel)) {
+            $consultation->call_channel = 'consultation_' . $consultation->id . '_' . \Illuminate\Support\Str::random(10);
+            $consultation->save();
+        }
         $channel = $consultation->call_channel;
         $doctorName = trim($doctorUser->name . ' ' . ($doctorUser->prenom ?? ''));
         $livekitUrl = config('services.livekit.url', 'wss://gemma-14fckk2m.livekit.cloud');
@@ -747,6 +1156,9 @@ class ConsultationController extends Controller
         $patientUser = optional(optional($consultation->patient)->user);
         $patientName = trim(($patientUser->name ?? '') . ' ' . ($patientUser->prenom ?? ''));
 
+        $infUser = optional(optional($consultation->infirmier)->user);
+        $infName = trim(($infUser->name ?? '') . ' ' . ($infUser->prenom ?? ''));
+
         return response()->json([
             'status' => 'success',
             'channel' => $channel,
@@ -754,6 +1166,7 @@ class ConsultationController extends Controller
             'token' => $token,
             'consultation_id' => $consultation->id,
             'patient_name' => $patientName ?: 'Patient',
+            'infirmier_name' => $infName ? ('Inf. ' . $infName) : 'Infirmier(ère)',
         ]);
     }
 
@@ -764,20 +1177,31 @@ class ConsultationController extends Controller
             return response()->json(['status' => 'success', 'requests' => []]);
         }
 
+        $docHospital = $user->doctor->hospital;
+        if ($docHospital && !$docHospital->is_teleconsultation_active) {
+            return response()->json(['status' => 'success', 'requests' => []]);
+        }
+
         if (!$this->isDoctorInSchedule($user)) {
             return response()->json(['status' => 'success', 'requests' => []]);
         }
 
         $doctor = $user->doctor;
 
-        $pending = Consultation::whereNotNull('call_channel')
+        $pending = Consultation::where(function ($q) {
+                $q->where(function ($sq) {
+                    $sq->whereNotNull('call_channel')->where('call_channel', '!=', '');
+                })
+                ->orWhere('orientation_infirmier', 'teleconsultation')
+                ->orWhere('orientation_infirmier', 'urgence')
+                ->orWhere('is_urgence', 1);
+            })
             ->where(function ($q) use ($doctor) {
                 $q->whereNull('doctor_id')->orWhere('doctor_id', $doctor->id);
             })
             ->where('status', 0)
-            ->where('montant', '>=', 100)
-            ->whereNotIn('call_status', ['completed'])
-            ->with(['patient.user', 'prestationHospital.prestationService.service', 'prestationHospital.serviceHospital.service'])
+            ->whereNotIn('call_status', ['completed', 'cancelled'])
+            ->with(['patient.user', 'infirmier.user', 'prestationHospital.prestationService.service', 'prestationHospital.serviceHospital.service'])
             ->latest('updated_at')
             ->get()
             ->filter(function ($c) use ($doctor) {
@@ -785,6 +1209,10 @@ class ConsultationController extends Controller
             })
             ->values()
             ->map(function ($c) use ($doctor) {
+                if (empty($c->call_channel)) {
+                    $c->call_channel = 'consultation_' . $c->id . '_' . \Illuminate\Support\Str::random(10);
+                    $c->save();
+                }
                 $pUser = optional(optional($c->patient)->user);
                 $name = trim(($pUser->name ?? '') . ' ' . ($pUser->prenom ?? '')) ?: 'Patient';
                 $nameParts = array_values(array_filter(explode(' ', $name)));
@@ -794,6 +1222,9 @@ class ConsultationController extends Controller
                 } else {
                     $initials = strtoupper(substr($name, 0, 2));
                 }
+
+                $infUser = optional(optional($c->infirmier)->user);
+                $infName = trim(($infUser->name ?? '') . ' ' . ($infUser->prenom ?? ''));
 
                 $isTakenByMe = ($c->doctor_id == $doctor->id);
                 $patientMissedCount = 0;
@@ -842,6 +1273,8 @@ class ConsultationController extends Controller
                     'patient_initials' => $initials ?: 'PT',
                     'patient_code' => optional($c->patient)->code_patient ?? '',
                     'patient_photo' => ($pUser && $pUser->photo) ? asset('storage/'.$pUser->photo) : null,
+                    'infirmier_id' => $c->infirmier_id,
+                    'infirmier_name' => $infName ? ('Inf. ' . $infName) : 'Infirmier(ère)',
                     'motif' => optional(optional($c->prestationHospital)->prestationService)->libelle ?? $c->motif_consultation ?? 'Téléconsultation en ligne',
                     'hospital_name' => $hName,
                     'desired_date' => $c->desired_date ? date('d/m/Y', strtotime($c->desired_date)) : ($c->date_consultation ? date('d/m/Y', strtotime($c->date_consultation)) : 'Aujourd\'hui'),
@@ -908,6 +1341,7 @@ class ConsultationController extends Controller
 
         $consultation->update([
             'status' => 1,
+            'status_inf' => 1,
             'is_call_active' => false,
             'call_status' => 'completed',
             'call_ended_at' => now(),
@@ -944,5 +1378,100 @@ class ConsultationController extends Controller
             }
         }
         return response()->json(['status' => 'success', 'message' => 'Appel ignoré par ce médecin']);
+    }
+
+    /**
+     * Génère un lien d'invitation sécurisé pour inviter un confrère médecin à la téléconsultation
+     */
+    public function getInviteLink(Request $request, $id)
+    {
+        $consultation = Consultation::findOrFail($id);
+        if (empty($consultation->call_channel)) {
+            $consultation->call_channel = 'consultation_' . $consultation->id . '_' . \Illuminate\Support\Str::random(10);
+            $consultation->save();
+        }
+
+        $hash = substr(hash_hmac('sha256', 'teleconsult_expert_' . $consultation->id . '_' . $consultation->call_channel, config('app.key', 'gemma_secret_key_2026')), 0, 16);
+        $inviteUrl = route('teleconsultation.colleague_join', ['id' => $consultation->id, 'hash' => $hash]);
+
+        return response()->json([
+            'status' => 'success',
+            'invite_url' => $inviteUrl,
+            'hash' => $hash,
+            'consultation_id' => $consultation->id,
+            'channel' => $consultation->call_channel,
+        ]);
+    }
+
+    /**
+     * Affiche la page de téléconsultation pour le médecin confrère invité
+     */
+    public function joinAsColleague($id, $hash)
+    {
+        $consultation = Consultation::with([
+            'patient.user',
+            'doctor.user',
+            'doctor.serviceHospital.service',
+            'doctor.typeDoctor',
+            'infirmier.user',
+            'prestationHospital.serviceHospital.service',
+            'prestationHospital.prestationService.service',
+            'admission.prestationHospital.serviceHospital.service',
+        ])->findOrFail($id);
+
+        $expectedHash = substr(hash_hmac('sha256', 'teleconsult_expert_' . $consultation->id . '_' . $consultation->call_channel, config('app.key', 'gemma_secret_key_2026')), 0, 16);
+        if ($hash !== $expectedHash) {
+            abort(403, 'Lien d\'invitation invalide ou expiré.');
+        }
+
+        $livekitUrl = config('services.livekit.url', 'wss://gemma-14fckk2m.livekit.cloud');
+        $currentUser = auth()->user();
+
+        return view('teleconsultation.expert_join', compact('consultation', 'hash', 'livekitUrl', 'currentUser'));
+    }
+
+    /**
+     * Génère le token LiveKit pour le confrère médecin invité
+     */
+    public function getColleagueToken(Request $request, $id, $hash)
+    {
+        $consultation = Consultation::with(['patient.user', 'doctor.user'])->findOrFail($id);
+        $expectedHash = substr(hash_hmac('sha256', 'teleconsult_expert_' . $consultation->id . '_' . $consultation->call_channel, config('app.key', 'gemma_secret_key_2026')), 0, 16);
+        if ($hash !== $expectedHash) {
+            return response()->json(['status' => 'error', 'message' => 'Lien d\'invitation invalide'], 403);
+        }
+
+        $currentUser = auth()->user();
+        $colleagueName = $request->input('colleague_name');
+        if (!$colleagueName && $currentUser) {
+            $colleagueName = trim($currentUser->name . ' ' . ($currentUser->prenom ?? ''));
+        }
+        if (!$colleagueName) {
+            $colleagueName = 'Confrère Médecin';
+        }
+        $colleagueSpecialty = $request->input('colleague_specialty', '');
+        $displayName = 'Dr. ' . $colleagueName . ($colleagueSpecialty ? " ($colleagueSpecialty)" : '');
+
+        $identity = 'colleague_' . ($currentUser ? $currentUser->id : ('guest_' . uniqid()));
+        $token = \App\Services\LiveKitTokenService::generateToken(
+            $consultation->call_channel,
+            $identity,
+            $displayName
+        );
+
+        $livekitUrl = config('services.livekit.url', 'wss://gemma-14fckk2m.livekit.cloud');
+
+        $pUser = optional(optional($consultation->patient)->user);
+        $patientName = trim(($pUser->name ?? '') . ' ' . ($pUser->prenom ?? '')) ?: 'Patient';
+
+        return response()->json([
+            'status' => 'success',
+            'token' => $token,
+            'livekit_url' => $livekitUrl,
+            'channel' => $consultation->call_channel,
+            'display_name' => $displayName,
+            'patient_name' => $patientName,
+            'consultation_id' => $consultation->id,
+        ]);
     }
 }

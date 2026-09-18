@@ -268,18 +268,23 @@
                 <!-- Formulaire de recherche -->
                 <div class="p-20 bg-light rounded-16 mb-20 border">
                     <div class="row g-3">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label fw-bold text-dark fs-13">N° de Téléphone</label>
                             <input type="search" class="form-control h-45" min="10" max="10" autofocus
                                 data-inputmask="'mask': ['9999999999', '99 99 99 99 99']" data-mask=""
                                 id="no_telephone" name="no_telephone" placeholder="Ex: 0707000000">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold text-dark fs-13">N° CMU (Sécurité Sociale)</label>
+                            <input type="search" class="form-control h-45"
+                                id="num_cmu" name="num_cmu" placeholder="Ex: 12345678901">
+                        </div>
+                        <div class="col-md-3">
                             <label class="form-label fw-bold text-dark fs-13">Nom & Prénom(s)</label>
                             <input type="search" name="fullname" id="fullname" placeholder="Nom et Prénom(s)"
                                 class="form-control h-45" oninput="convertToUppercase()">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label fw-bold text-dark fs-13">Date de Naissance</label>
                             <div class="input-group">
                                 <input type="text" name="birth_date" id="birth_date" class="form-control h-45"
@@ -589,7 +594,7 @@
                                                     value="Consultation" />
                                                 <div class="box-body">
                                                     <div class="row">
-                                                        <div class="col-md-3">
+                                                        <div class="col-md-3 service-field-dash" id="col_service_dash">
                                                             <div class="form-group">
                                                                 <label for="service_id" class="form-label fw-bold">
                                                                     Service : <span class="danger">*</span> </label>
@@ -597,7 +602,7 @@
                                                                     name="service_id"> </select>
                                                             </div>
                                                         </div>
-                                                        <div class="col-md-3">
+                                                        <div class="col-md-3 service-field-dash" id="col_prestation_dash">
                                                             <div class="form-group">
                                                                 <label for="prestation_service_id"
                                                                     class="form-label fw-bold">Prestation de service :
@@ -607,21 +612,21 @@
                                                                     name="prestation_service_id"> </select>
                                                             </div>
                                                         </div>
-                                                        <div class="col-md-3">
+                                                        <div class="col-md-3 service-field-dash" id="col_infirmier_dash">
                                                             <div class="form-group">
                                                                 <label for="infirmier_id" class="form-label fw-bold">
                                                                     Infirmier : <span class="danger">*</span> </label>
                                                                 <select class="form-select" id="infirmier_id_up"
-                                                                    name="infirmier_id" style="width: 100%;">
+                                                                    name="infirmier_id" style="width: 100%;" required>
                                                                 </select>
                                                             </div>
                                                         </div>
-                                                        <div class="col-md-3" id="formDoctorUp">
+                                                        <div class="col-md-3 service-field-dash" id="formDoctorUp">
                                                             <div class="form-group">
                                                                 <label for="doctor_id" class="form-label fw-bold">
-                                                                    Médecin en charge : </label>
+                                                                    Médecin en charge : <span class="danger text-danger" id="doctor_required_star_up">*</span></label>
                                                                 <select class="form-select" id="doctor_id_up"
-                                                                    name="doctor_id" style="width: 100%;"> </select>
+                                                                    name="doctor_id" style="width: 100%;" required> </select>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -637,15 +642,18 @@
                                                                         <label for="EU07" class="me-30">Venue lui
                                                                             même</label>
                                                                         <input type="radio" id="EU06"
-                                                                            value="Référée par un centre de santé"
+                                                                            value="Transféré d'un autre établissement"
                                                                             name="mode_entree">
-                                                                        <label for="EU06" class="me-30">Référée
-                                                                            par un centre de santé</label>
-                                                                        <input type="radio" id="EU05"
-                                                                            value="Référée par un tradipraticien"
-                                                                            name="mode_entree">
-                                                                        <label for="EU05" class="me-30">Référée
-                                                                            par un tradipraticien</label>
+                                                                        <label for="EU06" class="me-30">Transféré d'un autre
+                                                                            établissement</label>
+                                                                        <input type="radio" id="EU08"
+                                                                            value="Évacué" name="mode_entree">
+                                                                        <label for="EU08"
+                                                                            class="me-30">Évacué</label>
+                                                                        <input type="radio" id="EU09"
+                                                                            value="Référé" name="mode_entree">
+                                                                        <label for="EU09"
+                                                                            class="me-30">Référé</label>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -718,20 +726,29 @@
     }
 </style>
 <script>
-    const serviceIdUp = document.getElementById("service_id_up")
-    const formDoctorUp = document.getElementById("formDoctorUp")
-    formDoctorUp.style.display = "block";
+    const serviceIdUp = document.getElementById("service_id_up");
+    const formDoctorUp = document.getElementById("formDoctorUp");
+    if (formDoctorUp) formDoctorUp.style.display = "block";
 
-    serviceIdUp.addEventListener("change", function(e) {
-        console.log(serviceIdUp.value)
-        if (serviceIdUp.value == 'Soins infirmier') {
+    function checkDoctorVisibilityUp(val) {
+        if (!formDoctorUp) return;
+        var s = (val || '').toString().toLowerCase();
+        if (s.includes('infirmier') || s.includes('soin') || s === '4') {
             formDoctorUp.style.display = "none";
-
+            $('#doctor_id_up').prop('required', false).val('');
+            $('.service-field-dash:not(#formDoctorUp)').removeClass('col-md-3').addClass('col-md-4');
         } else {
             formDoctorUp.style.display = "block";
+            $('#doctor_id_up').prop('required', true);
+            $('.service-field-dash').removeClass('col-md-4').addClass('col-md-3');
         }
+    }
 
-    });
+    if (serviceIdUp) {
+        serviceIdUp.addEventListener("change", function(e) {
+            checkDoctorVisibilityUp(serviceIdUp.value);
+        });
+    }
     // pays
     const countryUp = document.getElementById("pays_up")
     const precisionUp = document.getElementById("precision_up")
@@ -809,29 +826,33 @@
                             // Afficher la liste des patients trouvés
                             var html = '<h2>Resultat de recherche</h2>';
                             html +=
-                                '<div class="box"><div class="table-responsive p-10"> <table id="example" class="table table-striped"> <thead class="bg-dark text-white"> <tr> <th style="border-radius: 5px"><span class="badge fw-bold fw-14">N° Dossier médical</span></th>  <th style="border-radius: 5px"><span class="badge fw-bold fw-14">Nom & prénom(s)</span></th> <th style="border-radius: 5px"><span class="badge fw-bold fw-14">Date de naissance</span></th> <th style="border-radius: 5px"><span class="badge fw-bold fw-14">N° téléphone</span></th>  <th style="border-radius: 5px"><span class="badge fw-bold fw-14">Sexe</span></th> <th style="border-radius: 5px"><span class="badge fw-bold fw-14">Action</span></th></tr> </thead> <tbody id="tableBody" style="border-radius: 10px">';
+                                '<div class="box"><div class="table-responsive p-10"> <table id="example" class="table table-striped align-middle"> <thead class="bg-dark text-white"> <tr> <th class="text-center" style="border-radius: 5px"><span class="badge fw-bold fs-14">N° Dossier médical</span></th>  <th class="text-center" style="border-radius: 5px"><span class="badge fw-bold fs-14">Nom & prénom(s)</span></th> <th class="text-center" style="border-radius: 5px"><span class="badge fw-bold fs-14">Date de naissance</span></th> <th class="text-center" style="border-radius: 5px"><span class="badge fw-bold fs-14">N° téléphone</span></th>  <th class="text-center" style="border-radius: 5px"><span class="badge fw-bold fs-14">Sexe</span></th> <th class="text-center" style="border-radius: 5px"><span class="badge fw-bold fs-14">Actions</span></th></tr> </thead> <tbody id="tableBody" style="border-radius: 10px">';
                             for (var i = 0; i < patients.length; i++) {
                                 html += '<tr>';
                                 html +=
-                                    '<td><span class="badge text-dark fw-bold fs-14"> ' +
+                                    '<td class="text-center"><span class="badge text-dark fw-bold fs-14"> ' +
                                     patients[i].code_patient + '</span></td>';
                                 html +=
-                                    '<td><span class="badge text-dark fw-bold fs-14"> ' +
+                                    '<td class="text-center"><span class="badge text-dark fw-bold fs-14"> ' +
                                     patients[i].user.name + ' ' + patients[i].user.prenom +
                                     '</span></td>';
                                 html +=
-                                    '<td><span class="badge text-dark fw-bold fs-14"> ' +
+                                    '<td class="text-center"><span class="badge text-dark fw-bold fs-14"> ' +
                                     patients[i].birth_date + '</span></td>';
                                 html +=
-                                    '<td><span class="badge text-dark fw-bold fs-14"> ' +
+                                    '<td class="text-center"><span class="badge text-dark fw-bold fs-14"> ' +
                                     patients[i].telephone + '</span></td>';
                                 html +=
-                                    '<td><span class="badge text-dark fw-bold fs-14"> ' +
+                                    '<td class="text-center"><span class="badge text-dark fw-bold fs-14"> ' +
                                     patients[i].gender + '</span></td>';
+                                var dossierUrl = "{{ route('secretariat.patient.dossier_medical', ':id') }}".replace(':id', patients[i].id);
                                 html +=
-                                    '<td class="text-center"><a href="#" class="btn btn-sm btn-info" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Détail" onclick="showUpdateForm(' +
+                                    '<td class="text-center text-nowrap">' +
+                                    '<a href="#" class="btn btn-sm btn-primary me-2 fw-semibold" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Sélectionner" onclick="showUpdateForm(' +
                                     patients[i].id +
-                                    ')"><i class="fa-solid fa-pen-to-square"></i>&nbsp;Selectionner et modifier</a></td>';
+                                    ')"><i class="fa-solid fa-pen-to-square me-1"></i>Sélectionner</a>' +
+                                    '<a href="' + dossierUrl + '" class="btn btn-sm btn-info text-white fw-semibold shadow-sm" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Dossier Médical"><i class="fa-solid fa-folder-open me-1"></i>Dossier Médical</a>' +
+                                    '</td>';
 
                                 html += '</tr>';
                             }
@@ -878,17 +899,12 @@
                             $('#residence_habituelle_up').prop('readonly', false);
                             $('#contact2_up').prop('readonly', false);
 
-                            if (userName !== '') {
-                                $('#birth_date_up').prop('readonly', true);
-                                $('#name_up').prop('readonly', true);
-                                $('#prenom_up').prop('readonly', true);
-                                $('#gender_up').prop('readonly', true);
-                            } else {
-                                $('#birth_date_up').prop('readonly', false);
-                                $('#name_up').prop('readonly', false);
-                                $('#prenom_up').prop('readonly', false);
-                                $('#gender_up').prop('readonly', false);
-                            }
+                            // Champs d'identité non modifiables (lecture seule)
+                            $('#birth_date_up').prop('readonly', true);
+                            $('#name_up').prop('readonly', true);
+                            $('#prenom_up').prop('readonly', true);
+                            $('#gender_up').prop('readonly', true);
+                            $('#email_up').prop('readonly', true);
 
                             // Champs non modifiable //
                             $('#lieu_naissance_up').prop('readonly', true);
@@ -1041,17 +1057,12 @@
                 // Champs modifiable //
                 $('#contact2_up').prop('readonly', false);
 
-                if (userName !== '') {
-                    $('#birth_date_up').prop('readonly', true);
-                    $('#name_up').prop('readonly', true);
-                    $('#prenom_up').prop('readonly', true);
-                    $('#gender_up').prop('readonly', true);
-                } else {
-                    $('#birth_date_up').prop('readonly', false);
-                    $('#name_up').prop('readonly', false);
-                    $('#prenom_up').prop('readonly', false);
-                    $('#gender_up').prop('readonly', false);
-                }
+                // Champs d'identité non modifiables (lecture seule)
+                $('#birth_date_up').prop('readonly', true);
+                $('#name_up').prop('readonly', true);
+                $('#prenom_up').prop('readonly', true);
+                $('#gender_up').prop('readonly', true);
+                $('#email_up').prop('readonly', true);
 
                 // Champs non modifiable //
                 $('#lieu_naissance_up').prop('readonly', true);
@@ -1095,6 +1106,10 @@
     }
     $('#editPatient').submit(function(e) {
         e.preventDefault();
+        var $btn = $(this).find('button[type="submit"]');
+        var originalHtml = $btn.html();
+        $btn.prop('disabled', true).addClass('opacity-75').html('<i class="fa fa-spinner fa-spin me-2"></i> Mise à jour en cours...');
+
         var formData = $(this).serialize();
         var patientId = $('#patient_id').val();
 
@@ -1104,6 +1119,7 @@
             method: 'PUT',
             data: formData,
             success: function(response) {
+                $btn.prop('disabled', false).removeClass('opacity-75').html(originalHtml);
                 Swal.fire({
                     text: response.success,
                     icon: "success",
@@ -1118,7 +1134,8 @@
                 $('#editPatient')[0].reset();
             },
             error: function(xhr) {
-                var errors = xhr.responseJSON.errors;
+                $btn.prop('disabled', false).removeClass('opacity-75').html(originalHtml);
+                var errors = xhr.responseJSON ? xhr.responseJSON.errors : {};
                 for (var key in errors) {
                     var errorMessage = errors[key][0];
                     var inputElement = document.getElementById(key);
@@ -1413,14 +1430,13 @@
     fetch('{{ asset('assets/src/countries-FR.json') }}')
         .then(response => response.json())
         .then(data => {
-            const selectPays = document.getElementById('autre_pays_up');
+            const $selectPays = $('#autre_pays_up');
+            $selectPays.empty().append('<option value="">Selectionner</option>');
             for (const code in data) {
                 const nom = data[code];
-                const option = document.createElement('option');
-                option.value = nom;
-                option.textContent = nom;
-                selectPays.appendChild(option);
+                $selectPays.append(new Option(nom, nom, false, false));
             }
+            $selectPays.trigger('change');
         })
         .catch(error => console.error('Erreur de chargement du fichier JSON :', error));
 
@@ -1428,28 +1444,26 @@
     fetch('{{ asset('assets/src/profession.json') }}')
         .then(response => response.json())
         .then(data => {
-            const selectProfession = document.getElementById('profession_up');
+            const $selectProfession = $('#profession_up');
+            $selectProfession.empty().append('<option value="">Selectionner</option>');
             for (const libelle in data) {
                 const nom = data[libelle];
-                const option = document.createElement('option');
-                option.value = nom;
-                option.textContent = nom;
-                selectProfession.appendChild(option);
+                $selectProfession.append(new Option(nom, nom, false, false));
             }
+            $selectProfession.trigger('change');
         })
         .catch(error => console.error('Erreur de chargement du fichier JSON :', error));
 
     fetch('{{ asset('assets/src/ethnies.json') }}')
         .then(response => response.json())
         .then(data => {
-            const selectEthnie = document.getElementById('ethnie_up');
+            const $selectEthnie = $('#ethnie_up');
+            $selectEthnie.empty().append('<option value="">Selectionner</option>');
             for (const libelle in data) {
                 const nom = data[libelle];
-                const option = document.createElement('option');
-                option.value = nom;
-                option.textContent = nom;
-                selectEthnie.appendChild(option);
+                $selectEthnie.append(new Option(nom, nom, false, false));
             }
+            $selectEthnie.trigger('change');
         })
         .catch(error => console.error('Erreur de chargement du fichier JSON :', error));
 </script>

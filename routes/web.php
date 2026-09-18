@@ -53,3 +53,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::middleware(['isInfirmier', 'isDoctor', 'isHospital', 'isPatient'])->group(function () {});
 });
+
+// Invitation et participation d'un confrère médecin à la téléconsultation (Lien sécurisé)
+Route::get('/teleconsultation/expert/{id}/{hash}', [\App\Http\Controllers\Doctor\ConsultationController::class, 'joinAsColleague'])->name('teleconsultation.colleague_join');
+Route::post('/teleconsultation/expert/{id}/{hash}/token', [\App\Http\Controllers\Doctor\ConsultationController::class, 'getColleagueToken'])->name('teleconsultation.colleague_token');

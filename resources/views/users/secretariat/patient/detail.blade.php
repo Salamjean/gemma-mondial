@@ -187,8 +187,12 @@
                         <div class="detail-value">{{ $patient->type_piece ?? 'N/A' }}</div>
                     </div>
                     <div class="detail-field">
-                        <div class="detail-label">N° d'Identité</div>
+                        <div class="detail-label">{{ ($patient->type_piece ?? '') == 'CNI' ? 'N° NNI' : "N° d'Identité" }}</div>
                         <div class="detail-value">{{ $patient->numero_identite ?? 'N/A' }}</div>
+                    </div>
+                    <div class="detail-field">
+                        <div class="detail-label">N° CMU (Sécurité Sociale)</div>
+                        <div class="detail-value text-primary">{{ $patient->num_cmu ?? 'Non renseigné' }}</div>
                     </div>
                 </div>
             </div>

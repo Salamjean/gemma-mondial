@@ -8,13 +8,19 @@
         <div class="col-12">
             <div class="box">
                 <div class="box-header">
-                    <div class="row">
-                        <div class="col-xs-12  col-xl-9 col-lg-9 col-md-9 col-sm-9">
+                    <div class="row align-items-center">
+                        <div class="col-xs-12 col-xl-6 col-lg-6 col-md-6 col-sm-6">
                             <h4 class="box-title">PATIENTS</h4>
                         </div>
-                        <div class="col-xs-12 col-xl-3 col-lg-3 col-md-3 col-sm-3 float-right">
+                        <div class="col-xs-12 col-xl-6 col-lg-6 col-md-6 col-sm-6 text-end">
+                            <a href="{{ route('secretariat.search_hospitalisation') }}"
+                                class="btn btn-info btn-sm shadow me-2">
+                                <i class="fa fa-search me-1"></i> Vérifier / Rechercher un patient
+                            </a>
                             <a href="{{ route('secretariat.patient.create') }}"
-                                class="btn btn-primary btn-sm shadow">Ajouter un Patient</a>
+                                class="btn btn-primary btn-sm shadow">
+                                <i class="fa fa-plus-circle me-1"></i> Ajouter un Patient
+                            </a>
                         </div>
                     </div>
                 </div>

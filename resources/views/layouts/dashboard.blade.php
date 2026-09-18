@@ -204,12 +204,22 @@
     <script src="{{ asset('assets/vendor_components/bootstrap-colorpicker/dist/js/bootstrap-colorpicker.min.js') }}">
     </script>
     <script src="{{ asset('assets/vendor_plugins/timepicker/bootstrap-timepicker.min.js') }}"></script>
-    <!-- Personnal script -->
-    <script src="{{ asset('assets/src/js/pages/calendar.js') }}"></script>
+    @php
+        $authUserDocHospital = auth()->check() ? optional(optional(auth()->user()->doctor)->hospital) : null;
+        $isDocTeleconsultActive = $authUserDocHospital ? ($authUserDocHospital->is_teleconsultation_active ?? true) : true;
+        
+        $authUserInfHospital = auth()->check() ? optional(optional(auth()->user()->infirmier)->hospital) : null;
+        $isInfTeleconsultActive = $authUserInfHospital ? ($authUserInfHospital->is_teleconsultation_active ?? true) : true;
+    @endphp
 
-    @if(!request()->has('embed') && auth()->check() && auth()->user()->role_as === 'doctor')
+    @if(!request()->has('embed') && auth()->check() && auth()->user()->role_as === 'doctor' && $isDocTeleconsultActive)
         @include('partials.doctor_video_modal')
         @include('partials.doctor_incoming_call_modal')
+    @endif
+
+    @if(!request()->has('embed') && auth()->check() && auth()->user()->role_as === 'infirmier' && $isInfTeleconsultActive)
+        @include('partials.infirmier_video_modal')
+        @include('partials.infirmier_incoming_call_modal')
     @endif
 
     @if((auth()->check() && auth()->user()->role_as === 'doctor') || request()->has('embed'))

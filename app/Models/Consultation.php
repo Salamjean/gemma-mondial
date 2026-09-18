@@ -97,4 +97,8 @@ class Consultation extends Model
         return $this->belongsTo(Ordonnance::class);
     }
 
+    public function teleconsultationHospital(): BelongsTo
+    {
+        return $this->belongsTo(Hospital::class, 'teleconsultation_hospital_id', 'id');
+    }
 }

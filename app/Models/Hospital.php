@@ -14,6 +14,15 @@ class Hospital extends Model
 
     protected $guarded = [];
 
+    protected $casts = [
+        'is_teleconsultation_active' => 'boolean',
+    ];
+
+    public function hasTeleconsultation(): bool
+    {
+        return (bool) ($this->is_teleconsultation_active ?? true);
+    }
+
     public function user() : BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id', 'id');

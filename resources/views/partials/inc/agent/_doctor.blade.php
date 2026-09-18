@@ -28,12 +28,18 @@
                 <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Historique
             </a>
         </li>
+        @php
+            $docHosp = optional(auth()->user()->doctor)->hospital ?? \App\Models\Hospital::find(optional(auth()->user()->doctor)->hospital_id ?? auth()->user()->hospital_id);
+            $isTeleconsultActive = $docHosp ? ($docHosp->is_teleconsultation_active ?? true) : true;
+        @endphp
+        @if($isTeleconsultActive)
         <li>
             <a href="{{ route('doctor.consultation.call.history') }}"
                 class="{{ routeActive('doctor.consultation.call.history') }}">
                 <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Appels Vidéo HD
             </a>
         </li>
+        @endif
     </ul>
 </li>
 @if (auth()->user()->doctor->chief == 1)

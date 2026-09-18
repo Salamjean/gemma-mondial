@@ -12,8 +12,12 @@
             @php
                 $doctorId = \Illuminate\Support\Facades\Auth::user()->doctor->id;
                 $countAllConsultations = \App\Models\Consultation::where('doctor_id', $doctorId)
+                    ->where('status_inf', 1)
                     ->where('status', 0)
                     ->whereNull('call_channel')
+                    ->where(function($q) {
+                        $q->whereNull('orientation_infirmier')->orWhere('orientation_infirmier', '');
+                    })
                     ->count();
             @endphp
             <div class="d-flex align-items-center gap-2">
@@ -97,9 +101,11 @@
     </div>
 
     <!-- 2. Section Demandes de Téléconsultation en ligne en attente (EN BAS) -->
-    <div class="mt-4">
-        @include('partials.doctor_pending_teleconsultations')
-    </div>
+    @if(optional(optional(auth()->user()->doctor)->hospital)->is_teleconsultation_active ?? true)
+        <div class="mt-4">
+            @include('partials.doctor_pending_teleconsultations')
+        </div>
+    @endif
 @endsection
 
 @push('js')

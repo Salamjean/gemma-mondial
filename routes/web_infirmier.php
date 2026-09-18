@@ -54,10 +54,22 @@ Route::middleware(['auth'])->group(function () {
 
                 Route::get('formulaire/{id}', 'ConsultationController@formulaire')->name('formulaire');
                 Route::get('doctors/{infirmierId}', 'InfirmierController@getDoctors')->name('doctors');
+                Route::get('teleconsultation-hospitals', 'ConsultationController@getTeleconsultationHospitals')->name('teleconsultation_hospitals');
+                Route::get('teleconsultation-doctors', 'ConsultationController@getTeleconsultationDoctors')->name('teleconsultation_doctors');
                 Route::post('formulaire', 'ConsultationController@store')->name('formulaire.store');
 
                 Route::get('formulaire/issue/{id}', 'ConsultationController@formulaireIssue')->name('formulaire.issue');
                 Route::get('patient/{id}/card', 'ConsultationController@patientCard')->name('patient.card');
+
+                // Téléconsultation avec le médecin (Appel vidéo)
+                Route::get('teleconsultations', 'ConsultationController@teleconsultations')->name('teleconsultations');
+                Route::get('teleconsultation/incoming-call', 'ConsultationController@getIncomingCall')->name('teleconsultation.incoming_call');
+                Route::post('teleconsultation/pickup/{id}', 'ConsultationController@pickupCall')->name('teleconsultation.pickup');
+                Route::post('teleconsultation/end/{id}', 'ConsultationController@endCall')->name('teleconsultation.end');
+                Route::get('teleconsultation/active-list', 'ConsultationController@getActiveTeleconsultations')->name('teleconsultation.active_list');
+                Route::get('teleconsultation/call-status/{id}', 'ConsultationController@callStatus')->name('teleconsultation.call_status');
+                Route::post('teleconsultation/emergency-call/{id}', 'ConsultationController@startEmergencyCall')->name('teleconsultation.emergency_call');
+                Route::post('teleconsultation/start-scheduled/{id}', 'ConsultationController@startScheduledTeleconsultation')->name('teleconsultation.start_scheduled');
             });
             //suivi hospitalisation
             Route::prefix('suivi')->name('suivi.')->group(function () {

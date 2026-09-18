@@ -5,8 +5,12 @@
             @php
                 $doctorId = \Illuminate\Support\Facades\Auth::user()->doctor->id;
                 $countAllConsultations = \App\Models\Consultation::where('doctor_id', $doctorId)
+                    ->where('status_inf', 1)
                     ->where('status', 0)
                     ->whereNull('call_channel')
+                    ->where(function($q) {
+                        $q->whereNull('orientation_infirmier')->orWhere('orientation_infirmier', '');
+                    })
                     ->count();
             @endphp
             <div class="d-flex justify-content-between align-items-center mb-10">
@@ -31,7 +35,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (\App\Models\Consultation::orderByDESC('created_at')->where('doctor_id', \Illuminate\Support\Facades\Auth::user()->doctor->id)->whereNull('call_channel')->where(function($q) { $q->whereDate('created_at', date('Y-m-d'))->orWhereDate('date_consultation', date('Y-m-d')); })->where('status', '0')->get() as $item)
+                            @foreach (\App\Models\Consultation::orderByDESC('created_at')->where('doctor_id', \Illuminate\Support\Facades\Auth::user()->doctor->id)->where('status_inf', 1)->whereNull('call_channel')->where(function($q) { $q->whereDate('created_at', date('Y-m-d'))->orWhereDate('date_consultation', date('Y-m-d')); })->where('status', '0')->where(function($q) { $q->whereNull('orientation_infirmier')->orWhere('orientation_infirmier', ''); })->get() as $item)
                                 <tr>
                                     <td style="text-align: left;">{{ $item->created_at ? $item->created_at->format('H:i:s') : '-' }}</td>
                                     <td style="text-align: center;"><b>{{ $item->code_consultation ?? 'CONS-'.$item->id }}</b></td>
@@ -75,9 +79,11 @@
     </div>
 
     <!-- Demandes de téléconsultation en ligne en attente (Remplaçant Liste de vos consultations) -->
-    <div class="col-xl-12 col-lg-12 col-12 mt-3">
-        @include('partials.doctor_pending_teleconsultations')
-    </div>
+    @if(optional(optional(auth()->user()->doctor)->hospital)->is_teleconsultation_active ?? true)
+        <div class="col-xl-12 col-lg-12 col-12 mt-3">
+            @include('partials.doctor_pending_teleconsultations')
+        </div>
+    @endif
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

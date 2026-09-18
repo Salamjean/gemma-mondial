@@ -20,6 +20,7 @@ Route::middleware(['auth'])->group(function() {
                 Route::post('store', 'HospitalController@store')->name('store');
                 Route::get('report/{id}', 'HospitalController@HospReport')->name('report');
                 Route::get('activation/{id}', 'HospitalController@statusSce')->name('statusSce');
+                Route::get('toggle-teleconsultation/{id}', 'HospitalController@toggleTeleconsultation')->name('toggle_teleconsultation');
 
 
 
