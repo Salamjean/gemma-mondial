@@ -156,8 +156,8 @@
                                         <div class="form-group">
                                             <label class="form-label">Service Téléconsultation</label>
                                             <div class="form-check form-switch d-flex align-items-center gap-3 p-10 bg-light rounded-10 border">
-                                                <input class="form-check-input ms-0" type="checkbox" role="switch" id="is_teleconsultation_active_edit" name="is_teleconsultation_active" value="1" {{ old('is_teleconsultation_active', $hospital->is_teleconsultation_active) ? 'checked' : '' }} style="width: 2.5em; height: 1.3em;">
-                                                <label class="form-check-label fw-bold text-dark mb-0 ms-2" for="is_teleconsultation_active_edit">
+                                                <input class="form-check-input ms-0" type="checkbox" role="switch" id="is_teleconsultation_active_edit" name="is_teleconsultation_active" value="1" {{ old('is_teleconsultation_active', $hospital->is_teleconsultation_active) ? 'checked' : '' }} style="width: 2.5em; height: 1.3em; cursor: pointer;">
+                                                <label class="form-check-label fw-bold text-dark mb-0 ms-2" for="is_teleconsultation_active_edit" style="cursor: pointer;">
                                                     <i class="fa-solid fa-headset text-success me-1"></i> Téléconsultation active
                                                 </label>
                                             </div>
