@@ -92,9 +92,9 @@ class Consultation extends Model
         return $this->belongsTo(PrestationHospital::class, 'prestation_hospital_id', 'id');
     }
 
-    public function ordonnance():BelongsTo
+    public function ordonnance(): HasOne
     {
-        return $this->belongsTo(Ordonnance::class);
+        return $this->hasOne(Ordonnance::class);
     }
 
     public function teleconsultationHospital(): BelongsTo
