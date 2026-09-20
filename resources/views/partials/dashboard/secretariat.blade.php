@@ -845,13 +845,13 @@
                                 html +=
                                     '<td class="text-center"><span class="badge text-dark fw-bold fs-14"> ' +
                                     patients[i].gender + '</span></td>';
-                                var dossierUrl = "{{ route('secretariat.patient.dossier_medical', ':id') }}".replace(':id', patients[i].id);
+                                var ficheUrl = "{{ route('secretariat.patient.detail', ':id') }}".replace(':id', patients[i].id);
                                 html +=
                                     '<td class="text-center text-nowrap">' +
                                     '<a href="#" class="btn btn-sm btn-primary me-2 fw-semibold" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Sélectionner" onclick="showUpdateForm(' +
                                     patients[i].id +
                                     ')"><i class="fa-solid fa-pen-to-square me-1"></i>Sélectionner</a>' +
-                                    '<a href="' + dossierUrl + '" class="btn btn-sm btn-info text-white fw-semibold shadow-sm" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Dossier Médical"><i class="fa-solid fa-folder-open me-1"></i>Dossier Médical</a>' +
+                                    '<a href="' + ficheUrl + '" class="btn btn-sm btn-info text-white fw-semibold shadow-sm" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Fiche"><i class="fa-solid fa-id-card-clip me-1"></i>Fiche</a>' +
                                     '</td>';
 
                                 html += '</tr>';

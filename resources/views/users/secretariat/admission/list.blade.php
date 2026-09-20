@@ -1,7 +1,6 @@
 @extends('layouts.dashboard',['title' => "Liste des Patients enregistré pour une consultation"])
 
 @section('content')
-  @if(auth()->user()->role_as == 'secretariat')
 
     <div class="row">
         <div class="col-12  ">
@@ -102,7 +101,6 @@
           </div>
         </div>
     </div>
-  @endif
 
 
 @endsection

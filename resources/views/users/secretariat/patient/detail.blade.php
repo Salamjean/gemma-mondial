@@ -75,12 +75,12 @@
 
 @php
     $dossierUrl = '#';
-    if (request()->routeIs('secretariat.*') && \Illuminate\Support\Facades\Route::has('secretariat.patient.dossier_medical')) {
+    if (\Illuminate\Support\Facades\Route::has('secretariat.patient.dossier_medical')) {
         $dossierUrl = route('secretariat.patient.dossier_medical', $patient->id);
-    } elseif (request()->routeIs('hospital.*') && \Illuminate\Support\Facades\Route::has('hospital.patient.dossier_medical')) {
-        $dossierUrl = route('hospital.patient.dossier_medical', $patient->id);
     } elseif (\Illuminate\Support\Facades\Route::has('doctor.patient.dossier_medical')) {
         $dossierUrl = route('doctor.patient.dossier_medical', $patient->id);
+    } elseif (\Illuminate\Support\Facades\Route::has('hospital.patient.dossier_medical')) {
+        $dossierUrl = route('hospital.patient.dossier_medical', $patient->id);
     }
 @endphp
 
@@ -123,9 +123,11 @@
             <!-- Boutons d'Action -->
             <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
                 <div class="d-flex flex-wrap align-items-center justify-content-lg-end gap-2">
+                    @if (auth()->check() && !in_array(auth()->user()->role_as, ['secretariat', 'cashier']))
                     <a href="{{ $dossierUrl }}" class="btn btn-primary fw-semibold rounded-10 px-20">
                         <i class="fa-solid fa-folder-open me-1"></i> Voir dossier
                     </a>
+                    @endif
                     @if (\Illuminate\Support\Facades\Route::has('secretariat.patient.edit'))
                     <a href="{{ route('secretariat.patient.edit', $patient->id) }}" class="btn btn-warning fw-semibold rounded-10 px-20">
                         <i class="fa-solid fa-pen-to-square me-1"></i> Modifier

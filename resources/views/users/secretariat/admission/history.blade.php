@@ -1,8 +1,6 @@
 @extends('layouts.dashboard',['title' => "Historique des admissions"])
 
 @section('content')
-  @if(auth()->user()->role_as == 'secretariat')
-
     <div class="row">
       <div class="box">
         <div class="box-header">
@@ -32,17 +30,17 @@
                     <tbody>
                       @foreach($admissions as $item)
                             <tr>
-                              <td><b>{{ $item->patient->code_patient }}</b></td>
+                              <td><b>{{ $item->patient->code_patient ?? 'N/A' }}</b></td>
                               <td>
                                 {{ \Carbon\Carbon::parse($item->created_at)->format('d/m/Y') }} -
                                 {{ heureFr($item->created_at) }}
                               </td>
                               <td>
-                                  @if ($item->patient->img_url != null)
+                                  @if ($item->patient && $item->patient->img_url != null)
         								<img src="{{ asset('assets/uploads/patient/'. $item->patient->img_url) }}"
         									class="rounded-circle" alt="Photo de profil" style="width:48px; height:48px" />
         						  @else
-        							    @if ($item->patient->gender == 'masculin')
+        							    @if ($item->patient && $item->patient->gender == 'masculin')
         								<img src="{{ asset('assets/images/avatar/6.png') }}" class="avatar avatar-lg rounded10"
         									alt="Photo de profil" />
             							@else
@@ -52,7 +50,7 @@
         						  @endif
                                 </td>
                                 <td>
-                                  <i>{{ $item->patient->user->name }} {{ $item->patient->user->prenom }}</i>
+                                  <i>{{ $item->patient->user->name ?? '' }} {{ $item->patient->user->prenom ?? '' }}</i>
                                 </td>
                                 <td>
                                     <i>{{ $item->motif_consultation }} </i>
@@ -60,9 +58,9 @@
                             
                                 <td>
                                     @if ($item->doctor)
-                                        <i>{{ $item->doctor->user->name }}</i>
+                                        <i>{{ $item->doctor->user->name ?? '' }}</i>
                                     @elseif ($item->infirmier)
-                                        <i>{{ $item->infirmier->user->name }}</i>
+                                        <i>{{ $item->infirmier->user->name ?? '' }}</i>
                                     @endif
                                     
                                 </td>
@@ -103,5 +101,4 @@
         </div>
       </div>
     </div>
-  @endif
 @endsection

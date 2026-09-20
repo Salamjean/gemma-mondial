@@ -474,10 +474,10 @@
                                     html += '<td class="text-center">' + tel + '</td>';
                                     html += '<td class="text-center">' + cmu + '</td>';
                                     html += '<td class="text-center">' + birth + '</td>';
-                                    var dossierUrl = "{{ route('secretariat.patient.dossier_medical', ':id') }}".replace(':id', patient.id);
+                                    var detailUrl = "{{ route('secretariat.patient.detail', ':id') }}".replace(':id', patient.id);
                                     html += '<td class="text-center text-nowrap">';
                                     html += '<button type="button" class="btn btn-sm btn-primary rounded-8 px-15 fw-bold me-2" onclick="showUpdateForm(' + patient.id + ')"><i class="fa-solid fa-user-pen me-1"></i> Sélectionner</button>';
-                                    html += '<a href="' + dossierUrl + '" class="btn btn-sm btn-info rounded-8 px-15 fw-bold text-white shadow-sm"><i class="fa-solid fa-folder-open me-1"></i> Dossier Médical</a>';
+                                    html += '<a href="' + detailUrl + '" class="btn btn-sm btn-info rounded-8 px-15 fw-bold text-white shadow-sm"><i class="fa-solid fa-id-card-clip me-1"></i> Fiche Patient</a>';
                                     html += '</td>';
                                     html += '</tr>';
                                 });

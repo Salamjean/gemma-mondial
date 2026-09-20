@@ -16,63 +16,63 @@
             <div class="d-flex align-items-center justify-content-between">
                 <div class="image d-flex align-items-center">
                     @if (Illuminate\Support\Facades\Auth::user()->role_as == 'super')
-                        @if (Illuminate\Support\Facades\Auth::user()->admin->img_url != null)
-                            <img src="{{ asset('assets/uploads/super/' . Illuminate\Support\Facades\Auth::user()->admin->img_url) }}"
+                        @if (optional(Illuminate\Support\Facades\Auth::user()->admin)->img_url != null)
+                            <img src="{{ asset('assets/uploads/super/' . optional(Illuminate\Support\Facades\Auth::user()->admin)->img_url) }}"
                                 class="rounded-0 me-10" alt="User Image">
                         @else
                             <img src="{{ asset('assets/uploads/root.png') }}" class="rounded-0 me-10" alt="User Image">
                         @endif
                     @elseif(Illuminate\Support\Facades\Auth::user()->role_as == 'hospital')
-                        @if (Illuminate\Support\Facades\Auth::user()->hospital->img_url != null)
-                            <img src="{{ asset('assets/uploads/hospital/' . Illuminate\Support\Facades\Auth::user()->hospital->img_url) }}"
+                        @if (optional(Illuminate\Support\Facades\Auth::user()->hospital)->img_url != null)
+                            <img src="{{ asset('assets/uploads/hospital/' . optional(Illuminate\Support\Facades\Auth::user()->hospital)->img_url) }}"
                                 class="rounded-0 me-10" alt="User Image">
                         @else
                             <img src="{{ asset('assets/uploads/hospital.gif') }}" class="rounded-0 me-10"
                                 alt="User Image">
                         @endif
                     @elseif(Illuminate\Support\Facades\Auth::user()->role_as == 'doctor')
-                        @if (Illuminate\Support\Facades\Auth::user()->doctor->img_url != null)
-                            <img src="{{ asset('assets/uploads/doctor/' . Illuminate\Support\Facades\Auth::user()->doctor->img_url) }}"
+                        @if (optional(Illuminate\Support\Facades\Auth::user()->doctor)->img_url != null)
+                            <img src="{{ asset('assets/uploads/doctor/' . optional(Illuminate\Support\Facades\Auth::user()->doctor)->img_url) }}"
                                 class="rounded-0 me-10" alt="User Image">
                         @else
                             <img src="{{ asset('assets/uploads/doctor.png') }}" class="rounded-0 me-10"
                                 alt="User Image">
                         @endif
                     @elseif(Illuminate\Support\Facades\Auth::user()->role_as == 'infirmier')
-                        @if (Illuminate\Support\Facades\Auth::user()->infirmier->img_url != null)
-                            <img src="{{ asset('assets/uploads/infirmier/' . Illuminate\Support\Facades\Auth::user()->infirmier->img_url) }}"
+                        @if (optional(Illuminate\Support\Facades\Auth::user()->infirmier)->img_url != null)
+                            <img src="{{ asset('assets/uploads/infirmier/' . optional(Illuminate\Support\Facades\Auth::user()->infirmier)->img_url) }}"
                                 class="rounded-0 me-10" alt="User Image">
                         @else
                             <img src="{{ asset('assets/uploads/doctor.png') }}" class="rounded-0 me-10"
                                 alt="User Image">
                         @endif
                     @elseif(Illuminate\Support\Facades\Auth::user()->role_as == 'pharmacy')
-                        @if (Illuminate\Support\Facades\Auth::user()->pharmacy->img_url != null)
-                            <img src="{{ asset('assets/uploads/pharmacy/' . Illuminate\Support\Facades\Auth::user()->secretariat->img_url) }}"
+                        @if (optional(Illuminate\Support\Facades\Auth::user()->pharmacy)->img_url != null)
+                            <img src="{{ asset('assets/uploads/pharmacy/' . optional(Illuminate\Support\Facades\Auth::user()->pharmacy)->img_url) }}"
                                 class="rounded-0 me-10" alt="User Image">
                         @else
                             <img src="{{ asset('assets/uploads/doctor.png') }}" class="rounded-0 me-10"
                                 alt="User Image">
                         @endif
                     @elseif(Illuminate\Support\Facades\Auth::user()->role_as == 'secretariat')
-                        @if (Illuminate\Support\Facades\Auth::user()->secretariat->img_url != null)
-                            <img src="{{ asset('assets/uploads/secretariat/' . Illuminate\Support\Facades\Auth::user()->secretariat->img_url) }}"
+                        @if (optional(Illuminate\Support\Facades\Auth::user()->secretariat)->img_url != null)
+                            <img src="{{ asset('assets/uploads/secretariat/' . optional(Illuminate\Support\Facades\Auth::user()->secretariat)->img_url) }}"
                                 class="rounded-0 me-10" alt="User Image">
                         @else
                             <img src="{{ asset('assets/uploads/secretary.png') }}" class="rounded-0 me-10"
                                 alt="User Image">
                         @endif
                     @elseif(Illuminate\Support\Facades\Auth::user()->role_as == 'accountant')
-                        @if (Illuminate\Support\Facades\Auth::user()->accountant->img_url != null)
-                            <img src="{{ asset('assets/uploads/accountant/' . Illuminate\Support\Facades\Auth::user()->accountant->img_url) }}"
+                        @if (optional(Illuminate\Support\Facades\Auth::user()->accountant)->img_url != null)
+                            <img src="{{ asset('assets/uploads/accountant/' . optional(Illuminate\Support\Facades\Auth::user()->accountant)->img_url) }}"
                                 class="rounded-0 me-10" alt="User Image">
                         @else
                             <img src="{{ asset('assets/uploads/secretary.png') }}" class="rounded-0 me-10"
                                 alt="User Image">
                         @endif
                     @elseif(Illuminate\Support\Facades\Auth::user()->role_as == 'cashier')
-                        @if (Illuminate\Support\Facades\Auth::user()->cashier->img_url != null)
-                            <img src="{{ asset('assets/uploads/cashier/' . Illuminate\Support\Facades\Auth::user()->cashier->img_url) }}"
+                        @if (optional(Illuminate\Support\Facades\Auth::user()->cashier)->img_url != null)
+                            <img src="{{ asset('assets/uploads/cashier/' . optional(Illuminate\Support\Facades\Auth::user()->cashier)->img_url) }}"
                                 class="rounded-0 me-10" alt="User Image">
                         @else
                             <img src="{{ asset('assets/uploads/cashier.png') }}" class="rounded-0 me-10"

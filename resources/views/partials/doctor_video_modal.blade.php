@@ -542,16 +542,6 @@
                         clearInterval(statusPollInterval);
                         statusPollInterval = null;
                     }
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({
-                            text: "L'infirmier(ère) / patient a raccroché la téléconsultation vidéo.",
-                            icon: "info",
-                            timer: 3000,
-                            showConfirmButton: false
-                        });
-                    } else {
-                        alert("L'infirmier(ère) / patient a raccroché la téléconsultation vidéo.");
-                    }
                     closeDoctorVideoCall(false);
                 }
             });
@@ -865,7 +855,19 @@
             toggleConsultationFormSplit();
         }
 
+        try {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                const docModalEl = document.getElementById('doctorVideoCallModal');
+                if (docModalEl) {
+                    const inst = bootstrap.Modal.getInstance(docModalEl) || bootstrap.Modal.getOrCreateInstance(docModalEl);
+                    if (inst) inst.hide();
+                }
+            }
+        } catch(e) {}
+
         $('#doctorVideoCallModal').modal('hide');
+        $('.modal-backdrop').remove();
+        $('body').removeClass('modal-open').css({'overflow':'', 'padding-right':''});
         
         if (typeof loadPendingOnlineRequests === 'function') {
             loadPendingOnlineRequests();

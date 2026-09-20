@@ -1,7 +1,6 @@
 @extends('layouts.dashboard',['title' => "Faire une admission"])
 
 @section('content')
-  @if(auth()->user()->role_as == 'secretariat')
     <div class="row">
 
         <div class="col-12">
@@ -228,7 +227,4 @@
         });
     });
     </script>
-
-  @endif
-
 @endsection

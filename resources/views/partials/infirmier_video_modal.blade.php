@@ -113,6 +113,66 @@
     let infCallTimer = null;
     let infStatusPollInterval = null;
     let isInfirmierEndingCall = false;
+    let hasShownDoctorEndedPopup = false;
+
+    function handleDoctorEndedCall() {
+        if (hasShownDoctorEndedPopup || isInfirmierEndingCall) return;
+        hasShownDoctorEndedPopup = true;
+
+        if (infStatusPollInterval) {
+            clearInterval(infStatusPollInterval);
+            infStatusPollInterval = null;
+        }
+        if (infCallTimer) {
+            clearInterval(infCallTimer);
+            infCallTimer = null;
+        }
+
+        // Couper immédiatement les flux locaux pour libérer micro et caméra
+        if (infLivekitRoom && infLivekitRoom.localParticipant) {
+            try {
+                infLivekitRoom.localParticipant.videoTrackPublications.forEach(pub => {
+                    if (pub.track) try { pub.track.stop(); } catch(e){}
+                });
+                infLivekitRoom.localParticipant.audioTrackPublications.forEach(pub => {
+                    if (pub.track) try { pub.track.stop(); } catch(e){}
+                });
+            } catch (e) {}
+        }
+        if (infAudioTrack) {
+            try { infAudioTrack.stop(); } catch(e){}
+            infAudioTrack = null;
+        }
+        if (infVideoTrack) {
+            try { infVideoTrack.stop(); } catch(e){}
+            infVideoTrack = null;
+        }
+        if (infLivekitRoom) {
+            try { infLivekitRoom.disconnect(); } catch (e) {}
+            infLivekitRoom = null;
+        }
+
+        // Afficher la pop-up d'information. Dès fermeture par l'infirmier, fermer la modal d'appel
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: "Téléconsultation terminée",
+                text: "Le médecin a raccroché la téléconsultation.",
+                icon: "info",
+                confirmButtonText: "OK",
+                confirmButtonColor: "#0d9488",
+                allowOutsideClick: false,
+                allowEscapeKey: false
+            }).then(() => {
+                closeInfirmierVideoCall(false);
+            });
+            setTimeout(() => {
+                $('.swal2-container').css('z-index', 1080);
+            }, 50);
+        } else {
+            alert("Le médecin a raccroché la téléconsultation.");
+            closeInfirmierVideoCall(false);
+        }
+    }
 
     // Débloquer l'audio au premier clic de l'utilisateur
     const unlockInfAudio = () => {
@@ -145,6 +205,7 @@
     function openInfirmierVideoCall(consultationId, token, livekitUrl, doctorName, patientName, channel) {
         currentInfConsultationId = consultationId;
         isInfirmierEndingCall = false;
+        hasShownDoctorEndedPopup = false;
         isInfMicMuted = false;
         isInfCamOff = false;
 
@@ -186,7 +247,7 @@
         // Polling de statut pour détecter si le médecin a terminé la consultation
         if (infStatusPollInterval) clearInterval(infStatusPollInterval);
         infStatusPollInterval = setInterval(async () => {
-            if (!currentInfConsultationId || isInfirmierEndingCall) return;
+            if (!currentInfConsultationId || isInfirmierEndingCall || hasShownDoctorEndedPopup) return;
             try {
                 const targetId = currentInfConsultationId;
                 const res = await fetch(`/infirmier/consultation/teleconsultation/call-status/${targetId}`, {
@@ -201,25 +262,12 @@
                                 waitingState.style.setProperty("display", "none", "important");
                             }
                         } else if (data.is_call_active === false && ['ended', 'doctor_ended', 'completed', 'cancelled', 'rejected'].includes(data.call_status)) {
-                            if (infStatusPollInterval) clearInterval(infStatusPollInterval);
-                            infStatusPollInterval = null;
-                            if (!isInfirmierEndingCall) {
-                                isInfirmierEndingCall = true;
-                                if (typeof Swal !== 'undefined') {
-                                    Swal.fire({
-                                        text: "Le médecin a terminé la consultation.",
-                                        icon: "info",
-                                        timer: 3000,
-                                        showConfirmButton: false
-                                    });
-                                }
-                                closeInfirmierVideoCall(false);
-                            }
+                            handleDoctorEndedCall();
                         }
                     }
                 }
             } catch(e) {}
-        }, 3000);
+        }, 2000);
 
         // Ouvrir la modale de manière robuste
         try {
@@ -474,11 +522,21 @@
                 if (participant?.identity) {
                     removeInfirmierRemoteParticipant(participant.identity);
                 }
-                // Si tous les participants distants sont partis, réafficher l'état d'attente
-                if (infLivekitRoom && (!infLivekitRoom.remoteParticipants || infLivekitRoom.remoteParticipants.size === 0)) {
+                
+                // Si le médecin principal s'est déconnecté, informer l'infirmier puis fermer la modal
+                const isColleague = participant?.identity && participant.identity.startsWith('colleague_');
+                if (!isColleague) {
+                    handleDoctorEndedCall();
+                } else if (infLivekitRoom && (!infLivekitRoom.remoteParticipants || infLivekitRoom.remoteParticipants.size === 0)) {
                     const waitingState = document.getElementById('infirmierDoctorWaitingState');
                     if (waitingState) waitingState.style.setProperty("display", "flex", "important");
                 }
+            });
+
+            const rDisconnEvent = RoomEventEnum.Disconnected || "disconnected";
+            infLivekitRoom.on(rDisconnEvent, () => {
+                console.log("Salon LiveKit déconnecté");
+                handleDoctorEndedCall();
             });
 
             const subEvent = RoomEventEnum.TrackSubscribed || "trackSubscribed";
@@ -808,7 +866,33 @@
         const waitingState = document.getElementById('infirmierDoctorWaitingState');
         if (waitingState) waitingState.style.display = 'flex';
 
-        $('#infirmierVideoCallModal').modal('hide');
+        // Fermeture directe de toutes les fenêtres modales
+        try {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                const vidModalEl = document.getElementById('infirmierVideoCallModal');
+                if (vidModalEl) {
+                    const inst = bootstrap.Modal.getInstance(vidModalEl) || bootstrap.Modal.getOrCreateInstance(vidModalEl);
+                    if (inst) inst.hide();
+                }
+                const incModalEl = document.getElementById('infirmierIncomingCallModal');
+                if (incModalEl) {
+                    const instInc = bootstrap.Modal.getInstance(incModalEl) || bootstrap.Modal.getOrCreateInstance(incModalEl);
+                    if (instInc) instInc.hide();
+                }
+            }
+        } catch(e) {}
+
+        try {
+            $('#infirmierVideoCallModal').modal('hide');
+            $('#infirmierIncomingCallModal').modal('hide');
+        } catch(e) {}
+
+        // Nettoyage immédiat et forcé de tous les overlays/backdrops
+        $('.modal-backdrop').remove();
+        $('body').removeClass('modal-open').css({
+            'overflow': '',
+            'padding-right': ''
+        });
 
         if (targetConsultationId && notifyBackend) {
             try {
@@ -824,6 +908,8 @@
         }
 
         setTimeout(() => {
+            $('.modal-backdrop').remove();
+            $('body').removeClass('modal-open').css({'overflow':'', 'padding-right':''});
             if (window.location.pathname.includes('/dashboard') || window.location.pathname.includes('/consultation')) {
                 window.location.reload();
             }

@@ -1,7 +1,6 @@
 @extends('layouts.dashboard',['title' => "Créer un Examen"])
 
 @section('content')
-  @if(auth()->user()->role_as == 'secretariat')
     <div class="row">
         <div class="col-12">
             <!-- /.box-header -->
@@ -105,8 +104,6 @@
             </div>
         </div>
     </div>
-  @endif
-
 @endsection
 
     <!-- Inclure la bibliothèque jQuery -->

@@ -19,8 +19,8 @@ class DashboardInfirmierRepository
     {
         $this->userId = $infirmier;
         $infirmierData = Infirmier::where('user_id', $this->userId)->first();
-        $this->infirmierId = $infirmierData->id;
-        $this->hospitalId = $infirmierData->hospital_id;
+        $this->infirmierId = optional($infirmierData)->id;
+        $this->hospitalId = optional($infirmierData)->hospital_id;
     }
 
     public function model()
@@ -29,14 +29,25 @@ class DashboardInfirmierRepository
     }
     public function consultation()
     {
-
-        $consultations = Consultation::orderByDESC('created_at')->where('infirmier_id', Auth::user()->infirmier->id)->where('date_consultation', date('Y-m-d'))->where('status_inf', '0')->get();
+        $infId = $this->infirmierId ?? optional(Auth::user()->infirmier)->id;
+        $consultations = Consultation::orderByDESC('created_at')
+            ->where(function ($q) use ($infId) {
+                if ($infId) {
+                    $q->where('infirmier_id', $infId)->orWhereNull('infirmier_id');
+                } else {
+                    $q->whereNull('infirmier_id');
+                }
+            })
+            ->where('date_consultation', date('Y-m-d'))
+            ->where('status_inf', '0')
+            ->get();
 
         return $consultations;
     }
 
     public function makeConsult()
     {
-        return Consultation::where('id', auth()->user()->infirmier->id)->where('date_consultation', date('Y-m-d'))->get();
+        $infId = $this->infirmierId ?? optional(auth()->user()->infirmier)->id;
+        return Consultation::where('infirmier_id', $infId)->where('date_consultation', date('Y-m-d'))->get();
     }
 }

@@ -73,6 +73,7 @@ class CashierController extends Controller
         $caissiere -> matricule = 'CS' . $request -> matricule;
         $caissiere -> contact = $request -> contact;
         $caissiere -> address = $request -> address;
+        $caissiere -> is_accueil = $request->has('is_accueil') ? 1 : 0;
         $caissiere -> save();
 
         //save availability
@@ -103,9 +104,9 @@ class CashierController extends Controller
         }
         $user -> save();
 
-        //update
         $caissiere -> contact = $request -> contact;
         $caissiere -> address = $request -> address;
+        $caissiere -> is_accueil = $request->has('is_accueil') ? 1 : 0;
         if($request -> hasFile('image'))
         {
             $caissiere->img_url = $this->deleteUploadImage($request->image, 'cashier');

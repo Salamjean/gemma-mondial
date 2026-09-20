@@ -1,4 +1,7 @@
-@if (\Illuminate\Support\Facades\Auth::user()->infirmier->serviceHospital->service->id == 4)
+@php
+    $infServiceId = optional(optional(optional(\Illuminate\Support\Facades\Auth::user()->infirmier)->serviceHospital)->service)->id;
+@endphp
+@if ($infServiceId == 4)
 
 <li class="treeview">
 

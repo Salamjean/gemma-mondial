@@ -50,12 +50,19 @@ class AdmissionRepository
         return $verify ? ['status' => 'success'] : ['status' => 'failure'];
     }
 
-    public function validated($id)
+    public function validated($id, $request = null)
     {
-
         $payment = Payment::findOrFail($id);
         $payment->status = 'success';
         $payment->caissiere_id = auth()->user()->cashier->id;
+
+        $modePaiement = ($request && $request->has('mode_paiement')) ? $request->input('mode_paiement') : 'espece';
+        $operateurMobile = ($modePaiement === 'mobile_money' && $request) ? $request->input('operateur_mobile') : null;
+        $referencePaiement = ($modePaiement === 'mobile_money' && $request) ? $request->input('reference_paiement') : null;
+
+        $payment->mode_paiement = $modePaiement;
+        $payment->operateur_mobile = $operateurMobile;
+        $payment->reference_paiement = $referencePaiement;
         $payment->save();
 
         if ($payment->type == 'admission') {
@@ -64,6 +71,9 @@ class AdmissionRepository
             $admission->statut_validation = 1;
             $admission->caissiere_id = Auth::user()->cashier->id;
             $admission->date_paiement = Carbon::now()->format('Y-m-d');
+            $admission->mode_paiement = $modePaiement;
+            $admission->operateur_mobile = $operateurMobile;
+            $admission->reference_paiement = $referencePaiement;
             $admission->save();
 
             return [

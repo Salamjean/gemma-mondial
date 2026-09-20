@@ -7,6 +7,7 @@ use App\Http\Controllers\Secretariat\ProfileController;
 use App\Http\Controllers\Secretariat\AdmissionController;
 use App\Http\Controllers\Secretariat\SecretariatController;
 use App\Http\Controllers\Secretariat\ConsultationController;
+use App\Http\Controllers\Secretariat\HospitalisationController;
 use App\Http\Controllers\Secretariat\SecretariatController as SecretariatSecretariatController;
 
 Route::middleware(['auth'])->group(function () {
@@ -102,6 +103,11 @@ Route::middleware(['auth'])->group(function () {
                 Route::post('add', [ConsultationController::class, 'addAdmission'])->name('add');
                 Route::post('searchadmission', [ConsultationController::class, 'searchAdmission'])->name('searchadmission');
                 Route::get('admission_invoice', [ConsultationController::class, 'admissionInvoice'])->name('admission_invoice');
+            });
+
+            Route::prefix('hospitalisation')->name('hospitalisation.')->group(function () {
+                Route::get('in_progress', [HospitalisationController::class, 'in_progress'])->name('in_progress');
+                Route::get('history', [HospitalisationController::class, 'history'])->name('history');
             });
         });
     });

@@ -8,7 +8,7 @@ use App\Models\Doctor;
 use App\Models\Patient;
 use App\Models\Admission;
 use App\Models\Secretaire;
-use App\Models\Departement;
+use App\Models\Department;
 use Illuminate\Http\Request;
 use App\Models\TypeAssurance;
 use App\Models\TypeConsultation;
@@ -41,7 +41,12 @@ class ExamenController extends Controller
     public function make()
     {
         $secretaire = Secretaire::where('user_id', auth()->user()->id)->first();
-        $hospitalId = $secretaire ? $secretaire->hospital_id : null;
+        $caissiere = \App\Models\Caissiere::where('user_id', auth()->user()->id)->first();
+        $hospitalId = optional($secretaire)->hospital_id 
+            ?? optional($caissiere)->hospital_id 
+            ?? optional(auth()->user()->hospital)->id 
+            ?? auth()->user()->hospital_id 
+            ?? (function_exists('getUserHospitalId') ? getUserHospitalId() : null);
 
         $secretaryUsers = User::whereHas('secretariat', function ($q) use ($hospitalId) {
             if ($hospitalId) {
@@ -50,7 +55,7 @@ class ExamenController extends Controller
         })->where('role_as', 'secretariat')->get();
 
         $type_consultations = TypeExamen::get();
-        $departements = Departement::get();
+        $departements = Department::get();
         $issue_consultations = IssueConsultation::get();
         $type_assurances = TypeAssurance::get();
 
@@ -80,15 +85,21 @@ class ExamenController extends Controller
             'motif_consultation' => 'required',
         ]);
         $secretaire = Secretaire::where('user_id', auth()->user()->id)->first();
+        $caissiere = \App\Models\Caissiere::where('user_id', auth()->user()->id)->first();
+        $hospitalId = optional($secretaire)->hospital_id 
+            ?? optional($caissiere)->hospital_id 
+            ?? optional(auth()->user()->hospital)->id 
+            ?? auth()->user()->hospital_id 
+            ?? (function_exists('getUserHospitalId') ? getUserHospitalId() : 1);
 
         $admission = Admission::create([
             'code_admission' => "ADM" . rand(000000, 999999),
             'date_admission' => Carbon::now()->format('Y-m-d H:i:s'),
-            'secretaire_id' => $secretaire->id,
-            'hospital_id' => $secretaire->hospital_id,
+            'secretaire_id' => optional($secretaire)->id,
+            'hospital_id' => $hospitalId,
             'patient_id' => $request->patient_id,
             'doctor_id' => $request->doctor_id,
-            'caissiere_id' => null,
+            'caissiere_id' => optional($caissiere)->id,
             'type_examen_id' => $request->type_examen_id,
             'type_admission' => $request->type_admission_id,
             'type_assurance_id' => $request->type_assurance_id,

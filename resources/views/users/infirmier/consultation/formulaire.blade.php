@@ -24,12 +24,13 @@
                     : \App\Models\Hospital::find($hospitalId);
                 $isTeleconsultationActive = $infHospital ? (bool)$infHospital->is_teleconsultation_active : false;
             }
+            $isCompleted = ($consultation->status == 1);
             $isTeleconsultProgrammed = ($consultation->orientation_infirmier === 'teleconsultation' || (!empty($consultation->desired_date) && !empty($consultation->doctor_id)));
             
-            $isEmergencyActive = ($consultation->orientation_infirmier === 'urgence' || $consultation->is_urgence == 1) 
-                && (!empty($consultation->call_channel) || $consultation->is_call_active || in_array($consultation->call_status, ['calling', 'accepted', 'in_call', 'ended']))
+            $isEmergencyActive = !$isCompleted && ($consultation->orientation_infirmier === 'urgence' || $consultation->is_urgence == 1) 
+                && (!empty($consultation->call_channel) || $consultation->is_call_active || in_array($consultation->call_status, ['calling', 'accepted', 'in_call']))
                 && $consultation->status == 0;
-            $hasDoctorAccepted = $isEmergencyActive && (!empty($consultation->doctor_id) || in_array($consultation->call_status, ['accepted', 'in_call', 'ended']));
+            $hasDoctorAccepted = $isEmergencyActive && (!empty($consultation->doctor_id) || in_array($consultation->call_status, ['accepted', 'in_call']));
             $emergencyDocUser = optional(optional($consultation->doctor)->user);
             $emergencyDocName = $emergencyDocUser->name ? ('Dr. ' . trim($emergencyDocUser->name . ' ' . ($emergencyDocUser->prenom ?? ''))) : 'Médecins de garde';
             $livekitUrl = config('services.livekit.url', 'wss://gemma-14fckk2m.livekit.cloud');
@@ -240,10 +241,10 @@
                                     <label class="orientation-option-card d-block p-15 rounded-12 border cursor-pointer text-center h-100 position-relative" for="radio_sortie">
                                         <input type="radio" name="orientation_infirmier" id="radio_sortie" value="sortie" class="position-absolute top-10 end-10">
                                         <div class="icon-circle bg-success-light text-success mx-auto mb-10 fs-24 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; border-radius: 50%;">
-                                            <i class="fa-solid fa-door-open"></i>
+                                            <i class="fa-solid fa-stethoscope"></i>
                                         </div>
-                                        <h5 class="fw-bold text-dark mb-1 fs-16">Sortie</h5>
-                                        <p class="text-muted fs-12 mb-0">Soins administrés & libération du patient</p>
+                                        <h5 class="fw-bold text-dark mb-1 fs-16">Consultation</h5>
+                                        <p class="text-muted fs-12 mb-0">Soins administrés & consultation du patient</p>
                                     </label>
                                 </div>
 
@@ -262,17 +263,17 @@
                                     <label class="orientation-option-card d-block p-15 rounded-12 border cursor-pointer text-center h-100 position-relative" for="radio_urgence">
                                         <input type="radio" name="orientation_infirmier" id="radio_urgence" value="urgence" class="position-absolute top-10 end-10">
                                         <div class="icon-circle bg-danger-light text-danger mx-auto mb-10 fs-24 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; border-radius: 50%;">
-                                            <i class="fa-solid fa-truck-medical"></i>
+                                            <i class="fa-solid fa-phone-volume"></i>
                                         </div>
-                                        <h5 class="fw-bold text-dark mb-1 fs-16">Urgence</h5>
+                                        <h5 class="fw-bold text-dark mb-1 fs-16">Appel d'urgence</h5>
                                         <p class="text-muted fs-12 mb-0">Signalement & appel immédiat d'un médecin</p>
                                     </label>
                                 </div>
                             </div>
 
-                            <!-- Bloc Déployé : 1. SORTIE -->
+                            <!-- Bloc Déployé : 1. CONSULTATION -->
                             <div id="bloc_sortie" class="p-20 rounded-12 bg-light border mb-15" style="display: none;">
-                                <h5 class="fw-bold text-success mb-15"><i class="fa-solid fa-hand-holding-medical me-2"></i> Renseignements de Sortie & Soins Administrés</h5>
+                                <h5 class="fw-bold text-success mb-15"><i class="fa-solid fa-hand-holding-medical me-2"></i> Renseignements de Consultation & Soins Administrés</h5>
                                 <div class="row g-3">
                                     <div class="col-md-4">
                                         <div class="form-group mb-0">
@@ -401,8 +402,8 @@
                                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
                                     <div>
                                         <h5 class="fw-bold text-danger mb-1 d-flex align-items-center gap-2">
-                                            <i class="fa-solid fa-triangle-exclamation"></i>
-                                            <span>Situation d'Urgence Signalée</span>
+                                            <i class="fa-solid fa-phone-volume"></i>
+                                            <span>Appel d'Urgence Signalé</span>
                                             @if($isEmergencyActive)
                                                  @if($hasDoctorAccepted)
                                                     <span class="badge bg-success text-white rounded-pill px-2.5 py-1 fs-11 fw-semibold" id="emergencyStatusBadge">
@@ -462,9 +463,15 @@
                                     <span class="text-muted fs-12">Le dossier est verrouillé et prêt pour le rendez-vous vidéo.</span>
                                 </div>
                             </div>
-                            <span class="badge bg-success-light text-success border border-success fw-bold px-3 py-1.5 rounded-pill fs-12">
-                                <i class="fa-solid fa-calendar-check me-1"></i> Programmation validée
-                            </span>
+                            @if($isCompleted)
+                                <span class="badge bg-secondary text-white border fw-bold px-3 py-1.5 rounded-pill fs-12">
+                                    <i class="fa-solid fa-check-double me-1"></i> Téléconsultation terminée / Appel clos
+                                </span>
+                            @else
+                                <span class="badge bg-success-light text-success border border-success fw-bold px-3 py-1.5 rounded-pill fs-12">
+                                    <i class="fa-solid fa-calendar-check me-1"></i> Programmation validée
+                                </span>
+                            @endif
                         </div>
                         <div class="box-body p-20 bg-light-subtle">
                             <div class="row g-3">
@@ -518,10 +525,16 @@
                                 $docFullName = 'Dr. ' . trim((optional(optional($consultation->doctor)->user)->name ?? '') . ' ' . (optional(optional($consultation->doctor)->user)->prenom ?? ''));
                                 $patFullName = trim((optional(optional($consultation->patient)->user)->name ?? '') . ' ' . (optional(optional($consultation->patient)->user)->prenom ?? ''));
                             @endphp
-                            <button type="button" class="btn text-white btn-lg px-25 py-10 rounded-12 fw-bold shadow-sm d-inline-flex align-items-center gap-2" style="background: linear-gradient(135deg, #0d9488 0%, #059669 100%); border: none;" onclick="openInfirmierVideoCall({{ $consultation->id }}, '{{ $scheduledToken }}', '{{ $livekitWsUrl }}', '{{ addslashes($docFullName) }}', '{{ addslashes($patFullName) }}', '{{ $consultation->call_channel }}')">
-                                <i class="fa-solid fa-video fs-16"></i>
-                                <span>Lancer / Rejoindre l'appel vidéo</span>
-                            </button>
+                            @if($isCompleted)
+                                <span class="badge bg-light text-muted border px-3 py-2 fs-13 fw-semibold">
+                                    <i class="fa-solid fa-phone-slash text-danger me-1"></i> Appel vidéo clôturé par le médecin
+                                </span>
+                            @else
+                                <button type="button" class="btn text-white btn-lg px-25 py-10 rounded-12 fw-bold shadow-sm d-inline-flex align-items-center gap-2" style="background: linear-gradient(135deg, #0d9488 0%, #059669 100%); border: none;" onclick="openInfirmierVideoCall({{ $consultation->id }}, '{{ $scheduledToken }}', '{{ $livekitWsUrl }}', '{{ addslashes($docFullName) }}', '{{ addslashes($patFullName) }}', '{{ $consultation->call_channel }}')">
+                                    <i class="fa-solid fa-video fs-16"></i>
+                                    <span>Lancer / Rejoindre l'appel vidéo</span>
+                                </button>
+                            @endif
                         </div>
                     </div>
                     @endif
@@ -939,7 +952,7 @@
             $('#bloc_sortie').slideDown();
             $(this).closest('.orientation-option-card').addClass('active-sortie');
             $('#btnSubmitFormulaire').show().removeClass('btn-primary btn-danger').addClass('btn-success');
-            $('#btnSubmitText').text('Enregistrer les soins & Valider la sortie');
+            $('#btnSubmitText').text('Enregistrer les soins & Valider la consultation');
         } else if (selected === 'teleconsultation') {
             $('#bloc_teleconsultation').slideDown();
             $(this).closest('.orientation-option-card').addClass('active-teleconsultation');
@@ -1166,6 +1179,27 @@
     // Validation à la soumission
     $('form[action*="formulaire"]').on('submit', function (e) {
         var orientation = $('input[name="orientation_infirmier"]:checked').val();
+        
+        var ta = $('#tension_arterielle').val() ? $('#tension_arterielle').val().trim() : '';
+        var temp = $('#temperature').val() ? $('#temperature').val().trim() : '';
+        var poids = $('#poids').val() ? $('#poids').val().trim() : '';
+        var taille = $('#taille').val() ? $('#taille').val().trim() : '';
+        var pouls = $('#pouls').val() ? $('#pouls').val().trim() : '';
+
+        // Constantes physiques obligatoires (sauf pour appel d'urgence immédiat qui a son propre flux d'appel)
+        if (orientation !== 'urgence') {
+            if (!ta && !temp && !poids && !pouls && !taille) {
+                e.preventDefault();
+                Swal.fire({
+                    title: "Constantes physiques requises",
+                    text: "Veuillez renseigner au moins une constante physique du patient (Tension, Température, Poids, Pouls) avant d'enregistrer la téléconsultation ou de valider le dossier.",
+                    icon: "warning",
+                    confirmButtonColor: '#005AEC'
+                });
+                return false;
+            }
+        }
+
         if (orientation === 'teleconsultation') {
             var dateVal = $('#desired_date').val();
             var docVal = $('#doctor_id').val();
@@ -1193,23 +1227,6 @@
                 e.preventDefault();
                 Swal.fire({
                     text: "Veuillez sélectionner un médecin disponible dans la liste pour cette téléconsultation.",
-                    icon: "warning",
-                    confirmButtonColor: '#005AEC'
-                });
-                return false;
-            }
-        } else if (!orientation) {
-            // Processus standard : exiger la prise des constantes
-            var ta = $('#tension_arterielle').val() ? $('#tension_arterielle').val().trim() : '';
-            var temp = $('#temperature').val() ? $('#temperature').val().trim() : '';
-            var poids = $('#poids').val() ? $('#poids').val().trim() : '';
-            var pouls = $('#pouls').val() ? $('#pouls').val().trim() : '';
-
-            if (!ta && !temp && !poids && !pouls) {
-                e.preventDefault();
-                Swal.fire({
-                    title: "Constantes requises",
-                    text: "Veuillez renseigner au moins une constante physique du patient (Tension, Température, Poids ou Pouls) avant de l'envoyer chez le médecin, ou choisir une action d'orientation (Téléconsultation, Sortie ou Urgence).",
                     icon: "warning",
                     confirmButtonColor: '#005AEC'
                 });

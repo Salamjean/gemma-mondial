@@ -197,9 +197,10 @@ class DashboardController extends Controller
 
         if ($this->userAuth()['user']['role_as'] == 'infirmier') {
 
-            $infirmierId = Auth::user()->infirmier->id;
+            $infirmierId = optional(Auth::user()->infirmier)->id;
+            $serviceId = optional(optional(optional(Auth::user()->infirmier)->serviceHospital)->service)->id;
 
-            if (Auth::user()->infirmier->serviceHospital->service->id == 5) {
+            if ($serviceId == 5) {
 
                 $pending_count = CareRequested::with('admission')->whereHas('admission', function ($query) use ($infirmierId) {
                     $query->where('infirmier_id', $infirmierId);

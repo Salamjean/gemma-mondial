@@ -96,7 +96,7 @@ class AdmissionController extends Controller
 
 
         // validation admission
-        $res = $this->repository()->validated($id);
+        $res = $this->repository()->validated($id, $request);
 
         // dd($res);
         //type admission
@@ -133,26 +133,36 @@ class AdmissionController extends Controller
 
     public function indicate($day)
     {
+        $targetDay = ($day == 'day' || empty($day)) ? date('Y-m-d') : $day;
 
-        
-
-        if($day == 'day')
-            $payments = Payment::where('caissiere_id', Auth::user()->cashier->id)->whereDate('created_at', date('Y-m-d'))->get();
-        else
-            $payments = Payment::where('caissiere_id', Auth::user()->cashier->id)->whereDate('created_at', $day)->get();
+        $payments = Payment::where('caissiere_id', Auth::user()->cashier->id)
+            ->where('status', 'success')
+            ->whereDate('created_at', $targetDay)
+            ->with([
+                'admission.patient.user',
+                'admission.prestationHospital.prestationService',
+                'hospitalisation.consultation.patient.user',
+                'typeAssurance'
+            ])
+            ->orderBy('created_at', 'asc')
+            ->get();
 
         $cashier = Auth::user()->cashier;
 
-        $pdf =  Pdf::loadView('users.cashier.indicate', ['payments' => $payments, 'cashier' => $cashier]);
+        $pdf = Pdf::loadView('users.cashier.indicate', [
+            'payments' => $payments,
+            'cashier' => $cashier,
+            'day' => $targetDay
+        ]);
+
         $pdf->setPaper('A4', 'portrait');
-        $pdf->render();
+        $pdf->setOptions([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => true,
+            'defaultFont' => 'sans-serif'
+        ]);
 
-        $response = new Response();
-        $response->setContent($pdf->output());
-        $response->header('Content-Type', 'application/pdf');
-        $response->header('Content-Disposition', 'inline; filename="admission.pdf"');
-
-        return $response;
+        return $pdf->stream('point-recette-' . $targetDay . '.pdf');
     }
 
     public function all()

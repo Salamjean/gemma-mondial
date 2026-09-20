@@ -20,9 +20,16 @@ class RecetteController extends Controller
 
     public function day($day)
     {
-        $admissions = (new RecetteRepository())->day($day);
-        return view('users.cashier.recette.day', ['admissions' => $admissions, 'day' => $day]);
+        $payments = (new RecetteRepository())->day($day);
+        return view('users.cashier.recette.day', [
+            'payments' => $payments,
+            'admissions' => $payments,
+            'day' => $day
+        ]);
     }
-    
 
+    public function pdf($day)
+    {
+        return (new AdmissionController())->indicate($day);
+    }
 }

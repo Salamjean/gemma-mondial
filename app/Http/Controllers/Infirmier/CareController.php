@@ -21,9 +21,11 @@ class CareController extends Controller
 {
     public function new()
     {
-        $infirmierId = Auth::user()->infirmier->id;
+        $infirmierId = optional(Auth::user()->infirmier)->id;
         $cares = CareRequested::with('admission')->whereHas('admission', function ($query) use ($infirmierId) {
-            $query->where('infirmier_id', $infirmierId);
+            if ($infirmierId) {
+                $query->where('infirmier_id', $infirmierId);
+            }
         })->where('status', '!=', 'success')->whereDate('created_at', date('Y-m-d'))->get();
 
         return view('users.infirmier.care.new', compact('cares'));
@@ -31,9 +33,13 @@ class CareController extends Controller
 
     public function allCares()
     {
-        $infirmierId = Auth::user()->infirmier->id;
+        $infirmierId = optional(Auth::user()->infirmier)->id;
         $cares = CareRequested::with('admission')->whereHas('admission', function ($query) use ($infirmierId) {
-            $query->where('infirmier_id', $infirmierId)->orWhereNull('infirmier_id');
+            if ($infirmierId) {
+                $query->where('infirmier_id', $infirmierId)->orWhereNull('infirmier_id');
+            } else {
+                $query->whereNull('infirmier_id');
+            }
         })->where('status', '!=', 'success')->orderByDESC('created_at')->get();
 
         return view('users.infirmier.care.all', compact('cares'));
@@ -41,9 +47,11 @@ class CareController extends Controller
 
     public function history()
     {
-        $infirmierId = Auth::user()->infirmier->id;
+        $infirmierId = optional(Auth::user()->infirmier)->id;
         $cares = CareRequested::with('admission')->whereHas('admission', function ($query) use ($infirmierId) {
-            $query->where('infirmier_id', $infirmierId);
+            if ($infirmierId) {
+                $query->where('infirmier_id', $infirmierId);
+            }
         })->get();
 
         return view('users.infirmier.care.history', compact('cares'));
@@ -56,7 +64,8 @@ class CareController extends Controller
         $bandages = Bandage::all();
         $injections = Injection::all();
         $soins = Care::all();
-        $drugs = DrugHospital::where('hospital_id', Auth::user()->infirmier->hospital_id)->where('status', 0)->get();
+        $hospitalId = optional(Auth::user()->infirmier)->hospital_id ?? getUserHospitalId() ?: 1;
+        $drugs = DrugHospital::where('hospital_id', $hospitalId)->where('status', 0)->get();
 
         return view('users.infirmier.care.formulaire', compact('care', 'soins', 'injections', 'bandages', "drugs"));
     }
@@ -107,10 +116,15 @@ class CareController extends Controller
         $care -> save();
 
         //pharmacy notifications
+        $hospitalId = optional(optional(Auth::user()->infirmier)->hospital)->id 
+            ?? optional(Auth::user()->infirmier)->hospital_id 
+            ?? getUserHospitalId() 
+            ?: 1;
+
         $drugSale = new DrugSale();
         $drugSale -> type = 'care_requested';
         $drugSale -> care_requested_id = $care -> id;
-        $drugSale -> hospital_id = Auth::user()->infirmier->hospital->id;
+        $drugSale -> hospital_id = $hospitalId;
         $drugSale -> price = $care -> price;
         $drugSale -> save();
 
@@ -122,8 +136,9 @@ class CareController extends Controller
     {
 
         $care = CareRequested::find($id);
+        $hospitalId = optional(Auth::user()->infirmier)->hospital_id ?? getUserHospitalId() ?: 1;
 
-        $drugs = DrugHospital::with('drug')->where('hospital_id', Auth::user()->infirmier->hospital_id)->get();
+        $drugs = DrugHospital::with('drug')->where('hospital_id', $hospitalId)->get();
 
         return view('users.infirmier.care.payment_success', compact('care', 'drugs'));
     }
@@ -141,6 +156,7 @@ class CareController extends Controller
         ]);
 
         $care = CareRequested::find($request->care_id);
+        $hospitalId = optional(Auth::user()->infirmier)->hospital_id ?? getUserHospitalId() ?: 1;
 
         //consultation
         $consultation = new Consultation();
@@ -148,13 +164,13 @@ class CareController extends Controller
         $consultation -> admission_id = $care->admission_id;
         $consultation -> date_consultation = date('Y-m-d');
         $consultation -> prestation_hospital_id = $care->admission->prestation_hopital_id;
-        $consultation -> hospital_id = Auth::user()->infirmier->hospital_id;
+        $consultation -> hospital_id = $hospitalId;
         $consultation -> montant = $care->admission->montant + $care->price;
         $consultation -> patient_id = $care->admission->patient_id;
         $consultation -> status = 1;
         $consultation -> status_inf = 1;
         $consultation -> observation_infirmiere = $request->justification;
-        $consultation -> infirmier_id = Auth::user()->infirmier->id;
+        $consultation -> infirmier_id = optional(Auth::user()->infirmier)->id;
         $consultation -> save();
 
         // update careRequested

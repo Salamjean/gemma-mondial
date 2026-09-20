@@ -32,7 +32,8 @@
                                     <th class="bb-2">Agent en charge</th>
                                     <th class="bb-2">Services</th>
                                     <th class="bb-2">Acte médical</th>
-                                    <th class="bb-2">Montant Consultation</th>
+                                    <th class="bb-2">Montant</th>
+                                    <th class="bb-2 text-center">Mode Paiement</th>
                                     <th class="bb-2 text-center">Status</th>
                                     <th class="bb-2 text-center">Actions</th>
                                 </tr>
@@ -91,6 +92,21 @@
 
                                         <td class="text-white fw-bold fs-6"> <span
                                                 class="badge badge-dark">{{ $item->prix }} F CFA</span> </td>
+                                        <td class="text-center">
+                                            @if ($item->status == 'success')
+                                                @if ($item->mode_paiement == 'mobile_money')
+                                                    <span class="badge badge-info" title="{{ $item->reference_paiement ? 'Réf: ' . $item->reference_paiement : '' }}">
+                                                        <i class="fa-solid fa-mobile-screen-button me-1"></i> {{ $item->operateur_mobile ?? 'Mobile Money' }}
+                                                    </span>
+                                                @else
+                                                    <span class="badge badge-secondary">
+                                                        <i class="fa-solid fa-money-bill-1 me-1"></i> Espèce
+                                                    </span>
+                                                @endif
+                                            @else
+                                                <span class="text-muted">-</span>
+                                            @endif
+                                        </td>
                                         <td class="text-dark fw-bold fs-6">
                                             @if ($item->status == 'success')
                                                 <span class="badge badge-success">Payé</span>

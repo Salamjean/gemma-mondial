@@ -1,3 +1,44 @@
+@php
+    $caissiereUser = auth()->user()->cashier;
+    $isAccueil = $caissiereUser && $caissiereUser->is_accueil;
+@endphp
+
+@if($isAccueil)
+<li class="treeview">
+    <a href="#" class="{{ routeActive(['secretariat.patient.create', 'secretariat.patient.list', 'secretariat.search_hospitalisation', 'secretariat.admission.history']) }}">
+        <i class="fa-solid fa-hospital-user {{ routeActive(['secretariat.patient.create', 'secretariat.patient.list', 'secretariat.search_hospitalisation', 'secretariat.admission.history']) }}">
+            <span class="path1"></span><span class="path2"></span><span class="path3"></span>
+        </i>
+        <span>Patients & Accueil</span>
+        <span class="pull-right-container">
+            <i class="fa-solid fa-angle-right"></i>
+        </span>
+    </a>
+    <ul class="treeview-menu">
+        <li>
+            <a href="{{ route('secretariat.patient.create') }}" class="{{ routeActive('secretariat.patient.create') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Nouveau patient
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('secretariat.search_hospitalisation') }}" class="{{ routeActive('secretariat.search_hospitalisation') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Affecter un patient
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('secretariat.patient.list') }}" class="{{ routeActive('secretariat.patient.list') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Liste des patients
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('secretariat.admission.history') }}" class="{{ routeActive('secretariat.admission.history') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Historique affectations
+            </a>
+        </li>
+    </ul>
+</li>
+@endif
+
 <li class="treeview">
     <a href="#" class="{{ routeActive(['cashier.admission.list', 'cashier.admission.all', 'cashier.admission.admission', 'cashier.admission.hospitalisation']) }}">
         <i class="fa fa-paypal {{ routeActive(['cashier.admission.list', 'cashier.admission.all', 'cashier.admission.admission', 'cashier.admission.hospitalisation']) }}">

@@ -9,6 +9,7 @@ use App\Models\Patient;
 use App\Models\Payment;
 use App\Models\Admission;
 use App\Models\Secretaire;
+use App\Models\Caissiere;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\TypeAssurance;
@@ -29,17 +30,30 @@ class PatientController extends Controller
 
     public function list()
     {
+        $hospital = optional(Auth::user()->secretariat)->hospital_id 
+            ?? optional(Auth::user()->cashier)->hospital_id
+            ?? optional(Auth::user()->infirmier)->hospital_id 
+            ?? optional(Auth::user()->doctor)->hospital_id 
+            ?? optional(Auth::user()->hospital)->id 
+            ?? Auth::user()->hospital_id 
+            ?? (function_exists('getUserHospitalId') ? getUserHospitalId() : null);
 
-        $hospital = Auth::user()->secretariat->hospital_id;
-        $patients = Patient::whereHas('passage', function ($query) use ($hospital) {
-            $query->where('hospital_id', $hospital);
-        })
-            ->where('status', 1)
+        $patientsQuery = Patient::where('status', 1)
             ->with('user')
             ->with('lieuNaissance')
             ->with('residenceActuelle')
-            ->orderByDESC('created_at')
-            ->get();
+            ->orderByDESC('created_at');
+
+        if ($hospital) {
+            $patientsQuery->where(function ($query) use ($hospital) {
+                $query->where('hospital_id', $hospital)
+                    ->orWhereHas('passage', function ($q) use ($hospital) {
+                        $q->where('hospital_id', $hospital);
+                    });
+            });
+        }
+
+        $patients = $patientsQuery->get();
 
         return view("users.secretariat.patient.list", compact('patients'));
     }
@@ -139,7 +153,12 @@ class PatientController extends Controller
         $user->save();
         $patient->save();
 
-        $hospitalId = auth()->user()->secretariat->hospital_id ?? auth()->user()->infirmier->hospital_id ?? auth()->user()->hospital_id ?? 1;
+        $hospitalId = optional(auth()->user()->secretariat)->hospital_id 
+            ?? optional(auth()->user()->infirmier)->hospital_id 
+            ?? optional(auth()->user()->doctor)->hospital_id 
+            ?? auth()->user()->hospital_id 
+            ?? (function_exists('getUserHospitalId') ? getUserHospitalId() : 1);
+
         //specifié le passage du patient dans l'hopital
         if (!PassagePatient::where('hospital_id', $hospitalId)->where('patient_id', $patient->id)->exists()) {
             $passage = new PassagePatient();
@@ -151,18 +170,22 @@ class PatientController extends Controller
         }
 
         $secretaire = Secretaire::where('user_id', auth()->user()->id)->first();
+        $caissiere = Caissiere::where('user_id', auth()->user()->id)->first();
+        $admissionHospitalId = optional(optional($secretaire)->hospital)->id 
+            ?? optional(optional($caissiere)->hospital)->id 
+            ?? $hospitalId;
 
         //verifer l'admission
         if ($request->admission_patient_up == 'Oui') {
             $admission = Admission::create([
                 'code_admission' => codeAdmission(),
                 'date_admission' => Carbon::now()->format('Y-m-d H:i:s'),
-                'secretaire_id' => $secretaire->id,
-                'hospital_id' => $secretaire->hospital->id,
+                'secretaire_id' => optional($secretaire)->id,
+                'hospital_id' => $admissionHospitalId,
                 'patient_id' => $patient->id,
                 'doctor_id' => $request->doctor_id ?? null,
                 'infirmier_id' => $request->infirmier_id ?? null,
-                'caissiere_id' => null,
+                'caissiere_id' => optional($caissiere)->id,
                 'prestation_hopital_id' => $request->prestation_service_id,
                 'type_admission' => $request->type_admission_id,
                 'mode_entree' => $request->mode_entree,
@@ -177,8 +200,11 @@ class PatientController extends Controller
             $payment->date = Carbon::now()->format('Y-m-d');
             $payment->prix = $request->montant;
             $payment->prix_normal = $request->montant;
-            $payment->hospital_id = $secretaire->hospital->id;
+            $payment->hospital_id = $admissionHospitalId;
             $payment->admission_id = $admission->id;
+            if ($caissiere) {
+                $payment->caissiere_id = $caissiere->id;
+            }
             $payment->save();
         }
         // Retourner une réponse JSON
@@ -193,6 +219,10 @@ class PatientController extends Controller
 
     public function dossierMedical($id)
     {
+        if (in_array(Auth::user()->role_as, ['secretariat', 'cashier'])) {
+            return redirect()->route('secretariat.patient.detail', $id)->with('error', 'Accès non autorisé : la consultation du dossier médical est réservée au personnel soignant.');
+        }
+
         $patient = Patient::findOrFail($id);
         $consultations = \App\Models\Consultation::where('patient_id', $patient->id)->get();
         $consultation = \App\Models\Consultation::where('patient_id', $patient->id)->first();
@@ -386,11 +416,15 @@ class PatientController extends Controller
         $code = ($request->pays == 'Côte d\'Ivoire') ? 225 : 100;
         $codePatient = "DM$dataNaissRef$countNaissRef$code";
 
-        $hospitalId = $secretaire->hospital->id ?? auth()->user()->infirmier->hospital_id ?? auth()->user()->hospital_id ?? 1;
+        $hospitalId = optional(optional($secretaire)->hospital)->id 
+            ?? optional(auth()->user()->infirmier)->hospital_id 
+            ?? optional(auth()->user()->doctor)->hospital_id 
+            ?? auth()->user()->hospital_id 
+            ?? (function_exists('getUserHospitalId') ? getUserHospitalId() : 1);
 
         $patient = Patient::create([
             'user_id' => $user->id,
-            'secretaire_id' => $secretaire->id ?? null,
+            'secretaire_id' => optional($secretaire)->id,
             'hospital_id' => $hospitalId,
             'gender' => $request->gender,
             'no_assurance' => $request->no_assurance,
@@ -427,16 +461,18 @@ class PatientController extends Controller
             'fingerprint_verified' => (bool) ($request->fingerprint_left_template && $request->fingerprint_right_template),
         ]);
 
+        $caissiere = Caissiere::where('user_id', auth()->user()->id)->first();
+
         if ($request->admission_patient == 'Oui') {
             $admission = Admission::create([
                 'code_admission' => codeAdmission(),
                 'date_admission' => Carbon::now()->format('Y-m-d H:i:s'),
-                'secretaire_id' => $secretaire->id,
-                'hospital_id' => $secretaire->hospital->id,
+                'secretaire_id' => optional($secretaire)->id,
+                'hospital_id' => $hospitalId,
                 'patient_id' => $patient->id,
                 'doctor_id' => $request->doctor_id ?? null,
                 'infirmier_id' => $request->infirmier_id ?? null,
-                'caissiere_id' => null,
+                'caissiere_id' => optional($caissiere)->id,
                 'prestation_hopital_id' => $request->prestation_service_id,
                 'type_admission' => $request->type_admission_id,
                 'mode_entree' => $request->mode_entree,
@@ -451,8 +487,11 @@ class PatientController extends Controller
             $payment->date = Carbon::now()->format('Y-m-d');
             $payment->prix = $request->montant;
             $payment->prix_normal = $request->montant;
-            $payment->hospital_id = $secretaire->hospital->id;
+            $payment->hospital_id = $hospitalId;
             $payment->admission_id = $admission->id;
+            if ($caissiere) {
+                $payment->caissiere_id = $caissiere->id;
+            }
             $payment->save();
         }
 

@@ -45,11 +45,20 @@
 
                                 @foreach ($patients as $patient)
                                     @php
-                                        $dateNaissance = \Carbon\Carbon::createFromFormat('d/m/Y', $patient->birth_date);
-                                        $age = $dateNaissance->diffInYears(\Carbon\Carbon::now());
+                                        $age = 'N/A';
+                                        if (!empty($patient->birth_date)) {
+                                            try {
+                                                $dateNaissance = \Carbon\Carbon::hasFormat($patient->birth_date, 'd/m/Y')
+                                                    ? \Carbon\Carbon::createFromFormat('d/m/Y', $patient->birth_date)
+                                                    : \Carbon\Carbon::parse($patient->birth_date);
+                                                $age = $dateNaissance->diffInYears(\Carbon\Carbon::now()) . ' ans';
+                                            } catch (\Throwable $e) {
+                                                $age = 'N/A';
+                                            }
+                                        }
                                     @endphp
                                     <tr>
-                                        <td><b><i>{{ $patient->code_patient }}</i></b></td>
+                                        <td><b><i>{{ $patient->code_patient ?? 'N/A' }}</i></b></td>
 
                                         <td>
                                             @if ($patient->img_url != null)
@@ -66,15 +75,14 @@
                                             @endif
 
                                         </td>
-                                        <td><i>{{ $patient->user->name }} {{ $patient->user->prenom }}</i></td>
-                                        <td>{{ $patient->gender }}</td>
-                                        <td>{{ $age }} ans</td>
-                                        <td>{{ $patient->lieuNaissance->name }}</td>
-                                        <td>{{ $patient->numero_identite }}</td>
-                                        <td>{{ $patient->residenceActuelle->name }}</td>
+                                        <td><i>{{ $patient->user->name ?? '' }} {{ $patient->user->prenom ?? '' }}</i></td>
+                                        <td>{{ $patient->gender ?? '-' }}</td>
+                                        <td>{{ $age }}</td>
+                                        <td>{{ $patient->lieuNaissance->name ?? '-' }}</td>
+                                        <td>{{ $patient->numero_identite ?? '-' }}</td>
+                                        <td>{{ $patient->residenceActuelle->name ?? '-' }}</td>
                                         <td>
-                                            {{ \Carbon\Carbon::parse($patient->created_at)->format('d/m/Y') }} -
-                                            {{ heureFr($patient->created_at) }}
+                                            {{ $patient->created_at ? \Carbon\Carbon::parse($patient->created_at)->format('d/m/Y') . ' - ' . heureFr($patient->created_at) : '-' }}
                                         </td>
                                         <td class="text-center">
                                             <a href="{{ route('secretariat.patient.detail', $patient->id) }}"

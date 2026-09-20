@@ -215,7 +215,11 @@ function getUserHospitalId()
     if ($user->doctor && isset($user->doctor->hospital_id)) return $user->doctor->hospital_id;
     if ($user->infirmier && isset($user->infirmier->hospital_id)) return $user->infirmier->hospital_id;
     if ($user->secretariat && isset($user->secretariat->hospital_id)) return $user->secretariat->hospital_id;
-    if (isset($user->hospital_id)) return $user->hospital_id;
+    if ($user->cashier && isset($user->cashier->hospital_id)) return $user->cashier->hospital_id;
+    if ($user->accountant && isset($user->accountant->hospital_id)) return $user->accountant->hospital_id;
+    if ($user->pharmacy && isset($user->pharmacy->hospital_id)) return $user->pharmacy->hospital_id;
+    if ($user->hospital && isset($user->hospital->id)) return $user->hospital->id;
+    if (isset($user->hospital_id) && $user->hospital_id) return $user->hospital_id;
     return '';
 }
 

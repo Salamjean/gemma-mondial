@@ -205,7 +205,7 @@
                                     <div class="col-md-4">
                                         <div class="form-group">
                                             <label for="profession_up" class="form-label"> <b>Profession: </b> </label>
-                                            <select class="form-control select2" name="profession_up" id="profession_up" style="width: 100%"></select>
+                                            <input type="text" class="form-control" name="profession_up" id="profession_up" value="{{ old('profession_up', $patient->profession) }}" placeholder="Ex: Enseignant, Commerçant, Étudiant...">
                                         </div>
                                     </div>
                                     <div class="col-md-2">
@@ -400,19 +400,6 @@
                     select.trigger('change');
                 });
 
-            // 5. Profession (profession.json)
-            fetch('{{ asset('assets/src/profession.json') }}')
-                .then(response => response.json())
-                .then(data => {
-                    const select = $('#profession_up');
-                    select.empty().append('<option value="">Selectionner</option>');
-                    for (const libelle in data) {
-                        const nom = data[libelle];
-                        const selected = (nom === patientData.profession) ? 'selected' : '';
-                        select.append(`<option value="${nom}" ${selected}>${nom}</option>`);
-                    }
-                    select.trigger('change');
-                });
 
             // 6. Ethnie (ethnies.json)
             fetch('{{ asset('assets/src/ethnies.json') }}')

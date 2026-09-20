@@ -104,9 +104,20 @@ class SecretariatController extends Controller
         return ($currentTime >= $startCarbon && $currentTime <= $endFormatted);
     }
 
+    private function getCurrentHospitalId()
+    {
+        return optional(Auth::user()->secretariat)->hospital_id 
+            ?? optional(optional(Auth::user()->secretariat)->hospital)->id 
+            ?? optional(Auth::user()->infirmier)->hospital_id 
+            ?? optional(Auth::user()->doctor)->hospital_id 
+            ?? optional(Auth::user()->hospital)->id 
+            ?? Auth::user()->hospital_id 
+            ?? (function_exists('getUserHospitalId') ? getUserHospitalId() : null);
+    }
+
     public function getDoctors($prestations)
     {
-        $hospitalId = Auth::user()->secretariat->hospital_id ?? (Auth::user()->secretariat->hospital->id ?? null);
+        $hospitalId = $this->getCurrentHospitalId();
         $doctors = PrestationDoctor::whereHas('doctor', function ($q) use ($hospitalId) {
             if ($hospitalId) {
                 $q->where('hospital_id', $hospitalId);
@@ -121,26 +132,31 @@ class SecretariatController extends Controller
     }
     public function getPrestations($service)
     {
-        $hospitalId = Auth::user()->secretariat->hospital_id ?? Auth::user()->secretariat->hospital->id ?? null;
+        $hospitalId = $this->getCurrentHospitalId();
 
         $prestations = PrestationHospital::where('status', 0)
             ->with(['prestationService', 'serviceHospital.service'])
             ->whereHas('serviceHospital', function (Builder $query) use ($hospitalId, $service) {
-                $query->where('hospital_id', $hospitalId)
-                      ->where(function (Builder $q) use ($service) {
-                          $q->where('id', $service)
-                            ->orWhere('service_id', $service)
-                            ->orWhereHas('service', function (Builder $sq) use ($service) {
-                                $sq->where('libelle', $service)->orWhere('id', $service);
-                            });
+                if ($hospitalId) {
+                    $query->where('hospital_id', $hospitalId);
+                }
+                $query->where(function (Builder $q) use ($service) {
+                    $q->where('id', $service)
+                      ->orWhere('service_id', $service)
+                      ->orWhereHas('service', function (Builder $sq) use ($service) {
+                          $sq->where('libelle', $service)->orWhere('id', $service);
                       });
+                });
             })->get();
         return response()->json($prestations);
     }
     public function getInfirmiers($service = null)
     {
-        $hospitalId = Auth::user()->secretariat->hospital->id ?? Auth::user()->secretariat->hospital_id ?? null;
-        $query = Infirmier::where('hospital_id', $hospitalId)->with('user');
+        $hospitalId = $this->getCurrentHospitalId();
+        $query = Infirmier::with('user');
+        if ($hospitalId) {
+            $query->where('hospital_id', $hospitalId);
+        }
 
         if ($service && $service !== 'all') {
             $query->where(function (Builder $outerQuery) use ($service) {
@@ -169,12 +185,14 @@ class SecretariatController extends Controller
     }
     public function getServiceHospital()
     {
-        $hospitalId = Auth::user()->secretariat->hospital_id ?? Auth::user()->secretariat->hospital->id ?? null;
-        $services = ServiceHospital::where('hospital_id', $hospitalId)
-            ->whereHas('service')
+        $hospitalId = $this->getCurrentHospitalId();
+        $query = ServiceHospital::whereHas('service')
             ->with('service')
-            ->where('status', 0)
-            ->get();
+            ->where('status', 0);
+        if ($hospitalId) {
+            $query->where('hospital_id', $hospitalId);
+        }
+        $services = $query->get();
         return response()->json($services);
     }
     public function getPrestationServices()
@@ -203,7 +221,12 @@ class SecretariatController extends Controller
     /*****Function pour examen  ********/
     public function getTypeExamens()
     {
-        $type_examens = TypeExamen::where('hospital_id', Auth::user()->secretariat->hospital->id)->where('status', 0)->where('hospital_id', Auth::user()->secretariat->hospital_id)->get();
+        $hospitalId = $this->getCurrentHospitalId();
+        $query = TypeExamen::where('status', 0);
+        if ($hospitalId) {
+            $query->where('hospital_id', $hospitalId);
+        }
+        $type_examens = $query->get();
         return response()->json(['type_examens' => $type_examens]);
     }
 
@@ -270,18 +293,20 @@ class SecretariatController extends Controller
 
     public function getHopitalServices()
     {
-        $hospitalId = Auth::user()->secretariat->hospital_id ?? Auth::user()->secretariat->hospital->id ?? null;
-        $services = ServiceHospital::where('hospital_id', $hospitalId)
-            ->whereHas('service')
+        $hospitalId = $this->getCurrentHospitalId();
+        $query = ServiceHospital::whereHas('service')
             ->with('service')
-            ->where('status', 0)
-            ->get();
+            ->where('status', 0);
+        if ($hospitalId) {
+            $query->where('hospital_id', $hospitalId);
+        }
+        $services = $query->get();
         return response()->json($services);
     }
 
     public function getMedecins(Request $request)
     {
-        $hospitalId = Auth::user()->secretariat->hospital_id ?? (Auth::user()->secretariat->hospital->id ?? null);
+        $hospitalId = $this->getCurrentHospitalId();
         $query = Doctor::with(['user.availability', 'serviceHospital.service']);
         if ($hospitalId) {
             $query->where('hospital_id', $hospitalId);
@@ -321,7 +346,7 @@ class SecretariatController extends Controller
     }
     public function getAvailabilities()
     {
-        $hospitalId = Auth::user()->secretariat->hospital_id ?? (Auth::user()->secretariat->hospital->id ?? null);
+        $hospitalId = $this->getCurrentHospitalId();
 
         $availabilities = Availability::whereHas('user', function ($q) use ($hospitalId) {
             if ($hospitalId) {

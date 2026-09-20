@@ -16,16 +16,27 @@ class ConsultationController extends Controller
 
     public function today()
     {
-        return view('users.infirmier.consultation.today', ['consultations' => Consultation::where('infirmier_id', auth()->user()->infirmier->id)->withCount('ordonnances', 'arret', 'examen')->where('date_consultation', date('Y-m-d'))->get()]);
+        $infirmierId = optional(auth()->user()->infirmier)->id;
+        $consultations = Consultation::where(function ($q) use ($infirmierId) {
+            if ($infirmierId) {
+                $q->where('infirmier_id', $infirmierId);
+            }
+        })->withCount('ordonnances', 'arret', 'examen')->where('date_consultation', date('Y-m-d'))->get();
+
+        return view('users.infirmier.consultation.today', compact('consultations'));
     }
 
     public function allPatients()
     {
-        $infirmierId = auth()->user()->infirmier->id;
+        $infirmierId = optional(auth()->user()->infirmier)->id;
         $consultations = Consultation::orderByDESC('created_at')
             ->where(function ($q) use ($infirmierId) {
-                $q->where('infirmier_id', $infirmierId)
-                    ->orWhereNull('infirmier_id');
+                if ($infirmierId) {
+                    $q->where('infirmier_id', $infirmierId)
+                        ->orWhereNull('infirmier_id');
+                } else {
+                    $q->whereNull('infirmier_id');
+                }
             })
             ->where('status_inf', 0)
             ->get();
@@ -35,7 +46,22 @@ class ConsultationController extends Controller
 
     public function history()
     {
-        return view('users.infirmier.consultation.history', ['consultations' => Consultation::orderByDESC("date_consultation")->withCount(['ordonnances', 'arret', "examen", "declaration", "registre"])->with("ordonnances", "arret", "examen", "declaration", "registre")->where('infirmier_id', auth()->user()->infirmier->id)->where('date_consultation', '<', date('Y-m-d'))->orWhere('status_inf', 1)->get()]);
+        $infirmierId = optional(auth()->user()->infirmier)->id;
+        $consultations = Consultation::orderByDESC("date_consultation")
+            ->withCount(['ordonnances', 'arret', "examen", "declaration", "registre"])
+            ->with("ordonnances", "arret", "examen", "declaration", "registre")
+            ->where(function ($q) use ($infirmierId) {
+                if ($infirmierId) {
+                    $q->where('infirmier_id', $infirmierId);
+                }
+            })
+            ->where(function ($q) {
+                $q->where('date_consultation', '<', date('Y-m-d'))
+                  ->orWhere('status_inf', 1);
+            })
+            ->get();
+
+        return view('users.infirmier.consultation.history', compact('consultations'));
     }
 
     public function store(Request $request)
@@ -74,14 +100,21 @@ class ConsultationController extends Controller
 
         $message = 'Prise de constantes enregistrée. Votre patient est en attente chez le médecin.';
 
+        $hasVitals = !empty($data['tension_arterielle']) || !empty($request->temperature) || !empty($data['poids']) || !empty($data['pouls'])
+            || !empty($consultation->tension_arterielle) || !empty($consultation->temperature) || !empty($consultation->poids) || !empty($consultation->pouls);
+
         if ($orientation === 'sortie') {
             $consultation->type_soins_infirmier = $request->input('type_soins_infirmier');
             $consultation->observation_soins = $request->input('observation_soins');
             $consultation->observation_infirmiere = $request->input('observation_soins') ?? $request->input('observation_infirmiere');
             $consultation->status = 1; // Terminé / Libéré (n'apparaît pas chez le médecin)
             $consultation->status_inf = 1;
-            $message = 'Soins administrés et sortie du patient enregistrée avec succès.';
+            $message = 'Soins administrés et consultation du patient enregistrée avec succès.';
         } elseif ($orientation === 'teleconsultation') {
+            if (!$hasVitals) {
+                return back()->with('error', "Veuillez renseigner au moins une constante physique du patient (Tension, Température, Poids, Pouls) avant de programmer la téléconsultation.")->withInput();
+            }
+
             if ($request->filled('hospital_id')) {
                 $consultation->hospital_id = $request->input('hospital_id');
             } elseif ($request->filled('teleconsultation_hospital_id')) {
@@ -117,14 +150,11 @@ class ConsultationController extends Controller
             if (empty($consultation->call_status)) {
                 $consultation->call_status = 'calling';
             }
-            $message = 'Alerte urgence enregistrée pour ce patient.';
+            $message = 'Appel d\'urgence enregistré pour ce patient.';
         } else {
             // Processus standard : Envoi chez le médecin dans sa file d'attente
-            $hasVitals = !empty($data['tension_arterielle']) || !empty($request->temperature) || !empty($data['poids']) || !empty($data['pouls'])
-                || !empty($consultation->tension_arterielle) || !empty($consultation->temperature) || !empty($consultation->poids) || !empty($consultation->pouls);
-            
             if (!$hasVitals) {
-                return back()->with('error', "Veuillez renseigner les constantes physiques du patient avant de l'envoyer chez le médecin, ou sélectionner une orientation spécifique (Téléconsultation, Sortie ou Urgence).");
+                return back()->with('error', "Veuillez renseigner les constantes physiques du patient avant de l'envoyer chez le médecin, ou sélectionner une orientation spécifique (Téléconsultation, Consultation ou Appel d'urgence).")->withInput();
             }
 
             if ($request->filled('doctor_id')) {

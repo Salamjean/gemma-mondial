@@ -186,10 +186,8 @@
                         </div>
                         <div class="col-md-4">
                             <div class="form-group">
-                                <label for="profession" class="form-label"> <b>Profession: </b> </label>
-                                <select class="form-control select2" name="profession" id="profession">
-                                    <option value="" selected disabled>Selectionner</option>
-                                </select>
+                                <label for="profession" class="form-label"> <b>Profession : </b> </label>
+                                <input type="text" class="form-control" name="profession" id="profession" placeholder="Ex: Enseignant, Commerçant, Étudiant...">
                             </div>
                         </div>
                         <div class="col-md-2">
@@ -874,20 +872,6 @@
                 $selectPays.append(new Option(nom, nom, false, false));
             }
             $selectPays.trigger('change');
-        })
-        .catch(error => console.error('Erreur de chargement du fichier JSON :', error));
-
-
-    fetch('{{ asset('assets/src/profession.json') }}')
-        .then(response => response.json())
-        .then(data => {
-            const $selectProfession = $('#profession');
-            $selectProfession.empty().append('<option value="">Selectionner</option>');
-            for (const libelle in data) {
-                const nom = data[libelle];
-                $selectProfession.append(new Option(nom, nom, false, false));
-            }
-            $selectProfession.trigger('change');
         })
         .catch(error => console.error('Erreur de chargement du fichier JSON :', error));
 

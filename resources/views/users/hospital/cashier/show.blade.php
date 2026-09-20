@@ -42,8 +42,18 @@
                                 <div class="col-md-6">
                                     <div class="form-label"><strong>Adresse :</strong> {{ $caissiere->address }}</div>
                                 </div>
-                                <div class="col-md-12">
+                                <div class="col-md-6">
                                     <div class="form-label"><strong>Disponibilité :</strong> {{ dayIndexNameString(json_decode($caissiere->user->availability->days)) }}</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-label">
+                                        <strong>Gestion Accueil :</strong>
+                                        @if ($caissiere->is_accueil)
+                                            <span class="badge badge-success"><i class="fa-solid fa-check-circle me-1"></i> Activée (Accueil & Patients)</span>
+                                        @else
+                                            <span class="badge badge-secondary"><i class="fa-solid fa-times-circle me-1"></i> Désactivée (Caisse seule)</span>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
 
@@ -164,6 +174,24 @@
                                                     <strong>{{ $message }}</strong>
                                                 </span>
                                             @enderror
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mb-15">
+                                    <div class="col-md-12">
+                                        <div class="p-3 bg-light rounded border">
+                                            <div class="form-check form-switch ps-0">
+                                                <div class="d-flex align-items-center">
+                                                    <input class="form-check-input ms-0 me-3" type="checkbox" name="is_accueil" id="is_accueil_up" value="1" {{ old('is_accueil', $caissiere->is_accueil) ? 'checked' : '' }} style="width: 2.5em; height: 1.3em;">
+                                                    <label class="form-check-label fw-bold text-dark fs-15 mb-0" for="is_accueil_up">
+                                                        <i class="fa-solid fa-hospital-user text-primary me-1"></i>
+                                                        Gérer également l'accueil et l'admission des patients
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="text-muted fs-12 mt-1 ps-5">
+                                                Si cette option est activée, la caissière aura accès à l'onglet <b>Patients & Accueil</b> dans son espace pour enregistrer des patients et effectuer des affectations.
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

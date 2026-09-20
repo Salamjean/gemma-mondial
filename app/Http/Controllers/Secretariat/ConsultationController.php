@@ -6,7 +6,7 @@ use Carbon\Carbon;
 use App\Models\Patient;
 use App\Models\Admission;
 use App\Models\Secretaire;
-use App\Models\Departement;
+use App\Models\Department;
 use App\Models\PassagePatient;
 use Illuminate\Http\Request;
 use App\Models\TypeConsultation;
@@ -44,15 +44,21 @@ class ConsultationController extends Controller
         }
 
         $secretaire = Secretaire::where('user_id', auth()->user()->id)->first();
+        $caissiere = \App\Models\Caissiere::where('user_id', auth()->user()->id)->first();
+        $hospitalId = optional($secretaire)->hospital_id 
+            ?? optional($caissiere)->hospital_id 
+            ?? optional(auth()->user()->hospital)->id 
+            ?? auth()->user()->hospital_id 
+            ?? (function_exists('getUserHospitalId') ? getUserHospitalId() : 1);
 
         $admission = Admission::create([
             'code_admission' => codeAdmission(),
             'date_admission' => Carbon::now()->format('Y-m-d H:i:s'),
-            'secretaire_id' => $secretaire->id,
-            'hospital_id' => $secretaire->hospital_id,
+            'secretaire_id' => optional($secretaire)->id,
+            'hospital_id' => $hospitalId,
             'patient_id' => $request->patient_id,
             'doctor_id' => $request->doctor_id,
-            'caissiere_id' => null,
+            'caissiere_id' => optional($caissiere)->id,
             'type_consultation_id' => $request->type_consultation_id,
             'type_admission' => $request->type_admission_id,
             'type_assurance_id' => $request->type_assurance_id,
@@ -63,11 +69,11 @@ class ConsultationController extends Controller
             'motif_consultation' => $request->motif_consultation,
         ]);
 
-        if(!PassagePatient::where('hospital_id', $secretaire->hospital_id)->where('patient_id', $request->patient_id)->exists())
+        if(!PassagePatient::where('hospital_id', $hospitalId)->where('patient_id', $request->patient_id)->exists())
         {
             $passage = new PassagePatient();
             $passage->libelle = 'Passage compte';
-            $passage->hospital_id = $secretaire->hospital_id;
+            $passage->hospital_id = $hospitalId;
             $passage->patient_id = $request->patient_id;
             $passage->date = date('Y-m-d');
             $passage->save();

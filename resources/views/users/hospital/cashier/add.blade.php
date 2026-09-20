@@ -96,6 +96,27 @@
                             </div>
                         </div>
 
+                        <h4 class="box-title text-success mb-0 mt-20"><i class="ti-settings me-15"></i> Rôle & Fonctionnalités</h4>
+                        <hr class="my-15">
+                        <div class="row mb-15">
+                            <div class="col-md-12">
+                                <div class="p-3 bg-light rounded border">
+                                    <div class="form-check form-switch ps-0">
+                                        <div class="d-flex align-items-center">
+                                            <input class="form-check-input ms-0 me-3" type="checkbox" name="is_accueil" id="is_accueil" value="1" {{ old('is_accueil') ? 'checked' : '' }} style="width: 2.5em; height: 1.3em;">
+                                            <label class="form-check-label fw-bold text-dark fs-15 mb-0" for="is_accueil">
+                                                <i class="fa-solid fa-hospital-user text-primary me-1"></i>
+                                                Gérer également l'accueil et l'admission des patients
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="text-muted fs-12 mt-1 ps-5">
+                                        Si cette option est activée, la caissière aura accès à l'onglet <b>Patients & Accueil</b> dans son espace pour pouvoir enregistrer de nouveaux patients et effectuer des affectations en consultation / examen.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         @include('users.hospital.planning',['status' => 'store'])
 
                         <h4 class="box-title text-success mb-0 mt-20"><i class="ti-lock  me-15"></i> Infos de connexion</h4>

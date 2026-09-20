@@ -74,9 +74,13 @@
                                 <h4><b>Montant payer : </b> <span class="badge-price">{{ $payment->prix_normal }}
                                     Frs
                                     CFA</span></h4>
-                            @endif
-
-
+                            <h4><b>Mode de règlement : </b>
+                                @if ($payment->mode_paiement == 'mobile_money')
+                                    <span>Mobile Money ({{ $payment->operateur_mobile ?? 'N/A' }}) @if($payment->reference_paiement) - Réf: {{ $payment->reference_paiement }} @endif</span>
+                                @else
+                                    <span>Espèce</span>
+                                @endif
+                            </h4>
                             <h4><b>Statut : </b>
                                 @if ($payment->admission->statut_paiement == 1)
                                     <span class="badge-status">Consultation payé</span> <span
@@ -181,6 +185,13 @@
                                     Frs
                                     CFA</span></h4>
                             @endif
+                            <h4><b>Mode de règlement : </b>
+                                @if ($payment->mode_paiement == 'mobile_money')
+                                    <span>Mobile Money ({{ $payment->operateur_mobile ?? 'N/A' }}) @if($payment->reference_paiement) - Réf: {{ $payment->reference_paiement }} @endif</span>
+                                @else
+                                    <span>Espèce</span>
+                                @endif
+                            </h4>
                             <h4><b>Statut : </b>
                                 @if ($payment->admission->statut_paiement == 1)
                                     <span class="badge-status">Soin infirmier payé </span> <span
@@ -286,6 +297,13 @@
                                     Frs
                                     CFA</span></h4>
                             @endif
+                        <h4><b>Mode de règlement : </b>
+                            @if ($payment->mode_paiement == 'mobile_money')
+                                <span>Mobile Money ({{ $payment->operateur_mobile ?? 'N/A' }}) @if($payment->reference_paiement) - Réf: {{ $payment->reference_paiement }} @endif</span>
+                            @else
+                                <span>Espèce</span>
+                            @endif
+                        </h4>
                         <h4><b>Statut : </b>
                             @if ($payment->status == 'success')
                                 <span class="badge-status">Consultation payé</span> <span

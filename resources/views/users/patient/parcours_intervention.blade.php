@@ -48,7 +48,9 @@
     }
 
     $dossierUrl = '#';
-    if (request()->routeIs('secretariat.*') && \Illuminate\Support\Facades\Route::has('secretariat.patient.dossier_medical')) {
+    if (auth()->check() && in_array(auth()->user()->role_as, ['secretariat', 'cashier'])) {
+        $dossierUrl = route('secretariat.patient.detail', $patient->id);
+    } elseif (request()->routeIs('secretariat.*') && \Illuminate\Support\Facades\Route::has('secretariat.patient.dossier_medical')) {
         $dossierUrl = route('secretariat.patient.dossier_medical', $patient->id);
     } elseif (request()->routeIs('hospital.*') && \Illuminate\Support\Facades\Route::has('hospital.patient.dossier_medical')) {
         $dossierUrl = route('hospital.patient.dossier_medical', $patient->id);
@@ -151,7 +153,7 @@
             <!-- Bouton Retour -->
             <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
                 <a href="{{ $dossierUrl }}" class="btn btn-secondary fw-semibold rounded-10 px-20 shadow-sm">
-                    <i class="fa-solid fa-arrow-left me-1"></i> Retour au Dossier Médical
+                    <i class="fa-solid fa-arrow-left me-1"></i> {{ (auth()->check() && in_array(auth()->user()->role_as, ['secretariat', 'cashier'])) ? 'Retour à la Fiche' : 'Retour au Dossier Médical' }}
                 </a>
             </div>
         </div>

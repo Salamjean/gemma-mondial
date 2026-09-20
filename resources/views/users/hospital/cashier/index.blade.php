@@ -25,6 +25,7 @@
                                 <th class="bb-2">Nom & Prénoms</th>
                                 <th class="bb-2">Contact</th>
                                 <th class="bb-2">Disponibilité</th>
+                                <th class="bb-2 text-center">Accueil</th>
                                 <th class="bb-2 text-center">Status</th>
                                 <th class="bb-2 text-center">Actions</th>
                             </tr>
@@ -50,6 +51,17 @@
                                     <td>
                                             {{ dayIndexNameString(json_decode($item->user->availability->days)) }}
                                         </td>
+                                    <td class="text-center">
+                                        @if($item->is_accueil)
+                                            <span class="badge badge-success-light" title="Gère l'accueil et l'admission des patients">
+                                                <i class="fa-solid fa-check-circle me-1 text-success"></i> Activé
+                                            </span>
+                                        @else
+                                            <span class="badge badge-secondary-light" title="Caisse uniquement">
+                                                <i class="fa-solid fa-minus-circle me-1 text-muted"></i> Non
+                                            </span>
+                                        @endif
+                                    </td>
                                     <td class="text-center">
                                         @if($item->status == 0)
                                             <span class="text-success">Activé</span>

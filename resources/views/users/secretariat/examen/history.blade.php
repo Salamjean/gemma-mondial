@@ -1,8 +1,6 @@
 @extends('layouts.dashboard',['title' => "Historique des admissions"])
 
 @section('content')
-  @if(auth()->user()->role_as == 'secretariat')
-
   <div class="row">
     <div class="col-12  ">
       <div class="box">
@@ -36,36 +34,45 @@
 
                     @foreach($admissions as $item)
                     <tr>
-                        <td><b>{{ $item->patient->code_patient }}</b></td>
+                        <td><b>{{ $item->patient->code_patient ?? 'N/A' }}</b></td>
                         <td>
-                            <i>{{ $item->patient->user->name }}&nbsp; {{ $item->patient->user->prenom }}</i>
-                        </td>
-                        <td class="text-dark fw-bold fs-6">
-                            <i>{{ $item->doctor->user->name }}</i>
+                          <i>{{ $item->patient->user->name ?? '' }} {{ $item->patient->user->prenom ?? '' }}</i>
                         </td>
                         <td>
-                            {{ $item->type_admission->libelle }}
+                            <i>{{ optional(optional($item->doctor)->user)->name ?? '' }}</i>
                         </td>
                         <td>
-                            {{ $item->mode_admission->libelle }}
+                            <i>{{ optional($item->typeAdmission)->libelle ?? '-' }} </i>
                         </td>
                         <td>
-                            <span class="badge badge-primary">{{ $item->departement->libelle }}</span>
+                            <i>{{ $item->mode_entree ?? '-' }} </i>
                         </td>
                         <td>
-                            <i>{{ $item->motif_consultation }} </i>
+                            <i>{{ optional($item->department)->name ?? '-' }}</i>
                         </td>
-                        <td class="text-danger fw-bold fs-6"> <b>{{ $item->montant }} XOF</b> </td>
+                        <td>
+                            <i>{{ $item->motif_consultation }}</i>
+                        </td>
+                        <td class="text-danger fw-bold fs-6">
+                            @if ($item->montant == 0)
+                                <span class="badge badge-dark">Gratuit</span>
+                            @else
+                                <span class="badge badge-dark">{{ $item->montant }} Frs CFA</span>
+                            @endif
+                        </td>
                         <td class="text-dark fw-bold fs-6">
                             @if ($item->statut_paiement == 1)
-                                <span class="badge badge-success">Consultation payé</span>
+                                <span class="badge badge-success">Payé</span>
+                                <a class="btn btn-sm btn-none" data-bs-toggle="tooltip" data-bs-placement="bottom" title="approuvé">
+                                    <i class="d-flex no-block fa fa-check-circle text-success"></i>
+                                </a>
                             @else
                                 <span class="badge badge-warning">Paiement en attente</span>
                             @endif
                         </td>
-                        <td class="text-dark fw-bold fs-6">
-                            @if ($item->statut_validation == 1)
-                                <span class="badge badge-info">{{ $item->caissiere->user->name ?? NULL }}</span>
+                        <td class="text-center">
+                            @if ($item->statut_paiement == 1 && $item->caissiere)
+                                {{ optional(optional($item->caissiere)->user)->name ?? '' }}
                             @else
                                 <span class="badge badge-info">Pas encore approuvé</span>
                             @endif
@@ -87,7 +94,4 @@
       </div>
     </div>
 </div>
-  @endif
-
-
 @endsection

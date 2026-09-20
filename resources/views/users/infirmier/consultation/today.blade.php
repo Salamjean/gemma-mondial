@@ -8,10 +8,14 @@
             </div>
             <div>
                 @php
-                    $infirmierId = \Illuminate\Support\Facades\Auth::user()->infirmier->id;
+                    $infirmierId = optional(\Illuminate\Support\Facades\Auth::user()->infirmier)->id;
                     $countAllInfConsultations = \App\Models\Consultation::where(function ($q) use ($infirmierId) {
-                        $q->where('infirmier_id', $infirmierId)
-                          ->orWhereNull('infirmier_id');
+                        if ($infirmierId) {
+                            $q->where('infirmier_id', $infirmierId)
+                              ->orWhereNull('infirmier_id');
+                        } else {
+                            $q->whereNull('infirmier_id');
+                        }
                     })->where('status_inf', 0)->count();
                 @endphp
                 <a href="{{ route('infirmier.consultation.all') }}" class="btn btn-sm btn-primary rounded-10 fw-bold shadow-sm">
