@@ -192,7 +192,7 @@ class WaitingScreenController extends Controller
                 'service_name' => $call->service_name ?? 'Consultation',
                 'status' => $call->status,
                 'time' => $call->called_at ? $call->called_at->format('H:i') : $call->created_at->format('H:i'),
-                'spoken_text' => 'Le patient ' . $call->patient_name . ' est attendu par ' . $call->doctor_name . ' au ' . ($call->cabinet ?: 'cabinet de consultation') . '.',
+                'spoken_text' => 'Patient ' . $call->patient_name . ' est attendu par ' . $call->doctor_name . ' au ' . ($call->cabinet ?: 'cabinet de consultation') . '.',
             ];
         });
 
