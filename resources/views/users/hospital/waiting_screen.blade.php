@@ -851,9 +851,13 @@
         </div>
     </footer>
 
+    <!-- BALISE AUDIO PERSISTANTE (Débloquée pour TV Android) -->
+    <audio id="directTtsPlayer" preload="auto" style="display:none;"></audio>
+
     <!-- SCRIPTS JS -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://code.responsivevoice.org/responsivevoice.js"></script>
 
     <script>
         (function() {
@@ -977,10 +981,123 @@
                 return frVoices[0];
             }
 
-            // 3. SYNTHÈSE VOCALE HYBRIDE (Flux Audio MP3 HD + Fallback Web Speech API)
+            // 3. MOTEUR VOCAL MULTI-NIVEAUX ULTRA-ROBUSTE (POUR SMART TV, ANDROID TV, PC & MOBILES)
             window._currentSpeechUtterance = null;
             let activeVoiceAudio = null;
 
+            // Niveau 1 : ResponsiveVoice (Cloud TTS universel haute clarté, spécialement conçu pour les TV)
+            function playResponsiveVoice(text) {
+                return new Promise((resolve, reject) => {
+                    if (typeof responsiveVoice !== 'undefined' && responsiveVoice.speak) {
+                        try {
+                            responsiveVoice.speak(text, "French Female", {
+                                onstart: function() { isSpeaking = true; },
+                                onend: function() {
+                                    isSpeaking = false;
+                                    resolve();
+                                    setTimeout(processSpeechQueue, 300);
+                                },
+                                onerror: function(err) {
+                                    reject(err);
+                                }
+                            });
+                        } catch (e) {
+                            reject(e);
+                        }
+                    } else {
+                        reject(new Error("ResponsiveVoice non disponible"));
+                    }
+                });
+            }
+
+            // Niveau 2 : Balise HTML5 Audio Directe (Google TTS Cloud avec balise pré-débloquée)
+            function playDirectAudioTag(text) {
+                return new Promise((resolve, reject) => {
+                    try {
+                        const directUrl = "https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=fr-FR&q=" + encodeURIComponent(text);
+                        let audio = document.getElementById('directTtsPlayer');
+                        if (!audio) {
+                            audio = new Audio();
+                        }
+                        audio.src = directUrl;
+                        audio.volume = 1.0;
+
+                        audio.onended = function() {
+                            isSpeaking = false;
+                            resolve();
+                            setTimeout(processSpeechQueue, 300);
+                        };
+
+                        audio.onerror = function(err) {
+                            reject(err);
+                        };
+
+                        const p = audio.play();
+                        if (p !== undefined) {
+                            p.catch(reject);
+                        }
+                    } catch (e) {
+                        reject(e);
+                    }
+                });
+            }
+
+            // Niveau 3 : Décodage Web Audio API direct (le même circuit matériel que le carillon)
+            function playVoiceViaAudioContext(arrayBuffer) {
+                return new Promise((resolve, reject) => {
+                    try {
+                        const ctx = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+                        if (ctx.state === 'suspended') {
+                            ctx.resume();
+                        }
+
+                        const onDecodeSuccess = function(decodedBuffer) {
+                            try {
+                                const source = ctx.createBufferSource();
+                                source.buffer = decodedBuffer;
+                                source.connect(ctx.destination);
+                                source.onended = function() {
+                                    isSpeaking = false;
+                                    resolve();
+                                    setTimeout(processSpeechQueue, 300);
+                                };
+                                source.start(0);
+                            } catch (e) {
+                                reject(e);
+                            }
+                        };
+
+                        const onDecodeError = function(err) {
+                            reject(err);
+                        };
+
+                        const res = ctx.decodeAudioData(arrayBuffer, onDecodeSuccess, onDecodeError);
+                        if (res && typeof res.then === 'function') {
+                            res.catch(onDecodeError);
+                        }
+                    } catch (e) {
+                        reject(e);
+                    }
+                });
+            }
+
+            function playProxyWebAudio(text) {
+                return new Promise((resolve, reject) => {
+                    const audioUrl = ttsAudioUrl + '?text=' + encodeURIComponent(text);
+                    fetch(audioUrl)
+                        .then(response => {
+                            if (!response.ok) throw new Error('HTTP status ' + response.status);
+                            return response.arrayBuffer();
+                        })
+                        .then(buffer => {
+                            return playVoiceViaAudioContext(buffer);
+                        })
+                        .then(resolve)
+                        .catch(reject);
+                });
+            }
+
+            // Niveau 4 : Synthèse vocale locale du système (Web Speech API)
             function playNativeWebSpeech(text) {
                 if (!('speechSynthesis' in window)) {
                     isSpeaking = false;
@@ -1040,46 +1157,6 @@
                 }
             }
 
-            // Lecture directe via Web Audio API (le même canal AudioContext que le carillon)
-            function playVoiceViaAudioContext(arrayBuffer) {
-                return new Promise((resolve, reject) => {
-                    try {
-                        const ctx = audioContext || new (window.AudioContext || window.webkitAudioContext)();
-                        if (ctx.state === 'suspended') {
-                            ctx.resume();
-                        }
-
-                        const onDecodeSuccess = function(decodedBuffer) {
-                            try {
-                                const source = ctx.createBufferSource();
-                                source.buffer = decodedBuffer;
-                                source.connect(ctx.destination);
-                                source.onended = function() {
-                                    isSpeaking = false;
-                                    resolve();
-                                    setTimeout(processSpeechQueue, 300);
-                                };
-                                source.start(0);
-                            } catch (e) {
-                                reject(e);
-                            }
-                        };
-
-                        const onDecodeError = function(err) {
-                            reject(err);
-                        };
-
-                        // Compatibilité standard et syntaxe callback Android TV WebView
-                        const res = ctx.decodeAudioData(arrayBuffer, onDecodeSuccess, onDecodeError);
-                        if (res && typeof res.then === 'function') {
-                            res.catch(onDecodeError);
-                        }
-                    } catch (e) {
-                        reject(e);
-                    }
-                });
-            }
-
             function announcePatientVocally(text) {
                 // 1. Jouer d'abord le carillon sonore
                 playHospitalChime();
@@ -1087,43 +1164,23 @@
                 // 2. Lancer la voix après le carillon (850ms)
                 setTimeout(() => {
                     isSpeaking = true;
-                    const audioUrl = ttsAudioUrl + '?text=' + encodeURIComponent(text);
 
-                    // PRIORITÉ 1 (Spécial Android TV / Smart TV) : Web Audio API directe via AudioContext
-                    fetch(audioUrl)
-                        .then(response => {
-                            if (!response.ok) throw new Error('HTTP status ' + response.status);
-                            return response.arrayBuffer();
+                    // Exécution en cascade des 4 niveaux de voix
+                    playResponsiveVoice(text)
+                        .catch(err1 => {
+                            console.warn('Niveau 1 ResponsiveVoice non disponible, essai Niveau 2 Direct Audio :', err1);
+                            return playDirectAudioTag(text);
                         })
-                        .then(buffer => {
-                            return playVoiceViaAudioContext(buffer);
+                        .catch(err2 => {
+                            console.warn('Niveau 2 Direct Audio échoué, essai Niveau 3 Proxy WebAudio :', err2);
+                            return playProxyWebAudio(text);
                         })
-                        .catch(err => {
-                            console.warn('WebAudio direct échoué, essai lecteur HTML5 Audio :', err);
-                            // PRIORITÉ 2 : Lecteur HTML5 Audio standard
-                            try {
-                                if (activeVoiceAudio) {
-                                    try { activeVoiceAudio.pause(); } catch(e) {}
-                                }
-                                activeVoiceAudio = new Audio(audioUrl);
-                                activeVoiceAudio.volume = 1.0;
-                                activeVoiceAudio.onended = function() {
-                                    isSpeaking = false;
-                                    setTimeout(processSpeechQueue, 300);
-                                };
-                                activeVoiceAudio.onerror = function() {
-                                    playNativeWebSpeech(text);
-                                };
-                                const playPromise = activeVoiceAudio.play();
-                                if (playPromise !== undefined) {
-                                    playPromise.catch(() => playNativeWebSpeech(text));
-                                }
-                            } catch (e2) {
-                                playNativeWebSpeech(text);
-                            }
+                        .catch(err3 => {
+                            console.warn('Niveau 3 Proxy échoué, essai Niveau 4 Web Speech API locale :', err3);
+                            playNativeWebSpeech(text);
                         });
 
-                    // Timeout de sécurité si la lecture reste bloquée
+                    // Timeout de sécurité au cas où aucun événement ne se déclencherait
                     setTimeout(() => {
                         if (isSpeaking) {
                             isSpeaking = false;
@@ -1332,6 +1389,22 @@
                 }
                 playHospitalChime(); // Son carillon bref pour débloquer l'audio
                 
+                // Débloquer la balise HTML5 audio pour Android TV
+                const directAudio = document.getElementById('directTtsPlayer');
+                if (directAudio) {
+                    try {
+                        directAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+                        directAudio.play().then(() => directAudio.pause()).catch(() => {});
+                    } catch(e) {}
+                }
+
+                // Débloquer ResponsiveVoice
+                if (typeof responsiveVoice !== 'undefined') {
+                    try {
+                        responsiveVoice.speak('', 'French Female', { volume: 0.01 });
+                    } catch(e) {}
+                }
+
                 // Débloquer également la synthèse vocale sur les navigateurs stricts
                 if ('speechSynthesis' in window) {
                     try {
