@@ -273,4 +273,46 @@ class WaitingScreenController extends Controller
             'call' => $call,
         ]);
     }
+
+    /**
+     * Génération / Proxy de flux audio MP3 TTS français naturel (Haute Disponibilité)
+     */
+    public function getTtsAudio(Request $request)
+    {
+        $text = trim($request->input('text', ''));
+        if (empty($text)) {
+            return response()->json(['error' => 'Texte manquant'], 400);
+        }
+
+        $text = mb_substr($text, 0, 300);
+
+        try {
+            $url = "https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=fr-FR&q=" . urlencode($text);
+
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Referer: https://translate.google.com/'
+            ]);
+            $audioData = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 200 && !empty($audioData)) {
+                return response($audioData, 200, [
+                    'Content-Type' => 'audio/mpeg',
+                    'Content-Length' => strlen($audioData),
+                    'Cache-Control' => 'public, max-age=86400',
+                ]);
+            }
+        } catch (\Exception $e) {
+            // En cas d'erreur réseau, renvoyer 500 pour bascule SpeechSynthesis client
+        }
+
+        return response()->json(['error' => 'TTS non disponible'], 500);
+    }
 }

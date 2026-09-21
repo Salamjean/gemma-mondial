@@ -861,9 +861,11 @@
             @if(isset($isPublic) && $isPublic)
                 const updatesUrl = "{{ route('tv.waiting_screen.updates', $token) }}";
                 const testCallUrl = "{{ route('tv.waiting_screen.test', $token) }}";
+                const ttsAudioUrl = "{{ route('tv.waiting_screen.tts', $token) }}";
             @else
                 const updatesUrl = "{{ route('hospital.waiting_screen.updates') }}";
                 const testCallUrl = "{{ route('hospital.waiting_screen.test') }}";
+                const ttsAudioUrl = "{{ route('hospital.waiting_screen.tts') }}";
             @endif
 
             let lastKnownId = {{ $currentCall ? $currentCall->id : 0 }};
@@ -975,74 +977,160 @@
                 return frVoices[0];
             }
 
-            // 3. SYNTHÈSE VOCALE (Web Speech API Ultra-Robuste)
+            // 3. SYNTHÈSE VOCALE HYBRIDE (Flux Audio MP3 HD + Fallback Web Speech API)
             window._currentSpeechUtterance = null;
+            let activeVoiceAudio = null;
 
-            function announcePatientVocally(text) {
+            function playNativeWebSpeech(text) {
                 if (!('speechSynthesis' in window)) {
-                    console.warn('Synthèse vocale non supportée sur ce navigateur.');
+                    isSpeaking = false;
+                    processSpeechQueue();
                     return;
                 }
+                try {
+                    if (window.speechSynthesis.paused) {
+                        window.speechSynthesis.resume();
+                    }
 
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'fr-FR';
+                    utterance.rate = 0.92;
+                    utterance.pitch = 1.0;
+                    utterance.volume = 1.0;
+
+                    const chosenVoice = findBestFrenchVoice();
+                    if (chosenVoice) {
+                        utterance.voice = chosenVoice;
+                    }
+
+                    window._currentSpeechUtterance = utterance;
+
+                    utterance.onstart = function() {
+                        isSpeaking = true;
+                    };
+
+                    utterance.onend = function() {
+                        isSpeaking = false;
+                        window._currentSpeechUtterance = null;
+                        setTimeout(processSpeechQueue, 300);
+                    };
+
+                    utterance.onerror = function(e) {
+                        console.warn('Erreur SpeechSynthesis fallback :', e);
+                        isSpeaking = false;
+                        window._currentSpeechUtterance = null;
+                        setTimeout(processSpeechQueue, 300);
+                    };
+
+                    isSpeaking = true;
+                    window.speechSynthesis.speak(utterance);
+
+                    setTimeout(() => {
+                        if (isSpeaking) {
+                            isSpeaking = false;
+                            window._currentSpeechUtterance = null;
+                            processSpeechQueue();
+                        }
+                    }, 12000);
+                } catch (err) {
+                    console.error('Erreur fallback speech :', err);
+                    isSpeaking = false;
+                    window._currentSpeechUtterance = null;
+                    processSpeechQueue();
+                }
+            }
+
+            // Lecture directe via Web Audio API (le même canal AudioContext que le carillon)
+            function playVoiceViaAudioContext(arrayBuffer) {
+                return new Promise((resolve, reject) => {
+                    try {
+                        const ctx = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+                        if (ctx.state === 'suspended') {
+                            ctx.resume();
+                        }
+
+                        const onDecodeSuccess = function(decodedBuffer) {
+                            try {
+                                const source = ctx.createBufferSource();
+                                source.buffer = decodedBuffer;
+                                source.connect(ctx.destination);
+                                source.onended = function() {
+                                    isSpeaking = false;
+                                    resolve();
+                                    setTimeout(processSpeechQueue, 300);
+                                };
+                                source.start(0);
+                            } catch (e) {
+                                reject(e);
+                            }
+                        };
+
+                        const onDecodeError = function(err) {
+                            reject(err);
+                        };
+
+                        // Compatibilité standard et syntaxe callback Android TV WebView
+                        const res = ctx.decodeAudioData(arrayBuffer, onDecodeSuccess, onDecodeError);
+                        if (res && typeof res.then === 'function') {
+                            res.catch(onDecodeError);
+                        }
+                    } catch (e) {
+                        reject(e);
+                    }
+                });
+            }
+
+            function announcePatientVocally(text) {
                 // 1. Jouer d'abord le carillon sonore
                 playHospitalChime();
 
-                // 2. Prononcer le message vocal après le carillon (900ms)
+                // 2. Lancer la voix après le carillon (850ms)
                 setTimeout(() => {
-                    try {
-                        if (window.speechSynthesis.paused) {
-                            window.speechSynthesis.resume();
-                        }
+                    isSpeaking = true;
+                    const audioUrl = ttsAudioUrl + '?text=' + encodeURIComponent(text);
 
-                        const utterance = new SpeechSynthesisUtterance(text);
-                        utterance.lang = 'fr-FR';
-                        utterance.rate = 0.92;
-                        utterance.pitch = 1.0;
-                        utterance.volume = 1.0;
-
-                        const chosenVoice = findBestFrenchVoice();
-                        if (chosenVoice) {
-                            utterance.voice = chosenVoice;
-                        }
-
-                        // Conserver une référence globale pour éviter le ramasse-miettes (Garbage Collector bug)
-                        window._currentSpeechUtterance = utterance;
-
-                        utterance.onstart = function() {
-                            isSpeaking = true;
-                        };
-
-                        utterance.onend = function() {
-                            isSpeaking = false;
-                            window._currentSpeechUtterance = null;
-                            setTimeout(processSpeechQueue, 300);
-                        };
-
-                        utterance.onerror = function(e) {
-                            console.warn('Erreur SpeechSynthesis :', e);
-                            isSpeaking = false;
-                            window._currentSpeechUtterance = null;
-                            setTimeout(processSpeechQueue, 300);
-                        };
-
-                        isSpeaking = true;
-                        window.speechSynthesis.speak(utterance);
-
-                        // Timeout de sécurité au cas où l'événement onend ne se déclencherait pas
-                        setTimeout(() => {
-                            if (isSpeaking) {
-                                isSpeaking = false;
-                                window._currentSpeechUtterance = null;
-                                processSpeechQueue();
+                    // PRIORITÉ 1 (Spécial Android TV / Smart TV) : Web Audio API directe via AudioContext
+                    fetch(audioUrl)
+                        .then(response => {
+                            if (!response.ok) throw new Error('HTTP status ' + response.status);
+                            return response.arrayBuffer();
+                        })
+                        .then(buffer => {
+                            return playVoiceViaAudioContext(buffer);
+                        })
+                        .catch(err => {
+                            console.warn('WebAudio direct échoué, essai lecteur HTML5 Audio :', err);
+                            // PRIORITÉ 2 : Lecteur HTML5 Audio standard
+                            try {
+                                if (activeVoiceAudio) {
+                                    try { activeVoiceAudio.pause(); } catch(e) {}
+                                }
+                                activeVoiceAudio = new Audio(audioUrl);
+                                activeVoiceAudio.volume = 1.0;
+                                activeVoiceAudio.onended = function() {
+                                    isSpeaking = false;
+                                    setTimeout(processSpeechQueue, 300);
+                                };
+                                activeVoiceAudio.onerror = function() {
+                                    playNativeWebSpeech(text);
+                                };
+                                const playPromise = activeVoiceAudio.play();
+                                if (playPromise !== undefined) {
+                                    playPromise.catch(() => playNativeWebSpeech(text));
+                                }
+                            } catch (e2) {
+                                playNativeWebSpeech(text);
                             }
-                        }, 12000);
-                    } catch (err) {
-                        console.error('Erreur synthèse vocale :', err);
-                        isSpeaking = false;
-                        window._currentSpeechUtterance = null;
-                        processSpeechQueue();
-                    }
-                }, 900);
+                        });
+
+                    // Timeout de sécurité si la lecture reste bloquée
+                    setTimeout(() => {
+                        if (isSpeaking) {
+                            isSpeaking = false;
+                            processSpeechQueue();
+                        }
+                    }, 12000);
+                }, 850);
             }
 
             function queueSpeech(text) {
@@ -1236,25 +1324,44 @@
                 }
             }
 
+            function performAudioUnlock() {
+                initAudioContext();
+                const modal = document.getElementById('audioUnlockModal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+                playHospitalChime(); // Son carillon bref pour débloquer l'audio
+                
+                // Débloquer également la synthèse vocale sur les navigateurs stricts
+                if ('speechSynthesis' in window) {
+                    try {
+                        window.speechSynthesis.resume();
+                        const unlockUtterance = new SpeechSynthesisUtterance('');
+                        unlockUtterance.volume = 0.01;
+                        window.speechSynthesis.speak(unlockUtterance);
+                    } catch(e) {}
+                }
+            }
+
             document.addEventListener('DOMContentLoaded', function() {
                 const modal = document.getElementById('audioUnlockModal');
-                modal.style.display = 'flex';
+                if (modal) {
+                    modal.style.display = 'flex';
+                }
 
-                document.getElementById('btnUnlockAudio').addEventListener('click', function() {
-                    initAudioContext();
-                    modal.style.display = 'none';
-                    playHospitalChime(); // Son carillon bref pour débloquer l'audio
-                    
-                    // Débloquer également la synthèse vocale sur les navigateurs stricts
-                    if ('speechSynthesis' in window) {
-                        try {
-                            window.speechSynthesis.resume();
-                            const unlockUtterance = new SpeechSynthesisUtterance('');
-                            unlockUtterance.volume = 0.01;
-                            window.speechSynthesis.speak(unlockUtterance);
-                        } catch(e) {}
+                const unlockBtn = document.getElementById('btnUnlockAudio');
+                if (unlockBtn) {
+                    unlockBtn.addEventListener('click', performAudioUnlock);
+                    setTimeout(() => unlockBtn.focus(), 300);
+                }
+
+                // Déverrouillage automatique au premier bouton pressé sur la télécommande TV
+                document.addEventListener('keydown', function(e) {
+                    const m = document.getElementById('audioUnlockModal');
+                    if (m && m.style.display !== 'none') {
+                        performAudioUnlock();
                     }
-                });
+                }, { once: true });
 
                 setTimeout(pollWaitingScreenUpdates, 1500);
             });

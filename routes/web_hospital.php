@@ -15,6 +15,7 @@ Route::middleware(['auth'])->group(function () {
             // Écran TV Salle d'Attente H24 (Appel vocal des patients)
             Route::get('waiting-room-screen', 'WaitingScreenController@screen')->name('waiting_screen');
             Route::get('waiting-room-screen/updates', 'WaitingScreenController@getUpdates')->name('waiting_screen.updates');
+            Route::get('waiting-room-screen/tts-audio', 'WaitingScreenController@getTtsAudio')->name('waiting_screen.tts');
             Route::post('waiting-room-screen/test', 'WaitingScreenController@testCall')->name('waiting_screen.test');
 
             Route::prefix('service')->name('service.')->group(function () {

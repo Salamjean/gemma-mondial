@@ -61,4 +61,5 @@ Route::post('/teleconsultation/expert/{id}/{hash}/token', [\App\Http\Controllers
 // Écran TV Android Salle d'Attente (Accès public direct sécurisé par token, sans mot de passe)
 Route::get('/tv/salle-attente/{token}', [\App\Http\Controllers\Hospital\WaitingScreenController::class, 'publicScreen'])->name('tv.waiting_screen');
 Route::get('/tv/salle-attente/{token}/updates', [\App\Http\Controllers\Hospital\WaitingScreenController::class, 'getPublicUpdates'])->name('tv.waiting_screen.updates');
+Route::get('/tv/salle-attente/{token}/tts-audio', [\App\Http\Controllers\Hospital\WaitingScreenController::class, 'getTtsAudio'])->name('tv.waiting_screen.tts');
 Route::post('/tv/salle-attente/{token}/test', [\App\Http\Controllers\Hospital\WaitingScreenController::class, 'publicTestCall'])->name('tv.waiting_screen.test');
