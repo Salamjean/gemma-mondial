@@ -21,6 +21,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css"/>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 
+    <script src="https://kit.fontawesome.com/111032cd6f.js" crossorigin="anonymous"></script>
 </head>
 
 <body class="hold-transition theme-primary bg-img" style="background-image: url(home/assets/img/admin_bg.png)">
@@ -57,5 +58,7 @@
             });
         </script>
     @endif
+
+    @stack('js')
 </body>
 </html>

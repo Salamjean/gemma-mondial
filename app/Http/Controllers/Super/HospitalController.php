@@ -150,37 +150,100 @@ class HospitalController extends Controller
 
     public function HospReport($id)
     {
-        $hospital = Hospital::findOrFail($id);
-        $title = 'Tableau de bord | '. $hospital->label;
-        $consultation = Consultation::where('hospital_id', $id)->get();
-        $totalMontant = $consultation->sum('montant');
-        $totalConsult = $consultation->count();
+        $hospital = Hospital::with(['user', 'localiteH'])->findOrFail($id);
+        $title = 'Portail & Supervision | ' . $hospital->label;
 
+        // Statistiques Consultations
+        $totalConsult = Consultation::where('hospital_id', $id)->count();
+        $recentConsultations = Consultation::where('hospital_id', $id)
+            ->with(['patient.user', 'doctor.user'])
+            ->latest()
+            ->limit(20)
+            ->get();
+
+        // Statistiques Déclarations
         $declaration = Declaration::where('hospital_id', $id)->get();
-        $totalDN = $declaration->where('type','birth')->count();
-        $totalDD = $declaration->where('type','death')->count();
+        $totalDN = $declaration->where('type', 'birth')->count();
+        $totalDD = $declaration->where('type', 'death')->count();
 
+        // Patients
         $totalPatient = Patient::where('hospital_id', $id)->count();
-        $totalDoctor = Doctor::where('hospital_id', $id)->count();
-        $totalAdmAttente = Admission::where('hospital_id', $id)->where('statut_paiement', '==',0)->count();
-        $totalAdmission = Admission::where('hospital_id', $id)->count();
+        $recentPatients = Patient::where('hospital_id', $id)
+            ->with('user')
+            ->latest()
+            ->limit(25)
+            ->get();
 
-        $services = ServiceHospital::where('hospital_id', $id)->with('prestationHospitals')->get();
+        // Personnel médical & administratif
+        $doctors = Doctor::where('hospital_id', $id)->with(['user', 'serviceHospital.service'])->get();
+        $infirmiers = \App\Models\Infirmier::where('hospital_id', $id)->with(['user', 'serviceHospital.service'])->get();
+        $secretariats = \App\Models\Secretaire::where('hospital_id', $id)->with('user')->get();
+        $cashiers = \App\Models\Caissiere::where('hospital_id', $id)->with('user')->get();
+        $accountants = \App\Models\Accountant::where('hospital_id', $id)->with('user')->get();
+        $pharmacies = \App\Models\Pharmacy::where('hospital_id', $id)->with('user')->get();
+
+        $totalDoctor = $doctors->count();
+        $totalInfirmier = $infirmiers->count();
+        $totalSecretariat = $secretariats->count();
+        $totalCashier = $cashiers->count();
+        $totalAccountant = $accountants->count();
+        $totalPharmacy = $pharmacies->count();
+        $totalStaff = $totalDoctor + $totalInfirmier + $totalSecretariat + $totalCashier + $totalAccountant + $totalPharmacy;
+
+        // Admissions
+        $totalAdmAttente = Admission::where('hospital_id', $id)->where('statut_paiement', 0)->count();
+        $totalAdmission = Admission::where('hospital_id', $id)->count();
+        $recentAdmissions = Admission::where('hospital_id', $id)
+            ->with(['patient.user', 'secretariat.user', 'prestationHospital.prestationService', 'typeExamen', 'typeAssurance'])
+            ->latest()
+            ->limit(25)
+            ->get();
+
+        // Services & Prestations
+        $services = ServiceHospital::where('hospital_id', $id)
+            ->with(['service', 'prestationHospitals.prestationService'])
+            ->get();
+
+        // Finances & Recettes globales
+        $recetteAdmissions = Admission::where('hospital_id', $id)->where('statut_paiement', '1')->sum('montant');
+        $recettePharmacie = \App\Models\DrugSale::where('hospital_id', $id)->where('status', 'success')->sum('price');
+        $recetteAssurances = \App\Models\InsuranceSettlement::where('hospital_id', $id)->sum('amount');
+        $totalDepenses = \App\Models\Expense::where('hospital_id', $id)->sum('amount');
+        $totalRecettesGlobales = $recetteAdmissions + $recettePharmacie + $recetteAssurances;
+        $soldeFinancier = $totalRecettesGlobales - $totalDepenses;
 
         return view('users.super.hospital.hospDash', [
-
             'title' => $title,
             'hospital' => $hospital,
-            'consultation' => $consultation,
-            'totalMontant' => $totalMontant,
             'totalConsult' => $totalConsult,
+            'recentConsultations' => $recentConsultations,
             'totalDN' => $totalDN,
             'totalDD' => $totalDD,
             'totalPatient' => $totalPatient,
+            'recentPatients' => $recentPatients,
+            'doctors' => $doctors,
+            'infirmiers' => $infirmiers,
+            'secretariats' => $secretariats,
+            'cashiers' => $cashiers,
+            'accountants' => $accountants,
+            'pharmacies' => $pharmacies,
             'totalDoctor' => $totalDoctor,
+            'totalInfirmier' => $totalInfirmier,
+            'totalSecretariat' => $totalSecretariat,
+            'totalCashier' => $totalCashier,
+            'totalAccountant' => $totalAccountant,
+            'totalPharmacy' => $totalPharmacy,
+            'totalStaff' => $totalStaff,
             'totalAdmAttente' => $totalAdmAttente,
             'totalAdmission' => $totalAdmission,
-            'services' => $services
+            'recentAdmissions' => $recentAdmissions,
+            'services' => $services,
+            'recetteAdmissions' => $recetteAdmissions,
+            'recettePharmacie' => $recettePharmacie,
+            'recetteAssurances' => $recetteAssurances,
+            'totalDepenses' => $totalDepenses,
+            'totalRecettesGlobales' => $totalRecettesGlobales,
+            'soldeFinancier' => $soldeFinancier,
         ]);
     }
     public function statusSce($id)

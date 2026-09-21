@@ -225,14 +225,21 @@ class AccountingService
         $hospitalId = $admission->hospital_id;
         self::initHospitalAccounting($hospitalId);
 
+        $isGtc = ($admission->mode_paiement === 'gtc' || $admission->type_admission === 'GTC (Gratuité)');
         $amount = floatval($admission->montant_patient ?? $admission->montant ?? 0);
-        if ($amount <= 0) {
+        $montantNormal = floatval($admission->montant_normal ?? 0);
+
+        if ($isGtc && $montantNormal <= 0 && $admission->prestationHospital) {
+            $montantNormal = floatval($admission->prestationHospital->prix ?? 0);
+        }
+
+        if ($amount <= 0 && (!$isGtc || $montantNormal <= 0)) {
             return null;
         }
 
         $mode = $admission->mode_paiement ?? 'espece';
         $treasury = self::getTreasuryAccount($mode);
-        $journalCode = ($treasury['account_number'] == '531100') ? 'CAI' : (($treasury['account_number'] == '512100') ? 'BQ' : 'CAI');
+        $journalCode = $isGtc ? 'OD' : (($treasury['account_number'] == '531100') ? 'CAI' : (($treasury['account_number'] == '512100') ? 'BQ' : 'CAI'));
 
         $journal = AccountingJournal::where('hospital_id', $hospitalId)->where('code', $journalCode)->first();
         $entryDate = $admission->created_at ? Carbon::parse($admission->created_at)->toDateString() : date('Y-m-d');
@@ -240,9 +247,9 @@ class AccountingService
         
         $prestation = self::getPrestationLibelle($admission);
         $patientNom = self::getPatientName($admission->patient);
-        $libelle = $patientNom ? "{$prestation} - {$patientNom}" : $prestation;
+        $libelle = $isGtc ? ("[GTC] " . ($patientNom ? "{$prestation} - {$patientNom}" : $prestation)) : ($patientNom ? "{$prestation} - {$patientNom}" : $prestation);
 
-        return DB::transaction(function () use ($hospitalId, $journal, $journalCode, $entryDate, $pieceNumber, $admission, $libelle, $treasury, $amount, $patientNom) {
+        return DB::transaction(function () use ($hospitalId, $journal, $journalCode, $entryDate, $pieceNumber, $admission, $libelle, $treasury, $amount, $patientNom, $isGtc, $montantNormal) {
             $entry = AccountingEntry::updateOrCreate(
                 [
                     'hospital_id' => $hospitalId,
@@ -261,52 +268,75 @@ class AccountingService
 
             $entry->lines()->delete();
 
-            // Débit Trésorerie
-            AccountingEntryLine::create([
-                'accounting_entry_id' => $entry->id,
-                'account_number' => $treasury['account_number'],
-                'account_label' => $treasury['label'],
-                'libelle' => $libelle,
-                'debit' => $amount,
-                'credit' => 0,
-            ]);
-
-            // Crédit Prestations
-            AccountingEntryLine::create([
-                'accounting_entry_id' => $entry->id,
-                'account_number' => '706100',
-                'account_label' => 'Prestations Médicales',
-                'third_party_code' => $admission->patient_id ? 'PAT-' . $admission->patient_id : null,
-                'libelle' => $libelle,
-                'debit' => 0,
-                'credit' => $amount,
-            ]);
-
-            // Part assurance si présente
-            $montantAssurance = floatval($admission->montant_assurance ?? 0);
-            if ($montantAssurance > 0) {
-                $codeAssurance = $admission->typeAssurance ? ('ASSUR-' . $admission->typeAssurance->id) : 'ASSUR-GEN';
-                $nomAssurance = $admission->typeAssurance ? $admission->typeAssurance->nom : 'Assurance';
-
+            if ($isGtc) {
+                // Écriture GTC : Débit Compte État GTC (411300) / Crédit Prestations Médicales GTC (706100)
                 AccountingEntryLine::create([
                     'accounting_entry_id' => $entry->id,
-                    'account_number' => '411200',
-                    'account_label' => 'Clients - Assurances & Tiers Payants (' . $nomAssurance . ')',
-                    'third_party_code' => $codeAssurance,
-                    'libelle' => "Prise en charge " . $nomAssurance . " - " . ($patientNom ?: 'Patient'),
-                    'debit' => $montantAssurance,
+                    'account_number' => '411300',
+                    'account_label' => 'Clients État - Prise en charge GTC (Gratuité)',
+                    'third_party_code' => $admission->patient_id ? 'PAT-' . $admission->patient_id : 'ETAT-GTC',
+                    'libelle' => $libelle,
+                    'debit' => $montantNormal,
                     'credit' => 0,
                 ]);
 
                 AccountingEntryLine::create([
                     'accounting_entry_id' => $entry->id,
                     'account_number' => '706100',
-                    'account_label' => 'Prestations Médicales (Part Assurance)',
-                    'third_party_code' => $codeAssurance,
-                    'libelle' => "Part prise en charge " . $nomAssurance,
+                    'account_label' => 'Prestations Médicales (Gratuité Ciblée GTC)',
+                    'third_party_code' => 'ETAT-GTC',
+                    'libelle' => $libelle,
                     'debit' => 0,
-                    'credit' => $montantAssurance,
+                    'credit' => $montantNormal,
                 ]);
+            } else {
+                // Débit Trésorerie
+                AccountingEntryLine::create([
+                    'accounting_entry_id' => $entry->id,
+                    'account_number' => $treasury['account_number'],
+                    'account_label' => $treasury['label'],
+                    'libelle' => $libelle,
+                    'debit' => $amount,
+                    'credit' => 0,
+                ]);
+
+                // Crédit Prestations
+                AccountingEntryLine::create([
+                    'accounting_entry_id' => $entry->id,
+                    'account_number' => '706100',
+                    'account_label' => 'Prestations Médicales',
+                    'third_party_code' => $admission->patient_id ? 'PAT-' . $admission->patient_id : null,
+                    'libelle' => $libelle,
+                    'debit' => 0,
+                    'credit' => $amount,
+                ]);
+
+                // Part assurance si présente
+                $montantAssurance = floatval($admission->montant_assurance ?? 0);
+                if ($montantAssurance > 0) {
+                    $codeAssurance = $admission->typeAssurance ? ('ASSUR-' . $admission->typeAssurance->id) : 'ASSUR-GEN';
+                    $nomAssurance = $admission->typeAssurance ? $admission->typeAssurance->nom : 'Assurance';
+
+                    AccountingEntryLine::create([
+                        'accounting_entry_id' => $entry->id,
+                        'account_number' => '411200',
+                        'account_label' => 'Clients - Assurances & Tiers Payants (' . $nomAssurance . ')',
+                        'third_party_code' => $codeAssurance,
+                        'libelle' => "Prise en charge " . $nomAssurance . " - " . ($patientNom ?: 'Patient'),
+                        'debit' => $montantAssurance,
+                        'credit' => 0,
+                    ]);
+
+                    AccountingEntryLine::create([
+                        'accounting_entry_id' => $entry->id,
+                        'account_number' => '706100',
+                        'account_label' => 'Prestations Médicales (Part Assurance)',
+                        'third_party_code' => $codeAssurance,
+                        'libelle' => "Part prise en charge " . $nomAssurance,
+                        'debit' => 0,
+                        'credit' => $montantAssurance,
+                    ]);
+                }
             }
 
             return $entry;

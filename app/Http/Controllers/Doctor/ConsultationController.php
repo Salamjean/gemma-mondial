@@ -62,6 +62,9 @@ class ConsultationController extends Controller
     {
         $consultation = Consultation::with(['patient.user', 'patient.residenceActuelle', 'prestationHospital.prestationService', 'admission.patient.user'])->findOrFail($id);
 
+        // Déclencher l'annonce en salle d'attente (Écran TV H24 de l'hôpital)
+        $this->triggerPatientCall($consultation);
+
         $prestationServiceId = optional($consultation->prestationHospital)->prestation_service_id ?? 1;
         try {
             $data = $this->instance()->formulaireMotif($prestationServiceId);
@@ -74,6 +77,86 @@ class ConsultationController extends Controller
             'consultation' => $consultation,
             'type' => $data[0] ?? 'consultation'
         ]);
+    }
+
+    /**
+     * Déclencher ou relancer manuellement un appel vocal de patient en salle d'attente
+     */
+    public function callPatient($id)
+    {
+        $consultation = Consultation::with(['patient.user', 'prestationHospital.prestationService', 'admission.patient.user'])->findOrFail($id);
+        $call = $this->triggerPatientCall($consultation);
+
+        if ($call) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Le patient ' . $call->patient_name . ' a été appelé sur l\'écran de la salle d\'attente.',
+                'call' => $call
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Impossible de lancer l\'appel pour cette consultation.'
+        ], 400);
+    }
+
+    /**
+     * Enregistrer ou mettre à jour un appel patient pour l'écran TV de l'hôpital
+     */
+    protected function triggerPatientCall(Consultation $consultation)
+    {
+        try {
+            $patient = $consultation->patient ?? optional($consultation->admission)->patient;
+            $patientName = trim((optional(optional($patient)->user)->name ?? '') . ' ' . (optional(optional($patient)->user)->prenom ?? ''));
+            if (empty($patientName)) {
+                $patientName = 'Patient ' . (optional($patient)->code_patient ?? '#' . $consultation->id);
+            }
+
+            $doctor = Auth::user()->doctor ?? $consultation->doctor;
+            $doctorUser = optional($doctor)->user ?? Auth::user();
+            $doctorName = 'Dr. ' . trim(($doctorUser->name ?? '') . ' ' . ($doctorUser->prenom ?? ''));
+
+            $serviceName = optional(optional(optional($consultation->prestationHospital)->prestationService)->service)->libelle 
+                ?? optional(optional($consultation->prestationHospital)->prestationService)->libelle 
+                ?? 'Consultation médicale';
+            
+            $cabinet = 'Cabinet de ' . $serviceName;
+
+            $hospitalId = $consultation->hospital_id ?? optional($doctor)->hospital_id ?? Auth::user()->hospital_id;
+
+            if ($hospitalId) {
+                // Clôturer les éventuels appels précédents toujours en 'calling' pour ce médecin
+                if (optional($doctor)->id) {
+                    \App\Models\PatientCall::where('doctor_id', $doctor->id)
+                        ->where('status', 'calling')
+                        ->update(['status' => 'completed']);
+                }
+
+                // Compter les appels précédents aujourd'hui pour ce patient
+                $previousCallsCount = \App\Models\PatientCall::where('consultation_id', $consultation->id)
+                    ->whereDate('called_at', \Carbon\Carbon::today())
+                    ->count();
+
+                return \App\Models\PatientCall::create([
+                    'hospital_id' => $hospitalId,
+                    'consultation_id' => $consultation->id,
+                    'doctor_id' => optional($doctor)->id,
+                    'patient_id' => optional($patient)->id,
+                    'patient_name' => $patientName,
+                    'doctor_name' => $doctorName,
+                    'cabinet' => $cabinet,
+                    'service_name' => $serviceName,
+                    'call_count' => $previousCallsCount + 1,
+                    'status' => 'calling',
+                    'called_at' => \Carbon\Carbon::now(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Erreur appel patient salle d'attente : " . $e->getMessage());
+        }
+
+        return null;
     }
 
     /**
@@ -237,7 +320,10 @@ class ConsultationController extends Controller
         $getStr = function ($key, $default = null) use ($request) {
             $val = $request->input($key, $default);
             if (is_array($val)) {
-                return count($val) > 0 ? (string) reset($val) : $default;
+                $val = count($val) > 0 ? (string) reset($val) : $default;
+            }
+            if (is_string($val)) {
+                $val = rtrim(trim($val), ',');
             }
             return $val ?? $default;
         };
@@ -650,7 +736,10 @@ class ConsultationController extends Controller
         $getStr = function ($key) use ($request) {
             $val = $request->input($key);
             if (is_array($val)) {
-                return count($val) > 0 ? (string) reset($val) : null;
+                $val = count($val) > 0 ? (string) reset($val) : null;
+            }
+            if (is_string($val)) {
+                $val = rtrim(trim($val), ',');
             }
             return $val;
         };

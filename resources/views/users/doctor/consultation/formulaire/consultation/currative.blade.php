@@ -433,21 +433,23 @@
                                     <div class="form-group">
                                         <label class="form-label fw-bold">Périmètre Crânien:</label>
                                         <input class="form-control" type="text" placeholder=" _____cm"
-                                            name="perimetre_cranien" id="perimetre_cranien" />
+                                            name="perimetre_cranien" id="perimetre_cranien"
+                                            value="{{ $regCur->perimetre_cranien ?? '' }}" />
                                     </div>
                                 </div>
                                 <div class="col-md-2">
                                     <div class="form-group">
                                         <label class="form-label fw-bold">Zscore:</label>
                                         <input class="form-control" type="text" placeholder="Zscore" name="zscore"
-                                            id="zscore" />
+                                            id="zscore" value="{{ $regCur->zcore ?? '' }}" />
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-group">
                                         <label class="form-label fw-bold">Fréquence respiratoire:</label>
                                         <input class="form-control" type="text" placeholder="_____cycles/mn"
-                                            name="frequence_respiratoire" id="zscore" />
+                                            name="frequence_respiratoire" id="frequence_respiratoire"
+                                            value="{{ $regCur->frequence_respiratoire ?? '' }}" />
                                     </div>
                                 </div>
                                 <div class="col-md-4">
@@ -699,10 +701,12 @@
                                 </div>
                                 <div class="col-6 mt-5">
                                     <p> <span class="fw-bold">Glycémie:</span> à jeûn : <input type="text"
-                                            class="col-sm-2" name="glycemie_a_jeun"
-                                            value="{{ optional(optional($consultation->registre)->registreConsultationCurative)->glycemie_a_jeun ?? '' }}">
-                                        g/l, non à jeûn : <input type="text" class="col-sm-2" name="glycemie_non_a_jeun"
-                                            value="{{ optional(optional($consultation->registre)->registreConsultationCurative)->glycemie_non_a_jeun ?? '' }}">
+                                            class="col-sm-2" id="glycemie_a_jeun_bilan"
+                                            value="{{ optional(optional($consultation->registre)->registreConsultationCurative)->glycemie_a_jeun ?? ($consultation->gly_a_jeun ?? '') }}"
+                                            oninput="document.getElementById('glycemie_a_jeun').value = this.value;">
+                                        g/l, non à jeûn : <input type="text" class="col-sm-2" id="glycemie_non_a_jeun_bilan"
+                                            value="{{ optional(optional($consultation->registre)->registreConsultationCurative)->glycemie_non_a_jeun ?? ($consultation->gly_nn_jeun ?? '') }}"
+                                            oninput="document.getElementById('glycemie_non_a_jeun').value = this.value;">
                                         g/l , <label for="naGlycemie me-30">NA</label><input type="radio"
                                             id="naGlycemeie" name="naglycemeie"></p>
                                 </div>

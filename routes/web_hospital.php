@@ -10,6 +10,12 @@ Route::middleware(['auth'])->group(function () {
 
             Route::get('profile', 'HospitalController@index')->name('profile');
             Route::post('update', 'HospitalController@update')->name('update');
+            Route::get('delete-watermark', 'HospitalController@deleteWatermark')->name('delete.watermark');
+
+            // Écran TV Salle d'Attente H24 (Appel vocal des patients)
+            Route::get('waiting-room-screen', 'WaitingScreenController@screen')->name('waiting_screen');
+            Route::get('waiting-room-screen/updates', 'WaitingScreenController@getUpdates')->name('waiting_screen.updates');
+            Route::post('waiting-room-screen/test', 'WaitingScreenController@testCall')->name('waiting_screen.test');
 
             Route::prefix('service')->name('service.')->group(function () {
                 Route::get('index', 'ServiceController@index')->name('index');

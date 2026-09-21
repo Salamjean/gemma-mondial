@@ -1,4 +1,4 @@
-<div class="row">
+<div class="row" id="infirmierDashboardContainer">
     @if (\Illuminate\Support\Facades\Auth::user()->infirmier->serviceHospital->service->id == 5)
         <div class="col-xl-12 col-lg-12 col-12">
             <div class="row">
@@ -613,3 +613,31 @@
         </div>
     @endif
 </div>
+
+<script>
+    // Auto-actualisation du tableau de bord infirmier toutes les 10 secondes
+    (function() {
+        setInterval(function() {
+            if (!document.hidden && !document.querySelector('.modal.show') && !document.querySelector('.swal2-container')) {
+                fetch(window.location.href, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(response => {
+                    if (!response.ok) return null;
+                    return response.text();
+                })
+                .then(html => {
+                    if (!html) return;
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newEl = doc.getElementById('infirmierDashboardContainer');
+                    const targetEl = document.getElementById('infirmierDashboardContainer');
+                    if (newEl && targetEl) {
+                        targetEl.innerHTML = newEl.innerHTML;
+                    }
+                })
+                .catch(err => console.warn('Auto-refresh dashboard infirmier :', err));
+            }
+        }, 10000);
+    })();
+</script>

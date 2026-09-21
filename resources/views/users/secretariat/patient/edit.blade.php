@@ -124,8 +124,8 @@
                                         <div class="form-group">
                                             <label for="telephone" class="form-label"> <b>Téléphone : </b> <span class="danger">*</span> </label>
                                             <div class="d-flex">
-                                                <span class="form-control w-80 text-center align-center" style="border-top-right-radius: 0; border-bottom-right-radius: 0;">+225</span>
-                                                <input type="text" style="border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: none;" min="10" max="10" name="telephone" id="telephone" class="form-control" value="{{ old('telephone', $patient->telephone) }}" placeholder="0101010101" data-inputmask="'mask': ['9999999999', '99 99 99 99 99']" data-mask="" required>
+                                                <input type="text" name="prefix_telephone" id="prefix_telephone" class="form-control text-center fw-bold bg-white text-dark" style="max-width: 80px; border-top-right-radius: 0; border-bottom-right-radius: 0;" value="+225" placeholder="+225" title="Préfixe / Indicatif pays">
+                                                <input type="text" style="border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: none;" name="telephone" id="telephone" class="form-control" value="{{ old('telephone', $patient->telephone) }}" placeholder="0101010101" required>
                                             </div>
                                         </div>
                                     </div>
@@ -133,8 +133,8 @@
                                         <div class="form-group">
                                             <label for="contact2" class="form-label"> <b>N° Téléphone 2 : </b> </label>
                                             <div class="d-flex">
-                                                <span class="form-control w-80 text-center align-center" style="border-top-right-radius: 0; border-bottom-right-radius: 0;">+225</span>
-                                                <input type="text" style="border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: none;" min="10" max="10" name="contact2" id="contact2" class="form-control" value="{{ old('contact2', $patient->contact2) }}" placeholder="0707000000" data-inputmask="'mask': ['9999999999', '99 99 99 99 99']" data-mask="">
+                                                <input type="text" name="prefix_contact2" id="prefix_contact2" class="form-control text-center fw-bold bg-white text-dark" style="max-width: 80px; border-top-right-radius: 0; border-bottom-right-radius: 0;" value="+225" placeholder="+225" title="Préfixe / Indicatif pays">
+                                                <input type="text" style="border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: none;" name="contact2" id="contact2" class="form-control" value="{{ old('contact2', $patient->contact2) }}" placeholder="0707000000">
                                             </div>
                                         </div>
                                     </div>

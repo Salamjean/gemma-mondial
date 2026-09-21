@@ -119,8 +119,8 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-bold fs-12 text-muted">N° Téléphone</label>
-                            <input type="text" name="telephone" id="telephone" class="form-control h-45 rounded-10" readonly
-                                style="background-color: #f1f3f5; cursor: not-allowed;">
+                            <input type="text" name="telephone" id="telephone" class="form-control h-45 rounded-10 fw-bold text-dark"
+                                placeholder="+225 0101010101" required>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label fw-bold fs-12 text-muted">N° CMU</label>
@@ -592,7 +592,11 @@
                             $('#email_up').val(userEmail);
                             $('#birth_date_up').val(patient.birth_date || '');
                             $('#gender_up').val(patient.gender || '');
-                            $('#telephone').val(patient.telephone || '');
+                            var tel = (patient.telephone || '').trim();
+                            if (tel && !tel.startsWith('+') && !tel.startsWith('00')) {
+                                tel = '+225 ' + tel;
+                            }
+                            $('#telephone').val(tel);
                             $('#num_cmu_up').val(patient.num_cmu || '');
                             $('#residence_habituelle_up').val(resHabituelleName);
 

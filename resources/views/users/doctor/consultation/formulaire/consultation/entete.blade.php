@@ -45,13 +45,23 @@
                 <div class="px-2">
                     <div class="px-5 bg-color">
                         <div class="row">
-                            <div class="d-flex justify-content-between mt-10">
-                                <div class="d-flex align-items-center">
+                            <div class="d-flex justify-content-between align-items-center mt-10 flex-wrap gap-2">
+                                <div class="d-flex align-items-center flex-wrap gap-2">
                                     @if(!request()->has('embed'))
-                                        <a href="{{ route('doctor.consultation.today') }}" class="btn btn-sm btn-secondary me-3"><i class="fa-solid fa-arrow-left me-1"></i> Retour</a>
+                                        <a href="{{ route('doctor.consultation.today') }}" class="btn btn-sm btn-secondary me-2"><i class="fa-solid fa-arrow-left me-1"></i> Retour</a>
                                     @endif
                                     <label class="form-label mb-0">N° Dossier médical | <span class="fw-bold fs-18"><span id="dm_patient"
                                                 style="color:red;">{{ $codePatient }}</span></span></label>
+
+                                    <!-- Bouton Relancer l'Appel Salle d'Attente -->
+                                    <button type="button" 
+                                        class="btn btn-sm btn-primary fw-bold px-3 py-1.5 rounded-8 shadow-sm d-inline-flex align-items-center gap-1.5 ms-2 btn-recall-in-consultation"
+                                        data-id="{{ $consultation->id }}"
+                                        data-name="{{ $patientFullName }}"
+                                        title="Relancer l'appel sonore et visuel sur l'écran de la salle d'attente">
+                                        <i class="fa-solid fa-bullhorn me-1"></i>
+                                        <span>Relancer l'appel</span>
+                                    </button>
                                 </div>
                                 <div class="d-flex items-center pb-1">
 
@@ -219,4 +229,57 @@
      poidsInput.addEventListener('input', calculerIMC);
      tailleInput.addEventListener('input', calculerIMC);
  }
+
+ // Relance de l'appel patient en salle d'attente
+ document.addEventListener('DOMContentLoaded', function() {
+     const recallBtn = document.querySelector('.btn-recall-in-consultation');
+     if (recallBtn) {
+         recallBtn.addEventListener('click', function(e) {
+             e.preventDefault();
+             const btn = this;
+             const consultationId = btn.getAttribute('data-id');
+             const originalHtml = btn.innerHTML;
+
+             btn.disabled = true;
+             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Appel en cours...';
+
+             fetch("{{ url('doctor/consultation/call-patient') }}/" + consultationId, {
+                 method: 'POST',
+                 headers: {
+                     'Content-Type': 'application/json',
+                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                 }
+             })
+             .then(response => response.json())
+             .then(data => {
+                 btn.disabled = false;
+                 btn.innerHTML = originalHtml;
+                 if (data.success) {
+                     if (typeof Swal !== 'undefined') {
+                         Swal.fire({
+                             icon: 'success',
+                             title: 'Appel relancé !',
+                             text: data.message || 'Le patient a été rappelé sur l\'écran de la salle d\'attente.',
+                             toast: true,
+                             position: 'top-end',
+                             showConfirmButton: false,
+                             timer: 3500,
+                             timerProgressBar: true
+                         });
+                     } else {
+                         alert(data.message);
+                     }
+                 } else {
+                     alert(data.message || 'Erreur lors de la relance de l\'appel.');
+                 }
+             })
+             .catch(err => {
+                 btn.disabled = false;
+                 btn.innerHTML = originalHtml;
+                 console.error('Erreur relance appel :', err);
+                 alert('Impossible de relancer l\'appel. Veuillez réessayer.');
+             });
+         });
+     }
+ });
 </script>

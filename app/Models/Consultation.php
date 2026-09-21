@@ -13,6 +13,21 @@ class Consultation extends Model
     use HasFactory;
     protected $guarded = [];
 
+    protected static function booted()
+    {
+        static::saved(function ($consultation) {
+            if ($consultation->status == 1) {
+                try {
+                    \App\Models\PatientCall::where('consultation_id', $consultation->id)
+                        ->where('status', '!=', 'completed')
+                        ->update(['status' => 'completed']);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('Erreur mise à jour status PatientCall : ' . $e->getMessage());
+                }
+            }
+        });
+    }
+
     public function examen() : HasOne
     {
         return $this->hasOne(BulletinExamen::class);

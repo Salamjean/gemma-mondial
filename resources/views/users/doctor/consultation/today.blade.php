@@ -2,11 +2,14 @@
 
 @section('content')
     <!-- 1. Vos consultations du jour en cours (EN HAUT) -->
-    <div class="box border-0 shadow-sm rounded-20 bg-white mb-4">
+    <div class="box border-0 shadow-sm rounded-20 bg-white mb-4" id="doctorTodayConsultationsPageBox">
         <div class="box-header with-border p-20 d-flex align-items-center justify-content-between flex-wrap gap-2">
             <div>
-                <h4 class="box-title mb-0 fw-bold text-dark fs-16">
-                    <i class="fa-solid fa-stethoscope text-primary me-2"></i><b>VOS CONSULTATIONS DU JOUR EN COURS</b>
+                <h4 class="box-title mb-0 fw-bold text-dark fs-16 d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-stethoscope text-primary me-1"></i><b>VOS CONSULTATIONS DU JOUR EN COURS</b>
+                    <span class="badge bg-success-light text-success fs-12 fw-bold d-none d-sm-inline-flex align-items-center gap-1" title="Actualisation automatique toutes les 10s">
+                        <i class="fa-solid fa-rotate fa-spin-pulse"></i> 10s
+                    </span>
                 </h4>
             </div>
             @php
@@ -81,10 +84,19 @@
 
                                 <td class="text-center">
                                     @if ($item->status == 0)
-                                        <a href="{{ route('doctor.consultation.formulaire', $item->id) }}"
-                                            class="btn btn-sm btn-info text-white fw-bold px-3 py-1.5 rounded-8" id="menu" title="Menu">
-                                            <span>Commencer la consultation</span>
-                                        </a>
+                                        <div class="d-inline-flex align-items-center gap-1">
+                                            <button type="button" 
+                                                class="btn btn-sm btn-outline-primary fw-bold px-2 py-1.5 rounded-8 btn-call-patient" 
+                                                data-id="{{ $item->id }}" 
+                                                data-name="{{ optional(optional($item->patient)->user)->name }} {{ optional(optional($item->patient)->user)->prenom }}"
+                                                title="Appeler le patient sur l'écran de la salle d'attente">
+                                                <i class="fa-solid fa-bullhorn me-1"></i> Appeler
+                                            </button>
+                                            <a href="{{ route('doctor.consultation.formulaire', $item->id) }}"
+                                                class="btn btn-sm btn-info text-white fw-bold px-3 py-1.5 rounded-8" id="menu" title="Commencer">
+                                                <i class="fa-solid fa-play me-1"></i> <span>Commencer</span>
+                                            </a>
+                                        </div>
                                     @else
                                         <a href="{{ route('doctor.consultation.detail', $item->id) }}" class="btn btn-sm btn-info text-white fw-bold px-3 py-1.5 rounded-8"
                                             title="detail consultation">
@@ -110,4 +122,78 @@
 
 @push('js')
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            $(document).on('click', '.btn-call-patient', function(e) {
+                e.preventDefault();
+                const btn = $(this);
+                const consultationId = btn.data('id');
+                const patientName = btn.data('name') || 'le patient';
+                const originalHtml = btn.html();
+
+                btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-1"></i> Appel...');
+
+                $.ajax({
+                    url: "{{ url('doctor/consultation/call-patient') }}/" + consultationId,
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        btn.prop('disabled', false).html(originalHtml);
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Patient appelé !',
+                                text: response.message,
+                                toast: true,
+                                position: 'top-end',
+                                showConfirmButton: false,
+                                timer: 3500,
+                                timerProgressBar: true
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Attention',
+                                text: response.message || 'Erreur lors de l\'appel'
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        btn.prop('disabled', false).html(originalHtml);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erreur',
+                            text: 'Impossible d\'appeler le patient. Veuillez réessayer.'
+                        });
+                    }
+                });
+            });
+
+            // Auto-actualisation 10s
+            setInterval(function() {
+                if (!document.hidden && !document.querySelector('.modal.show') && !document.querySelector('.swal2-container')) {
+                    fetch(window.location.href, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                    .then(response => {
+                        if (!response.ok) return null;
+                        return response.text();
+                    })
+                    .then(html => {
+                        if (!html) return;
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const newEl = doc.getElementById('doctorTodayConsultationsPageBox');
+                        const targetEl = document.getElementById('doctorTodayConsultationsPageBox');
+                        if (newEl && targetEl) {
+                            targetEl.innerHTML = newEl.innerHTML;
+                        }
+                    })
+                    .catch(err => console.warn('Auto-refresh consultations du jour :', err));
+                }
+            }, 10000);
+        });
+    </script>
 @endpush

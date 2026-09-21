@@ -378,7 +378,31 @@
                                                 <input type="text" name="birth_date_up" id="birth_date_up"
                                                     class="form-control" data-inputmask="'alias': 'dd/mm/yyyy'"
                                                     data-mask="">
-
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="telephone" class="form-label"> <b>Téléphone : </b> <span
+                                                    class="danger">*</span> </label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text"><i class="fa fa-phone"></i></span>
+                                                <input type="text" name="telephone" id="telephone"
+                                                    class="form-control" placeholder="+225 0101010101" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="contact2_up" class="form-label"> <b>N° Téléphone 2 : </b> </label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text"><i class="fa fa-phone"></i></span>
+                                                <input type="text" name="contact2" id="contact2_up"
+                                                    class="form-control" placeholder="+225 0707000000">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                                 <br />
                                 <div class="row">
                                     <div class="col-md-4">
@@ -1038,8 +1062,18 @@
                 $('#birth_date_up').val(patient.birth_date || '');
                 $('#numero_identite_up').val(patient.numero_identite || '');
                 $('#gender_up').val(patient.gender || '');
-                $('#telephone').val(patient.telephone || '');
-                $('#contact2_up').val(patient.contact2 || '');
+                var tel = (patient.telephone || '').trim();
+                if (tel && !tel.startsWith('+') && !tel.startsWith('00')) {
+                    tel = '+225 ' + tel;
+                }
+                $('#telephone').val(tel);
+
+                var tel2 = (patient.contact2 || '').trim();
+                if (tel2 && !tel2.startsWith('+') && !tel2.startsWith('00')) {
+                    tel2 = '+225 ' + tel2;
+                }
+                $('#contact2_up').val(tel2);
+
                 $('#profession_up').val(patient.profession || '');
                 $('#type_piece_up').val(patient.type_piece || '');
                 $('#residence_habituelle_up').val(resHabituelleName);
@@ -1054,7 +1088,8 @@
                 $('#telephone_personne_cas_urgence_up').val(patient.telephone_personne_cas_urgence || '');
                 $('#lien_personne_cas_urgence_up').val(patient.lien_personne_cas_urgence || '');
 
-                // Champs modifiable //
+                // Champs modifiables //
+                $('#telephone').prop('readonly', false);
                 $('#contact2_up').prop('readonly', false);
 
                 // Champs d'identité non modifiables (lecture seule)

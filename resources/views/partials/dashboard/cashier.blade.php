@@ -58,13 +58,18 @@
 
 </div>
 
-<div class="row">
+<div class="row" id="cashierTodayPaymentsBox">
     <div class="col-12  ">
         <div class="box">
             <div class="box-header">
                 <div class="row">
                     <div class="col-xs-12 d-flex justify-content-between align-items-center">
-                        <h4 class="box-title"><b>PAIEMENTS EN ATTENTE DU JOUR</b></h4>
+                        <div class="d-flex align-items-center gap-2">
+                            <h4 class="box-title mb-0"><b>PAIEMENTS EN ATTENTE DU JOUR</b></h4>
+                            <span class="badge bg-success-light text-success fs-12 fw-bold d-none d-sm-inline-flex align-items-center gap-1" title="Actualisation automatique toutes les 10s">
+                                <i class="fa-solid fa-rotate fa-spin-pulse"></i> 10s
+                            </span>
+                        </div>
                         <div class="d-flex align-items-center gap-2">
                             @php
                                 $hospitalIdCashier = \Illuminate\Support\Facades\Auth::user()->cashier->hospital_id;
@@ -177,38 +182,53 @@
                                 <th class="bb-2 text-center">Status</th>
                                 <th class="bb-2 text-center">Actions</th>
                             </tr>
-                        </thead>
-                        <tbody>
-
-                            @foreach (App\Models\Payment::where('status', 'success')->where('caissiere_id', \Illuminate\Support\Facades\Auth::user()->cashier->hospital_id)->whereDate('created_at', date('Y-m-d'))->get() as $item)
+                            @php
+                                $hospitalIdCashier = \Illuminate\Support\Facades\Auth::user()->cashier->hospital_id;
+                                $todaySuccessPayments = App\Models\Payment::where('status', 'success')
+                                    ->where('hospital_id', $hospitalIdCashier)
+                                    ->whereDate('created_at', date('Y-m-d'))
+                                    ->with(['admission.patient.user', 'admission.prestationHospital.prestationService', 'hospitalisation.consultation.patient.user'])
+                                    ->get();
+                            @endphp
+                            @foreach ($todaySuccessPayments as $item)
                                 <tr>
                                     <td>
                                         @if ($item->type == 'hospitalisation')
-                                            <b>{{ $item->hospitalisation->consultation->patient->code_patient }}</b>
+                                            <b>{{ optional(optional(optional($item->hospitalisation)->consultation)->patient)->code_patient }}</b>
                                         @elseif ($item->type == 'admission')
-                                            <b>{{ $item->admission->patient->code_patient }}</b>
+                                            <b>{{ optional(optional($item->admission)->patient)->code_patient }}</b>
                                         @endif
                                     </td>
-                                    <td>{{ $item->type }}</td>
+                                    <td>
+                                        @if ($item->mode_paiement == 'gtc')
+                                            <span class="badge bg-success-light text-success fw-bold">GTC (Gratuité)</span>
+                                        @else
+                                            {{ ucfirst($item->type) }}
+                                        @endif
+                                    </td>
                                     <td>
                                         @if ($item->type == 'hospitalisation')
                                             Hospitalisation
                                         @elseif ($item->type == 'admission')
-                                            {{ $item->admission->prestationHospital->prestationService->libelle }}
+                                            {{ optional(optional(optional($item->admission)->prestationHospital)->prestationService)->libelle ?? 'Prestation Médicale' }}
                                         @endif
                                     </td>
                                     <td>
                                         @if ($item->type == 'hospitalisation')
-                                            <i>{{ $item->hospitalisation->consultation->patient->user->name }}&nbsp;
-                                                {{ $item->hospitalisation->consultation->patient->user->prenom }}</i>
+                                            <i>{{ optional(optional(optional(optional($item->hospitalisation)->consultation)->patient)->user)->name }}&nbsp;
+                                                {{ optional(optional(optional(optional($item->hospitalisation)->consultation)->patient)->user)->prenom }}</i>
                                         @elseif ($item->type == 'admission')
-                                            <i>{{ $item->admission->patient->user->name }}&nbsp;
-                                                {{ $item->admission->patient->user->prenom }}</i>
+                                            <i>{{ optional(optional(optional($item->admission)->patient)->user)->name }}&nbsp;
+                                                {{ optional(optional(optional($item->admission)->patient)->user)->prenom }}</i>
                                         @endif
                                     </td>
                                     <td>
-                                        <i>{{ $item->prix }} FCFA</i>
-
+                                        @if ($item->mode_paiement == 'gtc' || ($item->admission && $item->admission->mode_paiement == 'gtc'))
+                                            <span class="text-success fw-bold">0 FCFA</span>
+                                            <small class="text-muted d-block fs-11">(Prise en charge GTC: {{ number_format($item->prix_normal ?? 0, 0, ',', ' ') }} F)</small>
+                                        @else
+                                            <b>{{ number_format($item->prix ?? 0, 0, ',', ' ') }} FCFA</b>
+                                        @endif
                                     </td>
                                     <td class="text-center">
                                         <span class="p-1 badge-success ">
@@ -231,12 +251,37 @@
                 </div>
             </div>
         </div>
-    </div>
-</div>
-
 {{-- <div class="row pt-35">
     <div class="" style="width: 50%;">
         <canvas id="admission"></canvas>
     </div>
 </div>
  --}}
+
+<script>
+    // Auto-actualisation du tableau de bord caissier toutes les 10 secondes
+    (function() {
+        setInterval(function() {
+            if (!document.hidden && !document.querySelector('.modal.show') && !document.querySelector('.swal2-container')) {
+                fetch(window.location.href, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(response => {
+                    if (!response.ok) return null;
+                    return response.text();
+                })
+                .then(html => {
+                    if (!html) return;
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newEl = doc.getElementById('cashierTodayPaymentsBox');
+                    const targetEl = document.getElementById('cashierTodayPaymentsBox');
+                    if (newEl && targetEl) {
+                        targetEl.innerHTML = newEl.innerHTML;
+                    }
+                })
+                .catch(err => console.warn('Auto-refresh dashboard caissier :', err));
+            }
+        }, 10000);
+    })();
+</script>

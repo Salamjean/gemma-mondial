@@ -12,11 +12,11 @@
             <h1>ADMISSION :  {{ $admission->code_admission }}</h1>
             <div style="position: absolute; top:0; right :0;"><img src="{{ asset('assets/uploads/republique.png') }}"  style="width: 100px; height:100px" alt=""></div>
         </div>
-        <!--
-        <div class="bg-img">
-            <img src="{{ asset('assets/uploads/bulletin_examen.png') }}" style="top:405px; position:fixed; width:700px; opacity: 0.2; "/>
+        @if(!empty($admission->hospital->watermark_url))
+        <div class="bg-img" style="top:250px; position:fixed; width:100%; text-align:center; z-index:-1000; opacity: 0.12;">
+            <img src="{{ pdf_img('assets/uploads/hospital/' . $admission->hospital->watermark_url) }}" style="max-width:400px; max-height:400px;"/>
         </div>
-        -->
+        @endif
         <div style="margin-top: 30px;">
             <table class="table table-striped table-hover" style="border: none">
                 <tbody>

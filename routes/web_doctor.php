@@ -34,6 +34,7 @@ Route::middleware(['auth'])->group(function () {
                 Route::get('patient/{id}/card', 'ConsultationController@patientCard')->name('patient.card');
                 //formulaire consultation
                 Route::get('formulaire/{id}', 'ConsultationController@formulaire')->name('formulaire');
+                Route::post('call-patient/{id}', 'ConsultationController@callPatient')->name('call_patient');
                 Route::post('call/start/{id}', 'ConsultationController@startCall')->name('call.start');
                 Route::post('call/end/{id}', 'ConsultationController@endCall')->name('call.end');
                 Route::get('call/status/{id}', 'ConsultationController@callStatus')->name('call.status');

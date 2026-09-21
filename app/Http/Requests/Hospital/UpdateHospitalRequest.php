@@ -23,9 +23,13 @@ class UpdateHospitalRequest extends FormRequest
     public function rules(): array
     {
         return [
-
-            "contact" => "nullable|regex:/^[0-9]{10}$/",
-            'image' => ['nullable','image',new FileTypeValidate(['jpg','jpeg','png'])],
+            'label' => 'nullable|string|max:255',
+            'contact' => 'nullable|string|max:20',
+            'district_sanitaire' => 'nullable|string|max:255',
+            'nom_direction_generale' => 'nullable|string|max:255',
+            'image' => ['nullable', 'image', new FileTypeValidate(['jpg', 'jpeg', 'png', 'webp', 'svg'])],
+            'watermark' => ['nullable', 'image', new FileTypeValidate(['jpg', 'jpeg', 'png', 'webp', 'svg'])],
+            'password' => 'nullable|string|min:6|confirmed',
         ];
     }
 }

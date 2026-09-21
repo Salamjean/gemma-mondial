@@ -39,8 +39,11 @@
                             <div class="input-group mb-3">
                                 <span class="input-group-text bg-transparent"><i class="ti-lock"></i></span>
                                 <input type="password" class="form-control @error('password') is-invalid @enderror ps-15 bg-transparent" name="password" id="password" required autocomplete="password" placeholder="Mot de passe">
+                                <span class="input-group-text bg-transparent text-muted toggle-pwd" data-target="password" style="cursor: pointer;" title="Afficher / Masquer">
+                                    <i class="fa-solid fa-eye-slash"></i>
+                                </span>
                                 @error('password')
-                                    <span class="invalid-feedback" role="alert">
+                                    <span class="invalid-feedback d-block" role="alert">
                                         <strong>{{ $message }}</strong>
                                     </span>
                                 @enderror
@@ -50,6 +53,9 @@
                             <div class="input-group mb-3">
                                 <span class="input-group-text bg-transparent"><i class="ti-lock"></i></span>
                                 <input type="password" class="form-control ps-15 bg-transparent" name="password_confirmation" id="password-confirm" required autocomplete="new-password" placeholder="Confirmer le mot de passe">
+                                <span class="input-group-text bg-transparent text-muted toggle-pwd" data-target="password-confirm" style="cursor: pointer;" title="Afficher / Masquer">
+                                    <i class="fa-solid fa-eye-slash"></i>
+                                </span>
                             </div>
                         </div>
                           <div class="row">
@@ -84,3 +90,28 @@
     </div>
 </div>
 @endsection
+
+@push('js')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.toggle-pwd').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const targetId = this.getAttribute('data-target');
+                const input = document.getElementById(targetId);
+                const icon = this.querySelector('i');
+                if (input && icon) {
+                    const isPwd = input.getAttribute('type') === 'password';
+                    input.setAttribute('type', isPwd ? 'text' : 'password');
+                    if (isPwd) {
+                        icon.classList.remove('fa-eye-slash');
+                        icon.classList.add('fa-eye');
+                    } else {
+                        icon.classList.remove('fa-eye');
+                        icon.classList.add('fa-eye-slash');
+                    }
+                }
+            });
+        });
+    });
+</script>
+@endpush

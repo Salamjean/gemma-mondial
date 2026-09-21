@@ -9,62 +9,76 @@
 
 
 <div class="row">
-    <div class="col-xl-3 col-lg-6 col-12">
+    <div class="col-xxl-2 col-xl-4 col-md-4 col-sm-6 col-12">
         <div class="box bg-success-light">
             <div class="box-body text-center">
                 <div class="d-flex justify-content-between align-items-center">
-                    <div class="p-5 w-100 h-100">
-                        <img src="{{ asset('assets/icons/hospital.png')}}" class="" alt="icon">
+                    <div class="p-5">
+                        <img src="{{ asset('assets/icons/hospital.png')}}" class="avatar avatar-md" alt="icon">
                     </div>
                     <div class="text-end">
-                        <h2 class="mb-0 fw-600 text-success">{{ \App\Models\Hospital::count() }}</h2>
-                        <p class="text-fade mt-5 mb-0 text-success">Hopitaux</p>
+                        <h2 class="mb-0 fw-700 text-success">{{ \App\Models\Hospital::count() }}</h2>
+                        <p class="text-muted mt-5 mb-0 fs-13">Hôpitaux</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-xl-3 col-lg-6 col-12">
-        <div class="box bg-success-light">
+    <div class="col-xxl-3 col-xl-4 col-md-4 col-sm-6 col-12">
+        <div class="box bg-primary-light">
             <div class="box-body text-center">
                 <div class="d-flex justify-content-between align-items-center">
-                    <div class="p-5 w-100 h-100">
-                        <img src="{{ asset('assets/icons/consult.png')}}" class="" alt="doctor">
+                    <div class="p-5">
+                        <img src="{{ asset('assets/icons/team.png')}}" class="avatar avatar-md" alt="patients">
                     </div>
                     <div class="text-end">
-                        <h2 class="mb-0 fw-600 text-success">{{ \App\Models\Consultation::count() }}</h2>
-                        <p class="text-fade mt-5 mb-0 text-success">Consultations</p>
+                        <h2 class="mb-0 fw-700 text-primary">{{ \App\Models\Patient::count() }}</h2>
+                        <p class="text-muted mt-5 mb-0 fs-13">Patients Inscrits</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-xl-3 col-lg-6 col-12">
-        <div class="box bg-success-light">
+    <div class="col-xxl-3 col-xl-4 col-md-4 col-sm-6 col-12">
+        <div class="box bg-info-light">
             <div class="box-body text-center">
                 <div class="d-flex justify-content-between align-items-center">
-                    <div class="p-5 w-100 h-100">
-                        <img src="{{ asset('assets/uploads/baby.png')}}" class="" alt="secretariat">
+                    <div class="p-5">
+                        <img src="{{ asset('assets/icons/consult.png')}}" class="avatar avatar-md" alt="doctor">
                     </div>
                     <div class="text-end">
-                        <h2 class="mb-0 fw-600 text-success">{{ \App\Models\Declaration::where('type', 'birth')->count() }}</h2>
-                        <p class="text-fade mt-5 mb-0 text-success">Déclaration de naissance</p>
+                        <h2 class="mb-0 fw-700 text-info">{{ \App\Models\Consultation::count() }}</h2>
+                        <p class="text-muted mt-5 mb-0 fs-13">Consultations</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <div class="col-xl-3 col-lg-6 col-12">
-        <div class="box bg-success-light">
+    <div class="col-xxl-2 col-xl-6 col-md-6 col-sm-6 col-12">
+        <div class="box bg-warning-light">
             <div class="box-body text-center">
                 <div class="d-flex justify-content-between align-items-center">
-                    <div class="p-5 w-100 h-100">
-                        <img src="{{ asset('assets/uploads/deces.png')}}" class="" alt="consultation">
+                    <div class="p-5">
+                        <img src="{{ asset('assets/uploads/baby.png')}}" class="avatar avatar-md" alt="secretariat">
                     </div>
                     <div class="text-end">
-                        <h2 class="mb-0 fw-600 text-success">{{ \App\Models\Declaration::where('type', 'death')->count() }}</h2>
-                        <p class="text-fade mt-5 mb-0 text-success">Declaration de décès</p>
+                        <h2 class="mb-0 fw-700 text-warning">{{ \App\Models\Declaration::where('type', 'birth')->count() }}</h2>
+                        <p class="text-muted mt-5 mb-0 fs-13">Naissances</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-2 col-xl-6 col-md-6 col-sm-6 col-12">
+        <div class="box bg-danger-light">
+            <div class="box-body text-center">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="p-5">
+                        <img src="{{ asset('assets/uploads/deces.png')}}" class="avatar avatar-md" alt="consultation">
+                    </div>
+                    <div class="text-end">
+                        <h2 class="mb-0 fw-700 text-danger">{{ \App\Models\Declaration::where('type', 'death')->count() }}</h2>
+                        <p class="text-muted mt-5 mb-0 fs-13">Décès</p>
                     </div>
                 </div>
             </div>

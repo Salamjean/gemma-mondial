@@ -10,6 +10,9 @@ use App\Models\Payment;
 use App\Models\Admission;
 use App\Models\Secretaire;
 use App\Models\Caissiere;
+use App\Models\PrestationHospital;
+use App\Models\CareRequested;
+use App\Models\Consultation;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\TypeAssurance;
@@ -73,6 +76,39 @@ class PatientController extends Controller
             $isSoinsInfirmiers = preg_match('/infirmier|soin/i', $request->service_id_up) || $request->service_id_up == '4';
         }
 
+        $rawTelephone = $request->telephone ?? $request->telephone_up;
+        if ($rawTelephone) {
+            $cleanedNum = preg_replace('/\s+/', '', $rawTelephone);
+            if (str_starts_with($cleanedNum, '+225') && strlen($cleanedNum) > 4) {
+                $telephone = substr($cleanedNum, 4);
+            } elseif (str_starts_with($cleanedNum, '00225') && strlen($cleanedNum) > 5) {
+                $telephone = substr($cleanedNum, 5);
+            } else {
+                $telephone = $cleanedNum;
+            }
+        } else {
+            $telephone = $patient->telephone;
+        }
+
+        $rawContact2 = $request->contact2 ?? $request->contact2_up;
+        if ($rawContact2) {
+            $cleanedNum2 = preg_replace('/\s+/', '', $rawContact2);
+            if (str_starts_with($cleanedNum2, '+225') && strlen($cleanedNum2) > 4) {
+                $contact2 = substr($cleanedNum2, 4);
+            } elseif (str_starts_with($cleanedNum2, '00225') && strlen($cleanedNum2) > 5) {
+                $contact2 = substr($cleanedNum2, 5);
+            } else {
+                $contact2 = $cleanedNum2;
+            }
+        } else {
+            $contact2 = null;
+        }
+
+        $request->merge([
+            'telephone' => $telephone,
+            'contact2' => $contact2,
+        ]);
+
         $rules = [
             'email_up' => ['nullable'],
             'residence_actuelle_up' => 'nullable',
@@ -80,7 +116,7 @@ class PatientController extends Controller
             'type_piece_up' => 'nullable',
             'numero_identite' => ['nullable', Rule::unique('patients')->ignore($patient->id)],
             'telephone' => ['required', Rule::unique('patients')->ignore($patient->id)],
-            'contact2' => ['nullable', Rule::unique('patients')->ignore($patient->id)],
+            'contact2' => ['nullable'],
             'admission_patient_up' => 'nullable',
             'prestation_service_id' => 'nullable',
             'infirmier_id' => 'nullable',
@@ -97,6 +133,8 @@ class PatientController extends Controller
         }
 
         $messages = [
+            'telephone.required' => 'Le numéro de téléphone est obligatoire.',
+            'telephone.unique' => 'Ce numéro de téléphone est déjà attribué à un autre patient.',
             'infirmier_id.required' => 'La sélection d\'un(e) infirmier(ère) est obligatoire.',
             'doctor_id.required' => 'La sélection d\'un médecin traitant est obligatoire pour ce service.',
             'prestation_service_id.required' => 'La sélection d\'une prestation médicale est obligatoire.',
@@ -110,9 +148,15 @@ class PatientController extends Controller
         if ($request->filled('prenom_up')) {
             $user->prenom = $request->prenom_up;
         }
-        $user->email = $request->email_up;
-        $patient->no_assurance = $request->no_assurance_up;
-        $patient->profession = $request->profession_up;
+        if ($request->has('email_up')) {
+            $user->email = $request->email_up;
+        }
+        if ($request->filled('no_assurance_up')) {
+            $patient->no_assurance = $request->no_assurance_up;
+        }
+        if ($request->filled('profession_up')) {
+            $patient->profession = $request->profession_up;
+        }
 
         if ($request->filled('residence_habituelle_up')) {
             if (is_numeric($request->residence_habituelle_up)) {
@@ -136,19 +180,45 @@ class PatientController extends Controller
             }
         }
 
-        $patient->contact2 = $request->contact2;
-        $patient->num_cmu = $request->num_cmu_up ?? $request->num_cmu;
-        $patient->ethnie = $request->ethnie_up;
-        $patient->type_piece = $request->type_piece_up;
-        $patient->numero_identite = $request->numero_identite_up;
-        $patient->img_url = $request->img_url;
-        $patient->situation_matrimoniale = $request->situation_matrimoniale_up;
-        $patient->telephone = $request->telephone;
-        $patient->address = $request->address_up;
-        $patient->nbre_enfant = $request->nbre_enfant_up ?? 0;
-        $patient->nom_personne_cas_urgence = $request->nom_personne_cas_urgence_up;
-        $patient->telephone_personne_cas_urgence = $request->telephone_personne_cas_urgence_up;
-        $patient->lien_personne_cas_urgence = $request->lien_personne_cas_urgence_up;
+        if ($telephone) {
+            $patient->telephone = $telephone;
+        }
+        if ($request->has('contact2') || $request->has('contact2_up')) {
+            $patient->contact2 = $contact2;
+        }
+        if ($request->has('num_cmu_up') || $request->has('num_cmu')) {
+            $patient->num_cmu = $request->num_cmu_up ?? $request->num_cmu;
+        }
+        if ($request->filled('ethnie_up')) {
+            $patient->ethnie = $request->ethnie_up;
+        }
+        if ($request->filled('type_piece_up')) {
+            $patient->type_piece = $request->type_piece_up;
+        }
+        if ($request->filled('numero_identite_up')) {
+            $patient->numero_identite = $request->numero_identite_up;
+        }
+        if ($request->filled('img_url')) {
+            $patient->img_url = $request->img_url;
+        }
+        if ($request->filled('situation_matrimoniale_up')) {
+            $patient->situation_matrimoniale = $request->situation_matrimoniale_up;
+        }
+        if ($request->filled('address_up')) {
+            $patient->address = $request->address_up;
+        }
+        if ($request->has('nbre_enfant_up')) {
+            $patient->nbre_enfant = $request->nbre_enfant_up ?? 0;
+        }
+        if ($request->filled('nom_personne_cas_urgence_up')) {
+            $patient->nom_personne_cas_urgence = $request->nom_personne_cas_urgence_up;
+        }
+        if ($request->filled('telephone_personne_cas_urgence_up')) {
+            $patient->telephone_personne_cas_urgence = $request->telephone_personne_cas_urgence_up;
+        }
+        if ($request->filled('lien_personne_cas_urgence_up')) {
+            $patient->lien_personne_cas_urgence = $request->lien_personne_cas_urgence_up;
+        }
 
         $user->save();
         $patient->save();
@@ -177,6 +247,18 @@ class PatientController extends Controller
 
         //verifer l'admission
         if ($request->admission_patient_up == 'Oui') {
+            $isGtc = ($request->has('gratuite') && in_array($request->gratuite, ['gratuit', '1', 'on', 'true', 'oui', 'GTC', 'gtc'])) 
+                || ($request->input('is_gtc') == '1');
+
+            $prestationHopital = PrestationHospital::with('prestationService')->find($request->prestation_service_id);
+            $montantNormal = floatval($request->montant_normal ?? 0);
+            if ($montantNormal <= 0 && $prestationHopital) {
+                $montantNormal = floatval($prestationHopital->prix);
+            }
+            if ($montantNormal <= 0 && $request->filled('montant')) {
+                $montantNormal = floatval($request->montant);
+            }
+
             $admission = Admission::create([
                 'code_admission' => codeAdmission(),
                 'date_admission' => Carbon::now()->format('Y-m-d H:i:s'),
@@ -187,10 +269,14 @@ class PatientController extends Controller
                 'infirmier_id' => $request->infirmier_id ?? null,
                 'caissiere_id' => optional($caissiere)->id,
                 'prestation_hopital_id' => $request->prestation_service_id,
-                'type_admission' => $request->type_admission_id,
+                'type_admission' => $isGtc ? 'GTC (Gratuité)' : ($request->type_admission_id ?? 'Admission'),
                 'mode_entree' => $request->mode_entree,
-                'montant' => $request->montant,
-                'montant_normal' => $request->montant,
+                'montant' => $isGtc ? 0 : ($request->montant ?? 0),
+                'montant_normal' => $montantNormal,
+                'statut_paiement' => $isGtc ? 1 : 0,
+                'statut_validation' => $isGtc ? 1 : 0,
+                'date_paiement' => $isGtc ? Carbon::now()->format('Y-m-d') : null,
+                'mode_paiement' => $isGtc ? 'gtc' : null,
                 'motif_consultation' => $request->motif_consultation,
             ]);
 
@@ -198,14 +284,61 @@ class PatientController extends Controller
             $payment = new Payment();
             $payment->type = 'admission';
             $payment->date = Carbon::now()->format('Y-m-d');
-            $payment->prix = $request->montant;
-            $payment->prix_normal = $request->montant;
+            $payment->prix = $isGtc ? 0 : ($request->montant ?? 0);
+            $payment->prix_normal = $montantNormal;
             $payment->hospital_id = $admissionHospitalId;
             $payment->admission_id = $admission->id;
+            $payment->status = $isGtc ? 'success' : 'pending';
+            $payment->mode_paiement = $isGtc ? 'gtc' : null;
             if ($caissiere) {
                 $payment->caissiere_id = $caissiere->id;
+            } else {
+                $firstCashier = \App\Models\Caissiere::where('hospital_id', $admissionHospitalId)->first();
+                if ($firstCashier) {
+                    $payment->caissiere_id = $firstCashier->id;
+                }
             }
             $payment->save();
+
+            // Si GTC (Gratuité Ciblée) : envoi direct à l'infirmerie sans passer à la caisse
+            if ($isGtc) {
+                $isSoinsInfirmiers = false;
+                if ($prestationHopital && $prestationHopital->prestationService) {
+                    $servName = $prestationHopital->prestationService->libelle ?? '';
+                    $servId = $prestationHopital->prestationService->service_id ?? 0;
+                    $isSoinsInfirmiers = ($servId == 5) || preg_match('/infirmier|soin|pansement/i', $servName);
+                }
+
+                if ($isSoinsInfirmiers) {
+                    $careRequest = new \App\Models\CareRequested();
+                    $careRequest->type = optional(optional($prestationHopital)->prestationService)->libelle ?? 'Soins infirmiers';
+                    $careRequest->admission_id = $admission->id;
+                    $careRequest->status = 'pending';
+                    $careRequest->save();
+                } else {
+                    $nbConsult = \App\Models\Consultation::where('patient_id', $patient->id)->count();
+                    $consultation = new \App\Models\Consultation();
+                    $consultation->date_consultation = Carbon::now()->format('Y-m-d');
+                    $consultation->code_consultation = 'CONSULT' . substr($patient->code_patient, 2) . ($nbConsult + 1);
+                    $consultation->admission_id = $admission->id;
+                    $consultation->hospital_id = $admissionHospitalId;
+                    $consultation->patient_id = $patient->id;
+                    if ($admission->doctor_id) {
+                        $consultation->doctor_id = $admission->doctor_id;
+                        $consultation->status_inf = 0;
+                    }
+                    $consultation->infirmier_id = $admission->infirmier_id;
+                    $consultation->prestation_hospital_id = $admission->prestation_hopital_id;
+                    $consultation->montant = 0;
+                    $consultation->save();
+                }
+
+                try {
+                    \App\Services\AccountingService::recordAdmissionEntry($admission);
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error("Erreur enregistrement comptable GTC: " . $e->getMessage());
+                }
+            }
         }
         // Retourner une réponse JSON
         return response()->json(['success' => 'Patient mis à jour avec succès']);
@@ -464,6 +597,18 @@ class PatientController extends Controller
         $caissiere = Caissiere::where('user_id', auth()->user()->id)->first();
 
         if ($request->admission_patient == 'Oui') {
+            $isGtc = ($request->has('gratuite') && in_array($request->gratuite, ['gratuit', '1', 'on', 'true', 'oui', 'GTC', 'gtc'])) 
+                || ($request->input('is_gtc') == '1');
+
+            $prestationHopital = \App\Models\PrestationHospital::with('prestationService')->find($request->prestation_service_id);
+            $montantNormal = floatval($request->montant_normal ?? 0);
+            if ($montantNormal <= 0 && $prestationHopital) {
+                $montantNormal = floatval($prestationHopital->prix);
+            }
+            if ($montantNormal <= 0 && $request->filled('montant')) {
+                $montantNormal = floatval($request->montant);
+            }
+
             $admission = Admission::create([
                 'code_admission' => codeAdmission(),
                 'date_admission' => Carbon::now()->format('Y-m-d H:i:s'),
@@ -474,10 +619,14 @@ class PatientController extends Controller
                 'infirmier_id' => $request->infirmier_id ?? null,
                 'caissiere_id' => optional($caissiere)->id,
                 'prestation_hopital_id' => $request->prestation_service_id,
-                'type_admission' => $request->type_admission_id,
+                'type_admission' => $isGtc ? 'GTC (Gratuité)' : ($request->type_admission_id ?? 'Admission'),
                 'mode_entree' => $request->mode_entree,
-                'montant' => $request->montant,
-                'montant_normal' => $request->montant,
+                'montant' => $isGtc ? 0 : ($request->montant ?? 0),
+                'montant_normal' => $montantNormal,
+                'statut_paiement' => $isGtc ? 1 : 0,
+                'statut_validation' => $isGtc ? 1 : 0,
+                'date_paiement' => $isGtc ? Carbon::now()->format('Y-m-d') : null,
+                'mode_paiement' => $isGtc ? 'gtc' : null,
                 'motif_consultation' => $request->motif_consultation,
             ]);
 
@@ -485,14 +634,61 @@ class PatientController extends Controller
             $payment = new Payment();
             $payment->type = 'admission';
             $payment->date = Carbon::now()->format('Y-m-d');
-            $payment->prix = $request->montant;
-            $payment->prix_normal = $request->montant;
+            $payment->prix = $isGtc ? 0 : ($request->montant ?? 0);
+            $payment->prix_normal = $montantNormal;
             $payment->hospital_id = $hospitalId;
             $payment->admission_id = $admission->id;
+            $payment->status = $isGtc ? 'success' : 'pending';
+            $payment->mode_paiement = $isGtc ? 'gtc' : null;
             if ($caissiere) {
                 $payment->caissiere_id = $caissiere->id;
+            } else {
+                $firstCashier = \App\Models\Caissiere::where('hospital_id', $hospitalId)->first();
+                if ($firstCashier) {
+                    $payment->caissiere_id = $firstCashier->id;
+                }
             }
             $payment->save();
+
+            // Si GTC (Gratuité Ciblée) : envoi direct à l'infirmerie sans passer à la caisse
+            if ($isGtc) {
+                $isSoinsInfirmiers = false;
+                if ($prestationHopital && $prestationHopital->prestationService) {
+                    $servName = $prestationHopital->prestationService->libelle ?? '';
+                    $servId = $prestationHopital->prestationService->service_id ?? 0;
+                    $isSoinsInfirmiers = ($servId == 5) || preg_match('/infirmier|soin|pansement/i', $servName);
+                }
+
+                if ($isSoinsInfirmiers) {
+                    $careRequest = new \App\Models\CareRequested();
+                    $careRequest->type = optional(optional($prestationHopital)->prestationService)->libelle ?? 'Soins infirmiers';
+                    $careRequest->admission_id = $admission->id;
+                    $careRequest->status = 'pending';
+                    $careRequest->save();
+                } else {
+                    $nbConsult = \App\Models\Consultation::where('patient_id', $patient->id)->count();
+                    $consultation = new \App\Models\Consultation();
+                    $consultation->date_consultation = Carbon::now()->format('Y-m-d');
+                    $consultation->code_consultation = 'CONSULT' . substr($patient->code_patient, 2) . ($nbConsult + 1);
+                    $consultation->admission_id = $admission->id;
+                    $consultation->hospital_id = $hospitalId;
+                    $consultation->patient_id = $patient->id;
+                    if ($admission->doctor_id) {
+                        $consultation->doctor_id = $admission->doctor_id;
+                        $consultation->status_inf = 0;
+                    }
+                    $consultation->infirmier_id = $admission->infirmier_id;
+                    $consultation->prestation_hospital_id = $admission->prestation_hopital_id;
+                    $consultation->montant = 0;
+                    $consultation->save();
+                }
+
+                try {
+                    \App\Services\AccountingService::recordAdmissionEntry($admission);
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error("Erreur enregistrement comptable GTC: " . $e->getMessage());
+                }
+            }
         }
 
         // Enregistrement du passage patient

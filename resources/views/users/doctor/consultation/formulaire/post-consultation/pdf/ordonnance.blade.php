@@ -11,8 +11,15 @@
 
 
 <body>
+    @php
+        $hospWatermark = $ordonnance->consultation->hospital->watermark_url ?? null;
+    @endphp
     <div id="watermark">
-        <img class="img__content" w src="{{ pdf_img('assets/uploads/ordonnance.jpg') }}" />
+        @if($hospWatermark)
+            <img class="img__content" src="{{ pdf_img('assets/uploads/hospital/' . $hospWatermark) }}" />
+        @else
+            <img class="img__content" src="{{ pdf_img('assets/uploads/ordonnance.jpg') }}" />
+        @endif
     </div>
     <footer>
         Art. 285. Quiconque se rend coupable de fraude ou de fausse déclaration ou se fait délivrer un des documents

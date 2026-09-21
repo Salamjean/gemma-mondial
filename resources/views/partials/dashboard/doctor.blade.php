@@ -1,6 +1,6 @@
 <div class="row">
     <!-- Consultations du Jour -->
-    <div class="col-xl-12 col-lg-12 col-12">
+    <div class="col-xl-12 col-lg-12 col-12" id="doctorTodayConsultationsBox">
         <div class="box" style="background: rgba(255, 145, 0, 0.288); padding : 10px 20px;">
             @php
                 $doctorId = \Illuminate\Support\Facades\Auth::user()->doctor->id;
@@ -14,7 +14,12 @@
                     ->count();
             @endphp
             <div class="d-flex justify-content-between align-items-center mb-10">
-                <div class="badge badge-dark" style="font-size: 20px;">CONSULTATIONS DU JOUR</div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="badge badge-dark" style="font-size: 20px;">CONSULTATIONS DU JOUR</div>
+                    <span class="badge bg-success-light text-success fs-12 fw-bold d-none d-sm-inline-flex align-items-center gap-1" title="Actualisation automatique toutes les 10s">
+                        <i class="fa-solid fa-rotate fa-spin-pulse"></i> 10s
+                    </span>
+                </div>
                 <a href="{{ route('doctor.consultation.all') }}" class="btn btn-primary fw-bold shadow-sm" style="font-size: 14px; border-radius: 8px;">
                     <i class="fa-solid fa-layer-group me-1"></i> Toutes les consultations
                     <span class="badge bg-white text-primary ms-2 fs-14 fw-bolder">{{ $countAllConsultations }}</span>
@@ -136,4 +141,30 @@
             });
         };
     }
+
+    // Auto-actualisation du tableau des consultations du jour toutes les 10 secondes
+    (function() {
+        setInterval(function() {
+            if (!document.hidden && !document.querySelector('.modal.show') && !document.querySelector('.swal2-container')) {
+                fetch(window.location.href, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(response => {
+                    if (!response.ok) return null;
+                    return response.text();
+                })
+                .then(html => {
+                    if (!html) return;
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newEl = doc.getElementById('doctorTodayConsultationsBox');
+                    const targetEl = document.getElementById('doctorTodayConsultationsBox');
+                    if (newEl && targetEl) {
+                        targetEl.innerHTML = newEl.innerHTML;
+                    }
+                })
+                .catch(err => console.warn('Auto-refresh dashboard docteur :', err));
+            }
+        }, 10000);
+    })();
 </script>

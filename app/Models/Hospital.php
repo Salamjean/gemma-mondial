@@ -23,6 +23,15 @@ class Hospital extends Model
         return (bool) ($this->is_teleconsultation_active ?? true);
     }
 
+    public function getOrGenerateTvToken(): string
+    {
+        if (empty($this->tv_token)) {
+            $this->tv_token = \Illuminate\Support\Str::random(32);
+            $this->saveQuietly();
+        }
+        return $this->tv_token;
+    }
+
     public function user() : BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id', 'id');
@@ -56,6 +65,11 @@ class Hospital extends Model
     public function passagePatients(): HasMany
     {
         return $this->hasMany(PassagePatient::class);
+    }
+
+    public function patientCalls(): HasMany
+    {
+        return $this->hasMany(PatientCall::class);
     }
 
     public function consultations(): HasMany

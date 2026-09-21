@@ -98,9 +98,18 @@
                                             $prestLibelle = optional(optional($item->prestationHospital)->prestationService)->libelle ?? '';
                                             $isConsultationService = (stripos($srvLibelle, 'consultation') !== false) || (stripos($prestLibelle, 'consultation') !== false);
                                         @endphp
-                                        <a href="{{ route('doctor.consultation.formulaire', $item->id) }}" class="btn btn-sm btn-primary rounded-8 fw-semibold shadow-sm px-15 me-1">
-                                            <i class="fa-solid fa-stethoscope me-1"></i> Commencer
-                                        </a>
+                                        <div class="d-inline-flex align-items-center gap-1">
+                                            <button type="button" 
+                                                class="btn btn-sm btn-outline-primary fw-bold px-2 py-1.5 rounded-8 btn-call-patient" 
+                                                data-id="{{ $item->id }}" 
+                                                data-name="{{ optional(optional($item->patient)->user)->name }} {{ optional(optional($item->patient)->user)->prenom }}"
+                                                title="Appeler le patient sur l'écran de la salle d'attente">
+                                                <i class="fa-solid fa-bullhorn me-1"></i> Appeler
+                                            </button>
+                                            <a href="{{ route('doctor.consultation.formulaire', $item->id) }}" class="btn btn-sm btn-primary rounded-8 fw-semibold shadow-sm px-15 me-1">
+                                                <i class="fa-solid fa-stethoscope me-1"></i> Commencer
+                                            </a>
+                                        </div>
                                     @else
                                         <a href="{{ route('doctor.consultation.detail', $item->id) }}" class="btn btn-sm btn-info text-white rounded-8 fw-semibold px-15 me-1">
                                             <i class="fa-solid fa-eye me-1"></i> Détail
@@ -132,4 +141,54 @@
 
 @push('js')
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            $(document).on('click', '.btn-call-patient', function(e) {
+                e.preventDefault();
+                const btn = $(this);
+                const consultationId = btn.data('id');
+                const patientName = btn.data('name') || 'le patient';
+                const originalHtml = btn.html();
+
+                btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-1"></i> Appel...');
+
+                $.ajax({
+                    url: "{{ url('doctor/consultation/call-patient') }}/" + consultationId,
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        btn.prop('disabled', false).html(originalHtml);
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Patient appelé !',
+                                text: response.message,
+                                toast: true,
+                                position: 'top-end',
+                                showConfirmButton: false,
+                                timer: 3500,
+                                timerProgressBar: true
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Attention',
+                                text: response.message || 'Erreur lors de l\'appel'
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        btn.prop('disabled', false).html(originalHtml);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erreur',
+                            text: 'Impossible d\'appeler le patient. Veuillez réessayer.'
+                        });
+                    }
+                });
+            });
+        });
+    </script>
 @endpush

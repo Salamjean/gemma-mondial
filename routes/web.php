@@ -57,3 +57,8 @@ Route::middleware(['auth'])->group(function () {
 // Invitation et participation d'un confrère médecin à la téléconsultation (Lien sécurisé)
 Route::get('/teleconsultation/expert/{id}/{hash}', [\App\Http\Controllers\Doctor\ConsultationController::class, 'joinAsColleague'])->name('teleconsultation.colleague_join');
 Route::post('/teleconsultation/expert/{id}/{hash}/token', [\App\Http\Controllers\Doctor\ConsultationController::class, 'getColleagueToken'])->name('teleconsultation.colleague_token');
+
+// Écran TV Android Salle d'Attente (Accès public direct sécurisé par token, sans mot de passe)
+Route::get('/tv/salle-attente/{token}', [\App\Http\Controllers\Hospital\WaitingScreenController::class, 'publicScreen'])->name('tv.waiting_screen');
+Route::get('/tv/salle-attente/{token}/updates', [\App\Http\Controllers\Hospital\WaitingScreenController::class, 'getPublicUpdates'])->name('tv.waiting_screen.updates');
+Route::post('/tv/salle-attente/{token}/test', [\App\Http\Controllers\Hospital\WaitingScreenController::class, 'publicTestCall'])->name('tv.waiting_screen.test');

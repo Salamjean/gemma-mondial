@@ -28,7 +28,16 @@ class AdmissionRepository
 
     public function payment($type = 'all')
     {
-        $query = Payment::where('caissiere_id', Auth::user()->cashier->id);
+        $cashier = Auth::user()->cashier;
+        $cashierId = optional($cashier)->id;
+        $hospitalId = optional($cashier)->hospital_id;
+
+        $query = Payment::where(function ($q) use ($cashierId, $hospitalId) {
+            $q->where('caissiere_id', $cashierId);
+            if ($hospitalId) {
+                $q->orWhere('hospital_id', $hospitalId);
+            }
+        });
 
         if ($type !== 'all') {
             $query->where('type', $type);

@@ -184,6 +184,7 @@
                         @include('partials.inc._pharmacist')
                     @endif
 
+                    @if (auth()->user()->role_as !== 'super')
                     <li class="treeview">
                         <a href="#" class="{{ routeActive('permission.status') }}">
                             <i class="fa-solid fa-shield {{ routeActive('permission') }}">
@@ -227,6 +228,7 @@
                             @endif
                         </ul>
                     </li>
+                    @endif
                     @if (auth()->user()->role_as !== 'super' &&
                             auth()->user()->role_as !== 'hospital' &&
                             auth()->user()->role_as !== 'secretariat')

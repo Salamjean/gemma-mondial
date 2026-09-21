@@ -1755,14 +1755,44 @@
         }
     }
 
-    // Charger les données du patient en cours dans le modal
-    function loadDoctorModalConsultation(consultationId) {
-        if (!consultationId) return;
+    // Réinitialisation complète du formulaire modal pour éviter les fuites de données d'un patient à l'autre
+    function resetDoctorConsultationForm() {
+        const form = document.getElementById('onlineConsultationForm');
+        if (form) {
+            form.reset();
+        }
 
-        const consultInput = document.getElementById('mdlConsultationId');
-        if (consultInput) consultInput.value = consultationId;
+        // Vider les champs texte et textarea spécifiques
+        const fieldIds = [
+            'mdlPatientId', 'mdlBirthDate', 'mdlResidence', 'mdlProfession', 'mdlPhone', 'mdlAssurance',
+            'mdlPoids', 'mdlTaille', 'mdlImc', 'mdlTemp', 'mdlTA', 'mdlPouls', 'mdlSatO2', 'mdlFreqResp',
+            'mdlPeriBrach', 'mdlPeriCran', 'mdlZscore', 'mdlGlycJeun', 'mdlGlycNonJeun',
+            'mdlMotif', 'mdlTraitementMed', 'mdlAutreAntecedent', 'mdlAutreChirurgical',
+            'mdlDescGrossesse', 'mdlDDR', 'mdlAutreExamClinique', 'mdlExamPhysique',
+            'mdlDiagnosticRetenu', 'mdlPathologieAssociee', 'mdlIssueJustification',
+            'mdlDateRdvProchain', 'mdlMotifRdvProchain', 'mdlObsConduite', 'mdlObsDuree', 'mdlObsConsigne',
+            'mdlArretDebut', 'mdlArretFin', 'mdlArretJours', 'nom_operation'
+        ];
+        fieldIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
 
-        // Vider conteneurs de prescriptions
+        // Décocher tous les radios et checkboxes du formulaire
+        document.querySelectorAll('#onlineConsultationForm input[type="radio"], #onlineConsultationForm input[type="checkbox"]').forEach(input => {
+            input.checked = false;
+        });
+
+        // Fermer tous les blocs conditionnels
+        const sectionIds = [
+            'mdlBlocTraitement', 'mdlBlocAutreAntecedent', 'mdlBlocNomOperation',
+            'mdlBlocGrossesse', 'mdlInputAutreExam', 'mdlBlocExamPhysique',
+            'mdlBlocDiagnostic', 'mdlBlocPathologie', 'mdlBlocObservationFields',
+            'mdlBlocARevoirFields'
+        ];
+        sectionIds.forEach(id => toggleMdlSection(id, false));
+
+        // Vider conteneurs de prescriptions et examens
         const ordRows = document.getElementById('mdlOrdonnanceRows');
         const ordIRows = document.getElementById('mdlOrdonnanceInternalRows');
         const examRows = document.getElementById('mdlExamensRows');
@@ -1774,9 +1804,18 @@
         const receipt = document.getElementById('mdlGeneratedDocsReceipt');
         if (receipt) receipt.style.display = 'none';
 
-        // Réinitialiser l'état des radios d'issue
-        document.querySelectorAll('input[name="mode_sortie"]').forEach(r => r.checked = false);
         handleIssueModeChange('');
+    }
+
+    // Charger les données du patient en cours dans le modal
+    function loadDoctorModalConsultation(consultationId) {
+        if (!consultationId) return;
+
+        // 1. Réinitialiser intégralement le formulaire avant de charger les nouvelles données
+        resetDoctorConsultationForm();
+
+        const consultInput = document.getElementById('mdlConsultationId');
+        if (consultInput) consultInput.value = consultationId;
 
         fetch(`/doctor/consultation/online/patient-info/${consultationId}`)
             .then(res => res.json())

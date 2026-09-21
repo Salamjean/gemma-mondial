@@ -94,7 +94,11 @@
                                                 class="badge badge-dark">{{ $item->prix }} F CFA</span> </td>
                                         <td class="text-center">
                                             @if ($item->status == 'success')
-                                                @if ($item->mode_paiement == 'mobile_money')
+                                                @if ($item->mode_paiement == 'gtc')
+                                                    <span class="badge bg-success-light text-success fw-bold">
+                                                        <i class="fa-solid fa-gift me-1"></i> GTC
+                                                    </span>
+                                                @elseif ($item->mode_paiement == 'mobile_money')
                                                     <span class="badge badge-info" title="{{ $item->reference_paiement ? 'Réf: ' . $item->reference_paiement : '' }}">
                                                         <i class="fa-solid fa-mobile-screen-button me-1"></i> {{ $item->operateur_mobile ?? 'Mobile Money' }}
                                                     </span>
@@ -109,7 +113,11 @@
                                         </td>
                                         <td class="text-dark fw-bold fs-6">
                                             @if ($item->status == 'success')
-                                                <span class="badge badge-success">Payé</span>
+                                                @if ($item->mode_paiement == 'gtc')
+                                                    <span class="badge badge-success">GTC (Pris en charge)</span>
+                                                @else
+                                                    <span class="badge badge-success">Payé</span>
+                                                @endif
                                                 <a class="btn btn-sm btn-none" data-bs-toggle="tooltip"
                                                     data-bs-placement="bottom" title="approuvé">
                                                     <i class="d-flex no-block fa fa-check-circle text-success"></i>

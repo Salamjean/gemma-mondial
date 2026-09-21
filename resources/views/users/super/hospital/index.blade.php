@@ -66,6 +66,13 @@
                                         @endif
                                     </td>
                                     <td class="text-center">
+                                        <a href="{{ route('super.hospital.report', $item->id) }}" 
+                                           class="btn btn-sm btn-primary shadow-sm" 
+                                           data-bs-toggle="tooltip" 
+                                           data-bs-placement="bottom" 
+                                           title="Ouvrir et superviser cet établissement">
+                                            <i class="fa-solid fa-hospital me-1"></i> <strong>Ouvrir</strong>
+                                        </a>
                                         <a href="javascript:void(0);" 
                                            class="btn btn-sm btn-toggle-teleconsultation {{ ($item->is_teleconsultation_active ?? true) ? 'btn-teal' : 'btn-secondary' }}" 
                                            style="{{ ($item->is_teleconsultation_active ?? true) ? 'background-color: #0d9488; color: white;' : '' }}" 
@@ -78,8 +85,7 @@
                                             <i class="fa-solid fa-headset"></i>
                                         </a>
                                         <a href="{{ route('super.hospital.status',$item->id) }}" class="btn btn-sm {{ $item->status == 0 ? 'btn-success' : 'btn-danger' }}" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Activer/Désactiver l'hôpital"><i class="fa-solid {{ $item->status == 0 ? 'fa-eye-slash' : 'fa-eye' }}"></i></a>
-                                        <a href="{{ route('super.hospital.show',$item->id) }}" class="btn btn-sm btn-success" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Modifier"><i class="fa-solid fa-pen-to-square"></i></a>
-                                        <a href="{{ route('super.hospital.report' ,$item->id)}}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Consulter Infos"><i class="fa-solid fa-list-alt"></i></a>
+                                        <a href="{{ route('super.hospital.show',$item->id) }}" class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Modifier les coordonnées"><i class="fa-solid fa-pen-to-square"></i></a>
                                     </td>
                                 </tr>
                             @empty

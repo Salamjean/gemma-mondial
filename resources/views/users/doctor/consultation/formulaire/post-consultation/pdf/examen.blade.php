@@ -29,8 +29,11 @@
             </div>
         </div>
 
+        @php
+            $hospWatermark = $bulletin->consultation->hospital->watermark_url ?? null;
+        @endphp
         <div class="bg-img">
-            <img src="{{ pdf_img('assets/uploads/bulletin_examen.png') }}"
+            <img src="{{ $hospWatermark ? pdf_img('assets/uploads/hospital/' . $hospWatermark) : pdf_img('assets/uploads/bulletin_examen.png') }}"
                 style="top:305px; position:fixed; width:700px; opacity: 0.1; " />
         </div>
         <div class="section" style="margin-top: 20px;">

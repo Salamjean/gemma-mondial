@@ -1,10 +1,13 @@
 @extends('layouts.dashboard', ['title' => 'Liste des consultations'])
 
 @section('content')
-    <div class="box">
+    <div class="box" id="infirmierTodayConsultationsPageBox">
         <div class="box-header with-border d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <div>
+            <div class="d-flex align-items-center gap-2">
                 <h4 class="box-title mb-0"><b>VOS CONSULTATIONS DU JOUR</b></h4>
+                <span class="badge bg-success-light text-success fs-12 fw-bold d-none d-sm-inline-flex align-items-center gap-1" title="Actualisation automatique toutes les 10s">
+                    <i class="fa-solid fa-rotate fa-spin-pulse"></i> 10s
+                </span>
             </div>
             <div>
                 @php
@@ -100,13 +103,31 @@
 
             $('#menu').on('click', function(e) {
 
-
-
-
             });
 
-
-
+            // Auto-actualisation 10s
+            setInterval(function() {
+                if (!document.hidden && !document.querySelector('.modal.show') && !document.querySelector('.swal2-container')) {
+                    fetch(window.location.href, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                    .then(response => {
+                        if (!response.ok) return null;
+                        return response.text();
+                    })
+                    .then(html => {
+                        if (!html) return;
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const newEl = doc.getElementById('infirmierTodayConsultationsPageBox');
+                        const targetEl = document.getElementById('infirmierTodayConsultationsPageBox');
+                        if (newEl && targetEl) {
+                            targetEl.innerHTML = newEl.innerHTML;
+                        }
+                    })
+                    .catch(err => console.warn('Auto-refresh infirmier consultations du jour :', err));
+                }
+            }, 10000);
 
         })(jQuery);
     </script>
