@@ -931,21 +931,68 @@
                 }
             }
 
+            // Système de voix et SpeechSynthesis robuste
+            let systemVoices = [];
+            function updateVoices() {
+                if ('speechSynthesis' in window) {
+                    systemVoices = window.speechSynthesis.getVoices() || [];
+                }
+            }
+            if ('speechSynthesis' in window) {
+                updateVoices();
+                if (window.speechSynthesis.onvoiceschanged !== undefined) {
+                    window.speechSynthesis.onvoiceschanged = updateVoices;
+                }
+                // Keep-alive pour empêcher Chrome de suspendre la synthèse vocale en arrière-plan
+                setInterval(() => {
+                    if (window.speechSynthesis.paused) {
+                        window.speechSynthesis.resume();
+                    }
+                }, 5000);
+            }
+
+            function findBestFrenchVoice() {
+                if (!systemVoices.length && 'speechSynthesis' in window) {
+                    systemVoices = window.speechSynthesis.getVoices() || [];
+                }
+                if (!systemVoices.length) return null;
+
+                const frVoices = systemVoices.filter(v => v.lang && (v.lang.toLowerCase().startsWith('fr') || v.lang.toLowerCase().includes('fre')));
+                if (!frVoices.length) return null;
+
+                const highQuality = frVoices.find(v => {
+                    const name = (v.name || '').toLowerCase();
+                    return name.includes('natural') || name.includes('google') || name.includes('premium') || 
+                           name.includes('hortense') || name.includes('julie') || name.includes('paul') || 
+                           name.includes('thomas') || name.includes('denise') || name.includes('henri') || 
+                           name.includes('celine') || name.includes('mathieu') || name.includes('french');
+                });
+                if (highQuality) return highQuality;
+
+                const frFr = frVoices.find(v => v.lang.toLowerCase().replace('_', '-').startsWith('fr-fr'));
+                if (frFr) return frFr;
+
+                return frVoices[0];
+            }
+
             // 3. SYNTHÈSE VOCALE (Web Speech API Ultra-Robuste)
+            window._currentSpeechUtterance = null;
+
             function announcePatientVocally(text) {
                 if (!('speechSynthesis' in window)) {
-                    console.warn('Synthèse vocale non supportée.');
+                    console.warn('Synthèse vocale non supportée sur ce navigateur.');
                     return;
                 }
 
+                // 1. Jouer d'abord le carillon sonore
                 playHospitalChime();
 
+                // 2. Prononcer le message vocal après le carillon (900ms)
                 setTimeout(() => {
                     try {
                         if (window.speechSynthesis.paused) {
                             window.speechSynthesis.resume();
                         }
-                        window.speechSynthesis.cancel(); // Débloque toute file en attente dans le navigateur
 
                         const utterance = new SpeechSynthesisUtterance(text);
                         utterance.lang = 'fr-FR';
@@ -953,39 +1000,49 @@
                         utterance.pitch = 1.0;
                         utterance.volume = 1.0;
 
-                        const voices = window.speechSynthesis.getVoices();
-                        const frVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('fr') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Premium') || v.name.includes('Julie') || v.name.includes('Paul') || v.name.includes('Thomas') || v.name.includes('French')));
-                        if (frVoice) {
-                            utterance.voice = frVoice;
+                        const chosenVoice = findBestFrenchVoice();
+                        if (chosenVoice) {
+                            utterance.voice = chosenVoice;
                         }
+
+                        // Conserver une référence globale pour éviter le ramasse-miettes (Garbage Collector bug)
+                        window._currentSpeechUtterance = utterance;
+
+                        utterance.onstart = function() {
+                            isSpeaking = true;
+                        };
 
                         utterance.onend = function() {
                             isSpeaking = false;
-                            processSpeechQueue();
+                            window._currentSpeechUtterance = null;
+                            setTimeout(processSpeechQueue, 300);
                         };
 
                         utterance.onerror = function(e) {
                             console.warn('Erreur SpeechSynthesis :', e);
                             isSpeaking = false;
-                            processSpeechQueue();
+                            window._currentSpeechUtterance = null;
+                            setTimeout(processSpeechQueue, 300);
                         };
 
                         isSpeaking = true;
                         window.speechSynthesis.speak(utterance);
 
-                        // Timeout de sécurité pour libérer isSpeaking si onend ne se déclenche pas
+                        // Timeout de sécurité au cas où l'événement onend ne se déclencherait pas
                         setTimeout(() => {
                             if (isSpeaking) {
                                 isSpeaking = false;
+                                window._currentSpeechUtterance = null;
                                 processSpeechQueue();
                             }
-                        }, 10000);
+                        }, 12000);
                     } catch (err) {
                         console.error('Erreur synthèse vocale :', err);
                         isSpeaking = false;
+                        window._currentSpeechUtterance = null;
                         processSpeechQueue();
                     }
-                }, 750);
+                }, 900);
             }
 
             function queueSpeech(text) {
@@ -1186,7 +1243,17 @@
                 document.getElementById('btnUnlockAudio').addEventListener('click', function() {
                     initAudioContext();
                     modal.style.display = 'none';
-                    playHospitalChime(); // Uniquement le son carillon bref pour débloquer l'audio
+                    playHospitalChime(); // Son carillon bref pour débloquer l'audio
+                    
+                    // Débloquer également la synthèse vocale sur les navigateurs stricts
+                    if ('speechSynthesis' in window) {
+                        try {
+                            window.speechSynthesis.resume();
+                            const unlockUtterance = new SpeechSynthesisUtterance('');
+                            unlockUtterance.volume = 0.01;
+                            window.speechSynthesis.speak(unlockUtterance);
+                        } catch(e) {}
+                    }
                 });
 
                 setTimeout(pollWaitingScreenUpdates, 1500);
