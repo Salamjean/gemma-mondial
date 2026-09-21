@@ -222,6 +222,50 @@
 </li>
 
 <li class="treeview">
+    <a href="#" class="{{ routeActive(['accountant.accounting.*']) }}">
+        <i class="fa-solid fa-calculator">
+            <span class="path1"></span><span class="path2"></span><span class="path3"></span>
+        </i>
+        <span>Comptabilité</span>
+        <span class="pull-right-container">
+            <i class="fa-solid fa-angle-right"></i>
+        </span>
+    </a>
+    <ul class="treeview-menu">
+        <li>
+            <a href="{{ route('accountant.accounting.dashboard') }}" class="{{ routeActive('accountant.accounting.dashboard') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Tableau de bord
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('accountant.accounting.expenses') }}" class="{{ routeActive('accountant.accounting.expenses') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Dépenses & Charges
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('accountant.accounting.assurances_suivi') }}" class="{{ routeActive('accountant.accounting.assurances_suivi') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Assurances & Recouv.
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('accountant.accounting.journaux') }}" class="{{ routeActive('accountant.accounting.journaux') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Journaux d'écritures
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('accountant.accounting.balance') }}" class="{{ routeActive('accountant.accounting.balance') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Balance Générale
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('accountant.accounting.grand_livre') }}" class="{{ routeActive('accountant.accounting.grand_livre') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Grand Livre
+            </a>
+        </li>
+    </ul>
+</li>
+
+<li class="treeview">
     <a href="#" class="{{ routeActive('hospital.patient.index') }}">
         <i class="fa-solid {{ routeActive('hospital.patient.index') }} fa fa-users">
             <span class="path1"></span><span class="path2"></span><span class="path3"></span>

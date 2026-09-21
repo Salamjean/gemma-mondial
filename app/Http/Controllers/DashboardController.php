@@ -146,17 +146,7 @@ class DashboardController extends Controller
         }
 
         if ($this->userAuth()['user']['role_as'] == 'accountant') {
-
-            $today = Carbon::today();
-            $dashboard = new DashboardRepository($this->userAuth()['user']['id']);
-
-            $dataMontantPercue = $dashboard->montant();
-
-            $dataMontantNormal = $dashboard->montantN();
-
-            $dataMontantAssurance = $dashboard->montantA();
-
-            return view('dashboard.index', compact('dataMontantPercue', 'dataMontantNormal', 'dataMontantAssurance', 'today'));
+            return redirect()->route('accountant.accounting.dashboard');
         }
 
         if ($this->userAuth()['user']['role_as'] == 'doctor') {

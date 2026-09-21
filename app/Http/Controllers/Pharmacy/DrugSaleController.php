@@ -97,6 +97,9 @@ class DrugSaleController extends Controller
                 $care->save();
             }
 
+            // Générer l'écriture comptable automatique pour le service comptabilité
+            \App\Services\AccountingService::recordDrugSaleEntry($payment);
+
             return redirect()->route('dashboard')->with('success', 'Paiement effectué avec succès. Stock mis à jour.');
 
         } catch (\Exception $e) {

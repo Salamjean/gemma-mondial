@@ -34,6 +34,32 @@ Route::middleware(['auth'])->group(function () {
                 Route::get('today', [AssuranceController::class, 'today'])->name('today');
                 Route::get('historique', [AssuranceController::class, 'historique'])->name('historique');
             });
+
+            // Comptabilité Générale & Passerelle Sage SAARI
+            Route::prefix('accounting')->name('accounting.')->group(function () {
+                Route::get('dashboard', 'AccountingController@dashboard')->name('dashboard');
+                Route::get('plan-comptable', 'AccountingController@planComptable')->name('plan_comptable');
+                Route::post('store-compte', 'AccountingController@storeCompte')->name('store_compte');
+                Route::put('update-compte/{id}', 'AccountingController@updateCompte')->name('update_compte');
+                Route::get('delete-compte/{id}', 'AccountingController@deleteCompte')->name('delete_compte');
+                Route::get('journaux', 'AccountingController@journaux')->name('journaux');
+                Route::get('journaux/pdf', 'AccountingController@journauxPdf')->name('journaux_pdf');
+                Route::get('grand-livre', 'AccountingController@grandLivre')->name('grand_livre');
+                Route::get('grand-livre/pdf', 'AccountingController@grandLivrePdf')->name('grand_livre_pdf');
+                Route::get('balance', 'AccountingController@balance')->name('balance');
+                Route::get('balance/pdf', 'AccountingController@balancePdf')->name('balance_pdf');
+                Route::get('expenses', 'AccountingController@expenses')->name('expenses');
+                Route::get('expenses/pdf', 'AccountingController@expensesPdf')->name('expenses_pdf');
+                Route::post('store-expense', 'AccountingController@storeExpense')->name('store_expense');
+                Route::get('delete-expense/{id}', 'AccountingController@deleteExpense')->name('delete_expense');
+                Route::get('assurances-suivi', 'AccountingController@assurances')->name('assurances_suivi');
+                Route::get('assurances-suivi/pdf', 'AccountingController@assurancesPdf')->name('assurances_pdf');
+                Route::post('store-settlement', 'AccountingController@storeSettlement')->name('store_settlement');
+                Route::get('delete-settlement/{id}', 'AccountingController@deleteSettlement')->name('delete_settlement');
+                Route::get('export-sage', 'AccountingController@exportSageView')->name('export_sage');
+                Route::get('export-sage/download', 'AccountingController@exportSageDownload')->name('export_sage_download');
+                Route::get('sync', 'AccountingController@sync')->name('sync');
+            });
         });
 
 

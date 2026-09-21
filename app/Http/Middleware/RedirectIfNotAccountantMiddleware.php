@@ -18,7 +18,7 @@ class RedirectIfNotAccountantMiddleware
     {
         if(Auth::check())
         {
-            if(Auth::user()->role_as == 'accountant')
+            if(in_array(Auth::user()->role_as, ['accountant', 'hospital']))
             {
                 return $next($request);
             }
