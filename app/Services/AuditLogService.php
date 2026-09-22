@@ -18,37 +18,54 @@ class AuditLogService
             $ip = request()->ip();
         }
 
-        // Si localhost
+        // 1. Vérifier si un Device UUID persistant ou MAC est transmis (Header, Cookie ou Form)
+        $deviceUuid = request()->header('X-Client-Device-UUID')
+            ?: request()->header('X-Client-Mac')
+            ?: request()->cookie('gemma_device_uuid')
+            ?: request()->input('client_device_uuid');
+
+        if (!empty($deviceUuid) && is_string($deviceUuid)) {
+            $cleanedUuid = trim($deviceUuid);
+            if (str_starts_with(strtoupper($cleanedUuid), 'DEV-') || preg_match('/^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/i', $cleanedUuid)) {
+                return strtoupper($cleanedUuid);
+            }
+        }
+
+        // 2. Si localhost / développement local
         if ($ip === '127.0.0.1' || $ip === '::1') {
-            // Obtenir l'adresse MAC locale du serveur
-            return self::getLocalServerMac() ?: '00:00:00:00:00:00 (Localhost)';
+            $localMac = self::getLocalServerMac();
+            return $localMac ? $localMac : 'DEV-LOCAL-SERVER';
         }
 
-        // Vérifier si transmis par un reverse proxy / header personnalisé
-        if (request()->header('X-Client-Mac')) {
-            return strtoupper(request()->header('X-Client-Mac'));
-        }
-
-        // Exécuter arp sur le système pour trouver l'adresse MAC liée à l'IP
+        // 3. Exécuter arp sur le système pour trouver l'adresse MAC si sur le même LAN
         try {
             $mac = null;
             if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-                // Windows : arp -a {ip}
                 $output = @shell_exec('arp -a ' . escapeshellarg($ip));
                 if ($output && preg_match('/([0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2})/i', $output, $matches)) {
                     $mac = strtoupper(str_replace('-', ':', $matches[1]));
                 }
             } else {
-                // Linux / Raspberry Pi : ip neigh show {ip} ou arp -n {ip}
                 $output = @shell_exec('arp -n ' . escapeshellarg($ip) . ' 2>/dev/null');
                 if ($output && preg_match('/([0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2})/i', $output, $matches)) {
                     $mac = strtoupper($matches[1]);
                 }
             }
-            return $mac ?: 'Non résolue (Routeur / Distant)';
-        } catch (\Throwable $e) {
-            return 'Non résolue';
-        }
+            if ($mac) {
+                return $mac;
+            }
+        } catch (\Throwable $e) {}
+
+        // 4. Générer une empreinte de secours basée sur l'IP + UserAgent
+        $ua = request()->userAgent() ?: 'GEMMA';
+        $prefix = 'WIN';
+        if (preg_match('/mac/i', $ua)) $prefix = 'MAC';
+        elseif (preg_match('/android/i', $ua)) $prefix = 'AND';
+        elseif (preg_match('/iphone|ipad/i', $ua)) $prefix = 'IOS';
+        elseif (preg_match('/linux/i', $ua)) $prefix = 'LNX';
+
+        $fallbackHash = strtoupper(substr(md5($ip . $ua), 0, 8));
+        return 'DEV-' . $prefix . '-' . substr($fallbackHash, 0, 4) . '-' . substr($fallbackHash, 4, 4);
     }
 
     /**

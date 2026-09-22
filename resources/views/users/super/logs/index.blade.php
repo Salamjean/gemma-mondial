@@ -144,7 +144,7 @@
                                     <th>Module</th>
                                     <th>Description & Objet</th>
                                     <th style="width: 120px;">Adresse IP</th>
-                                    <th style="width: 150px;">Adresse MAC</th>
+                                    <th style="width: 175px;">Appareil (UUID / MAC)</th>
                                     <th>Poste / Navigateur</th>
                                 </tr>
                             </thead>
@@ -185,7 +185,19 @@
                                             <code><i class="fa fa-network-wired text-muted me-1"></i>{{ $log->ip_address }}</code>
                                         </td>
                                         <td>
-                                            <code class="fw-bold text-dark"><i class="fa fa-laptop text-primary me-1"></i>{{ $log->mac_address }}</code>
+                                            @if(str_starts_with($log->mac_address ?? '', 'DEV-'))
+                                                <span class="badge bg-light text-primary border border-primary fw-bold fs-12 px-2 py-1" title="Empreinte matérielle unique du poste">
+                                                    <i class="fa-solid fa-laptop-code me-1"></i> {{ $log->mac_address }}
+                                                </span>
+                                            @elseif(!empty($log->mac_address) && !str_contains($log->mac_address, 'Non résolue'))
+                                                <span class="badge bg-light text-dark border fw-bold fs-12 px-2 py-1" title="Adresse MAC">
+                                                    <i class="fa fa-network-wired text-primary me-1"></i> {{ $log->mac_address }}
+                                                </span>
+                                            @else
+                                                <span class="badge bg-light text-muted border fs-12 px-2 py-1">
+                                                    <i class="fa fa-laptop me-1"></i> {{ $log->mac_address ?: 'Non résolue' }}
+                                                </span>
+                                            @endif
                                         </td>
                                         <td class="fs-11 text-muted" title="{{ $log->device_info }}">
                                             {{ \Illuminate\Support\Str::limit($log->device_info, 30) }}
