@@ -79,6 +79,18 @@ class ConsultationController extends Controller
             $passage->save();
         }
 
+        // Audit Trail
+        $pat = Patient::with('user')->find($request->patient_id);
+        $patName = ($pat->user->name ?? '') . ' ' . ($pat->user->prenom ?? '');
+        \App\Services\AuditLogService::log(
+            'AFFECTATION_PATIENT',
+            'SECRETARIAT',
+            "Affectation du patient {$patName} [{$pat->code_patient}] pour Consultation (N° Adm: {$admission->code_admission})",
+            ['admission_id' => $admission->id, 'patient_id' => $request->patient_id, 'doctor_id' => $request->doctor_id],
+            null,
+            $hospitalId
+        );
+
         return to_route('secretariat.admission.list')->with('success', 'Admission envoyée avec succès');
     }
 }

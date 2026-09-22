@@ -113,13 +113,15 @@ Route::middleware(['auth'])->group(function () {
             });
 
             //declaration
-            Route::middleware('isChief')->prefix('declaration')->name('declaration.')->group(function () {
+            Route::prefix('declaration')->name('declaration.')->group(function () {
 
                 Route::get('search', 'DeclarationController@searchPatient')->name('search');
 
                 //deces
                 Route::prefix('deces')->name('deces.')->group(function () {
                     Route::get('list', 'DeclarationController@listDeces')->name('list');
+                    Route::get('direct', 'DeclarationController@directDeces')->name('direct');
+                    Route::post('store-direct', 'DeclarationController@storeDirectDeces')->name('store_direct');
                     Route::get('add/{person}', 'DeclarationController@addDeces')->name('add');
                     Route::get('show/{id}', 'DeclarationController@showDeces')->name('show');
                     Route::post('store/patient', 'DeclarationController@storeDeces')->name('store.patient');

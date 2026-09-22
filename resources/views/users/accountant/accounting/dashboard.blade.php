@@ -1,4 +1,4 @@
-@extends('layouts.dashboard', ['title' => 'Tableau de bord Comptabilité & Sage SAARI'])
+@extends('layouts.dashboard', ['title' => 'Tableau de bord Comptabilité'])
 
 @section('content')
 <div class="row">

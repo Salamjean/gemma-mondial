@@ -25,7 +25,43 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Event::listen(\Illuminate\Auth\Events\Login::class, function ($event) {
+            $user = $event->user;
+            if ($user) {
+                $userName = trim(($user->nom ?? '') . ' ' . ($user->prenom ?? $user->name ?? ''));
+                \App\Services\AuditLogService::log(
+                    'CONNEXION',
+                    'AUTHENTIFICATION',
+                    "Connexion réussie de l'utilisateur: {$userName} (" . strtoupper($user->role_as ?? 'utilisateur') . ")",
+                    [
+                        'user_id' => $user->id,
+                        'email' => $user->email,
+                        'role' => $user->role_as
+                    ],
+                    $user->id,
+                    $user->hospital_id ?? null
+                );
+            }
+        });
+
+        Event::listen(\Illuminate\Auth\Events\Logout::class, function ($event) {
+            if ($event->user) {
+                $user = $event->user;
+                $userName = trim(($user->nom ?? '') . ' ' . ($user->prenom ?? $user->name ?? ''));
+                \App\Services\AuditLogService::log(
+                    'DECONNEXION',
+                    'AUTHENTIFICATION',
+                    "Déconnexion de l'utilisateur: {$userName} (" . strtoupper($user->role_as ?? 'utilisateur') . ")",
+                    [
+                        'user_id' => $user->id,
+                        'email' => $user->email,
+                        'role' => $user->role_as
+                    ],
+                    $user->id,
+                    $user->hospital_id ?? null
+                );
+            }
+        });
     }
 
     /**

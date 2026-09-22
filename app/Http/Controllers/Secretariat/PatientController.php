@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use App\Services\AuditLogService;
 
 class PatientController extends Controller
 {
@@ -300,6 +301,16 @@ class PatientController extends Controller
             }
             $payment->save();
 
+            // Audit Trail
+            $patName = ($patient->user->name ?? '') . ' ' . ($patient->user->prenom ?? '');
+            $prestName = optional($prestationHopital->prestationService)->libelle ?? 'Prestation';
+            AuditLogService::log('AFFECTATION_PATIENT', 'SECRETARIAT', "Affectation du patient {$patName} [{$patient->code_patient}] pour {$prestName} (N° Adm: {$admission->code_admission})", [
+                'admission_id' => $admission->id,
+                'patient_id' => $patient->id,
+                'type' => $admission->type_admission,
+                'montant' => $admission->montant
+            ], null, $admissionHospitalId);
+
             // Si GTC (Gratuité Ciblée) : envoi direct à l'infirmerie sans passer à la caisse
             if ($isGtc) {
                 $isSoinsInfirmiers = false;
@@ -427,12 +438,17 @@ class PatientController extends Controller
 
     public function searchPatients(Request $request)
     {
+        $code_patient = $request->input('code_patient') ?? $request->input('dm') ?? $request->input('code_dm');
         $telephone = $request->input('telephone');
         $fullname = $request->input('fullname');
         $birth_date = $request->input('birth_date');
         $num_cmu = $request->input('num_cmu');
 
         $data = Patient::query();
+
+        if ($code_patient) {
+            $data->where('code_patient', 'like', '%' . trim($code_patient) . '%');
+        }
 
         if ($telephone) {
             $data->where('telephone', $telephone);
@@ -469,7 +485,42 @@ class PatientController extends Controller
             $data->where('birth_date', $birth_date);
         }
 
-        $patients = $data->with('user')->with('lieuNaissance')->with('residenceActuelle')->with('residenceHabituelle')->get();
+        $patients = $data->with(['user', 'lieuNaissance', 'residenceActuelle', 'residenceHabituelle', 'declarationDeces.deces'])->get();
+
+        // Audit Trail pour la recherche de patient
+        $searchTerms = array_filter([
+            'code' => $code_patient,
+            'nom' => $fullname,
+            'tel' => $telephone,
+            'cmu' => $num_cmu,
+            'date_naissance' => $birth_date
+        ]);
+        if (!empty($searchTerms)) {
+            $descParts = [];
+            foreach ($searchTerms as $k => $v) { $descParts[] = "$k: $v"; }
+            AuditLogService::log(
+                'RECHERCHE_PATIENT',
+                'PATIENTS',
+                "Recherche de patient(s) : " . implode(', ', $descParts) . " (" . $patients->count() . " résultat(s))",
+                ['criteres' => $searchTerms, 'resultats_count' => $patients->count()]
+            );
+        }
+
+        $patients->transform(function ($patient) {
+            $isDeceased = ($patient->status === 0 || $patient->status === '0') || !is_null($patient->declarationDeces);
+            $patient->is_deceased = $isDeceased;
+            if ($patient->declarationDeces && $patient->declarationDeces->deces) {
+                $deces = $patient->declarationDeces->deces;
+                $patient->deces_date = $deces->date ? (\Carbon\Carbon::hasFormat($deces->date, 'Y-m-d') ? \Carbon\Carbon::parse($deces->date)->format('d/m/Y') : $deces->date) : null;
+                $patient->deces_heure = $deces->heure;
+                $patient->deces_lieu = $deces->lieu;
+            } else {
+                $patient->deces_date = null;
+                $patient->deces_heure = null;
+                $patient->deces_lieu = null;
+            }
+            return $patient;
+        });
 
         return response()->json(['patients' => $patients]);
     }
@@ -650,6 +701,16 @@ class PatientController extends Controller
             }
             $payment->save();
 
+            // Audit Trail
+            $patName = ($patient->user->name ?? '') . ' ' . ($patient->user->prenom ?? '');
+            $prestName = optional($prestationHopital->prestationService)->libelle ?? 'Prestation';
+            AuditLogService::log('AFFECTATION_PATIENT', 'SECRETARIAT', "Affectation directe du patient {$patName} [{$patient->code_patient}] pour {$prestName} (N° Adm: {$admission->code_admission})", [
+                'admission_id' => $admission->id,
+                'patient_id' => $patient->id,
+                'type' => $admission->type_admission,
+                'montant' => $admission->montant
+            ], null, $hospitalId);
+
             // Si GTC (Gratuité Ciblée) : envoi direct à l'infirmerie sans passer à la caisse
             if ($isGtc) {
                 $isSoinsInfirmiers = false;
@@ -720,8 +781,23 @@ class PatientController extends Controller
 
     public function getPatient(Request $request)
     {
-        $patientId = $request->input('patient_id');
-        $patient = Patient::with('user')->with('lieuNaissance')->with('residenceActuelle')->with('residenceHabituelle')->find($patientId);
+        $patientId = $request->input('patient_id') ?? $request->route('id');
+        $patient = Patient::with(['user', 'lieuNaissance', 'residenceActuelle', 'residenceHabituelle', 'declarationDeces.deces'])->find($patientId);
+
+        if ($patient) {
+            $isDeceased = ($patient->status === 0 || $patient->status === '0') || !is_null($patient->declarationDeces);
+            $patient->is_deceased = $isDeceased;
+            if ($patient->declarationDeces && $patient->declarationDeces->deces) {
+                $deces = $patient->declarationDeces->deces;
+                $patient->deces_date = $deces->date ? (\Carbon\Carbon::hasFormat($deces->date, 'Y-m-d') ? \Carbon\Carbon::parse($deces->date)->format('d/m/Y') : $deces->date) : null;
+                $patient->deces_heure = $deces->heure;
+                $patient->deces_lieu = $deces->lieu;
+            } else {
+                $patient->deces_date = null;
+                $patient->deces_heure = null;
+                $patient->deces_lieu = null;
+            }
+        }
 
         return response()->json(['patient' => $patient]);
     }

@@ -22,7 +22,7 @@ class RecetteRepository
             ->select(DB::raw('DATE(date_consultation) as jour'), DB::raw('COUNT(*) as nb'), DB::raw('SUM(montant) as somme'), DB::raw('MAX(created_at) as latest_created_at'))
             ->groupBy(DB::raw('DATE(date_consultation)'))
             ->orderByDesc('latest_created_at')
-            ->get();
+            ->paginate(10);
 
         return $consultations;
     }

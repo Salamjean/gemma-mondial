@@ -72,11 +72,32 @@ class DeclarationController extends Controller
         }
     }
 
-    //liste de desces
-    public function listDeces()
+    //liste de deces
+    public function listDeces(Request $request)
     {
-        // dd($this->instance()->indexDeces());
-        return view('users.doctor.declaration.deces.list', ['declarations' => $this->instance()->indexDeces()]);
+        $search = $request->get('search');
+        $declarations = $this->instance()->indexDeces($search);
+        return view('users.doctor.declaration.deces.list', compact('declarations', 'search'));
+    }
+
+    public function directDeces()
+    {
+        $hospitalId = auth()->user()->doctor->hospital_id ?? auth()->user()->hospital_id;
+        $hospital = optional(auth()->user()->doctor)->hospital ?? \App\Models\Hospital::find($hospitalId);
+        return view('users.doctor.declaration.deces.direct', compact('hospital'));
+    }
+
+    public function storeDirectDeces(Request $request)
+    {
+        $res = $this->instance()->storeDirectDeces($request);
+
+        if ($res['status'] === 'error') {
+            return redirect()->back()->withInput()->with('error', $res['message']);
+        }
+
+        return redirect()->route('doctor.declaration.deces.list')
+            ->with('success', $res['message'])
+            ->with('latest_declaration_id', $res['declaration_id'] ?? null);
     }
 
     public function showDeces($id)
@@ -88,7 +109,6 @@ class DeclarationController extends Controller
     {
         return view('users.doctor.declaration.deces.add', ['person' => $person]);
     }
-
 
     public function storeDeces(DeclarationDecesRequest $request)
     {

@@ -62,8 +62,21 @@
     <!-- Tableau du plan de comptes -->
     <div class="{{ auth()->user()->role_as == 'accountant' ? 'col-xl-8 col-lg-7 col-12' : 'col-12' }}">
         <div class="box">
-            <div class="box-header with-border d-flex justify-content-between align-items-center">
-                <h4 class="box-title"><i class="ti-list text-primary me-2"></i> Plan des comptes de l'établissement</h4>
+            <div class="box-header with-border d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h4 class="box-title mb-0"><i class="ti-list text-primary me-2"></i> Plan des comptes</h4>
+                <form action="{{ route('accountant.accounting.plan_comptable') }}" method="GET" style="max-width: 320px;">
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="search" value="{{ $search ?? '' }}" class="form-control form-control-sm" placeholder="N° compte, libellé, type...">
+                        <button type="submit" class="btn btn-sm btn-primary">
+                            <i class="ti-search"></i>
+                        </button>
+                        @if(!empty($search))
+                            <a href="{{ route('accountant.accounting.plan_comptable') }}" class="btn btn-sm btn-outline-secondary" title="Effacer la recherche">
+                                <i class="ti-close"></i>
+                            </a>
+                        @endif
+                    </div>
+                </form>
             </div>
             <div class="box-body">
                 @if(session('success'))
@@ -132,6 +145,16 @@
                         </tbody>
                     </table>
                 </div>
+                @if($accounts->hasPages())
+                <div class="mt-15 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span class="text-muted small">
+                        Affichage de <strong>{{ $accounts->firstItem() }}</strong> à <strong>{{ $accounts->lastItem() }}</strong> sur <strong>{{ $accounts->total() }}</strong> comptes
+                    </span>
+                    <div>
+                        {{ $accounts->withQueryString()->links() }}
+                    </div>
+                </div>
+                @endif
             </div>
         </div>
     </div>

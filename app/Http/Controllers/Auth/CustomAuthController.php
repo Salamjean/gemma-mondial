@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Services\AuditLogService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Hash;
@@ -30,11 +31,33 @@ class CustomAuthController extends Controller
 
         $response = $this->roleResponse($request->email);
 
-        if($response['status'] === 'error')
+        if($response['status'] === 'error') {
+            AuditLogService::log(
+                'ECHEC_CONNEXION',
+                'AUTHENTIFICATION',
+                "Tentative de connexion refusée pour l'email: {$request->email} ({$response['message']})",
+                ['email' => $request->email]
+            );
             return back()->withErrors($response['message']);
+        }
 
         $credentials = $request->only('email', 'password');
         if (Auth::attempt($credentials)) {
+            $user = Auth::user();
+            $userName = trim(($user->nom ?? '') . ' ' . ($user->prenom ?? $user->name ?? ''));
+            AuditLogService::log(
+                'CONNEXION',
+                'AUTHENTIFICATION',
+                "Connexion réussie de l'utilisateur: {$userName} (" . strtoupper($user->role_as ?? 'utilisateur') . ")",
+                [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'role' => $user->role_as
+                ],
+                $user->id,
+                $user->hospital_id ?? null
+            );
+
             $intended = session()->get('url.intended');
             if ($intended && (
                 str_contains($intended, 'incoming-requests') ||
@@ -47,6 +70,13 @@ class CustomAuthController extends Controller
 
             return redirect()->intended('dashboard')->with('success', 'Bienvenue!');
         }
+
+        AuditLogService::log(
+            'ECHEC_CONNEXION',
+            'AUTHENTIFICATION',
+            "Échec de connexion (mot de passe incorrect) pour l'email: {$request->email}",
+            ['email' => $request->email]
+        );
 
         return back()->withErrors('Adresse ou mot de passe incorrecte!');
     }
@@ -90,6 +120,23 @@ class CustomAuthController extends Controller
 
     public function logout()
     {
+        if (Auth::check()) {
+            $user = Auth::user();
+            $userName = trim(($user->nom ?? '') . ' ' . ($user->prenom ?? $user->name ?? ''));
+            AuditLogService::log(
+                'DECONNEXION',
+                'AUTHENTIFICATION',
+                "Déconnexion de l'utilisateur: {$userName} (" . strtoupper($user->role_as ?? 'utilisateur') . ")",
+                [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'role' => $user->role_as
+                ],
+                $user->id,
+                $user->hospital_id ?? null
+            );
+        }
+
         Session::flush();
         Auth::logout();
 

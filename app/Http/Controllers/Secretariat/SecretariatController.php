@@ -19,6 +19,7 @@ use App\Models\ServiceHospital;
 use App\Models\PrestationDoctor;
 use App\Models\PrestationService;
 use App\Models\PrestationHospital;
+use App\Services\AuditLogService;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Contracts\Database\Eloquent\Builder;
@@ -244,28 +245,56 @@ class SecretariatController extends Controller
 
     public function searchPatient(Request $request)
     {
-        $name = explode(" ", $request->search, 2);
+        $search = trim($request->search);
         if ($request->ajax()) {
-            $nom = $name[0];
-            $pnom = $name[1];
+            $data = Patient::with(['user', 'declarationDeces.deces'])
+                ->where(function ($q) use ($search) {
+                    $q->where('code_patient', 'like', '%' . $search . '%')
+                      ->orWhere('telephone', 'like', '%' . $search . '%')
+                      ->orWhere('num_cmu', 'like', '%' . $search . '%')
+                      ->orWhereHas('user', function ($query) use ($search) {
+                          $parts = array_values(array_filter(explode(" ", $search)));
+                          if (count($parts) >= 2) {
+                              $nom = $parts[0];
+                              $pnom = implode(" ", array_slice($parts, 1));
+                              $query->where(function ($sub) use ($nom, $pnom) {
+                                  $sub->where('name', 'like', '%' . $nom . '%')
+                                      ->where('prenom', 'like', '%' . $pnom . '%');
+                              })->orWhere(function ($sub) use ($nom, $pnom) {
+                                  $sub->where('name', 'like', '%' . $pnom . '%')
+                                      ->where('prenom', 'like', '%' . $nom . '%');
+                              });
+                          } else {
+                              $query->where('name', 'like', '%' . $search . '%')
+                                    ->orWhere('prenom', 'like', '%' . $search . '%');
+                          }
+                      });
+                })->limit(10)->get();
 
-            $data = Patient::whereHas('user', function ($query) use ($nom, $pnom) {
-                $query->where('name', 'like', '%' . $nom . '%')
-                    ->where('prenom', 'like', '%' . $pnom . '%');
-            })->limit(5)->get();
-
-            //return response()->json(['data' => $data]);
+            if (!empty($search) && strlen($search) >= 2) {
+                AuditLogService::log(
+                    'RECHERCHE_PATIENT',
+                    'SECRETARIAT',
+                    "Recherche rapide patient pour affectation : \"{$search}\" (" . count($data) . " résultat(s))",
+                    ['terme_recherche' => $search, 'resultats_count' => count($data)]
+                );
+            }
 
             $output = '<div class="box"><div class="dropdown"><ul class="dropdown-menu" style="display:block; position:relative;width:100%;cursor:pointer;">';
 
             if (count($data) > 0) {
                 foreach ($data as $row) {
-
-                    $patientFullName = $row->user->name . ' ' . $row->user->prenom;
-                    $output .= "<li><option class='dropdown-item' value='{$row->id}'>{$patientFullName}</option></li>";
+                    $patientFullName = ($row->user->name ?? '') . ' ' . ($row->user->prenom ?? '');
+                    $codeDm = $row->code_patient ? " [{$row->code_patient}]" : "";
+                    $isDeceased = ($row->status === 0 || $row->status === '0') || !is_null($row->declarationDeces);
+                    if ($isDeceased) {
+                        $output .= "<li class='bg-danger-subtle'><option class='dropdown-item text-danger fw-bold' value='{$row->id}' data-deceased='1'><i class='fa-solid fa-skull-crossbones me-1'></i> {$patientFullName}{$codeDm} (DÉCÉDÉ)</option></li>";
+                    } else {
+                        $output .= "<li><option class='dropdown-item' value='{$row->id}' data-deceased='0'>{$patientFullName}{$codeDm}</option></li>";
+                    }
                 }
             } else {
-                $output .= '<li>Patients introuvable !</li>';
+                $output .= '<li class="p-2 text-muted">Patient introuvable !</li>';
             }
             $output .= '</ul></div></div>';
 
@@ -488,28 +517,56 @@ class SecretariatController extends Controller
     }
     
     public function getPatientHospitalisation(Request $request) {
-        $name = explode(" ", $request->search, 2);
+        $search = trim($request->search);
         if ($request->ajax()) {
-            $nom = $name[0];
-            $pnom = $name[1];
+            $data = Patient::with(['user', 'declarationDeces.deces'])
+                ->where(function ($q) use ($search) {
+                    $q->where('code_patient', 'like', '%' . $search . '%')
+                      ->orWhere('telephone', 'like', '%' . $search . '%')
+                      ->orWhere('num_cmu', 'like', '%' . $search . '%')
+                      ->orWhereHas('user', function ($query) use ($search) {
+                          $parts = array_values(array_filter(explode(" ", $search)));
+                          if (count($parts) >= 2) {
+                              $nom = $parts[0];
+                              $pnom = implode(" ", array_slice($parts, 1));
+                              $query->where(function ($sub) use ($nom, $pnom) {
+                                  $sub->where('name', 'like', '%' . $nom . '%')
+                                      ->where('prenom', 'like', '%' . $pnom . '%');
+                              })->orWhere(function ($sub) use ($nom, $pnom) {
+                                  $sub->where('name', 'like', '%' . $pnom . '%')
+                                      ->where('prenom', 'like', '%' . $nom . '%');
+                              });
+                          } else {
+                              $query->where('name', 'like', '%' . $search . '%')
+                                    ->orWhere('prenom', 'like', '%' . $search . '%');
+                          }
+                      });
+                })->limit(10)->get();
 
-            $data = Patient::whereHas('user', function ($query) use ($nom, $pnom) {
-                $query->where('name', 'like', '%' . $nom . '%')
-                    ->where('prenom', 'like', '%' . $pnom . '%');
-            })->limit(5)->get();
-
-            //return response()->json(['data' => $data]);
+            if (!empty($search) && strlen($search) >= 2) {
+                AuditLogService::log(
+                    'RECHERCHE_PATIENT',
+                    'SECRETARIAT',
+                    "Recherche patient hospitalisation : \"{$search}\" (" . count($data) . " résultat(s))",
+                    ['terme_recherche' => $search, 'resultats_count' => count($data)]
+                );
+            }
 
             $output = '<div class="box"><div class="dropdown"><ul class="dropdown-menu" style="display:block; position:relative;width:100%;cursor:pointer;">';
 
             if (count($data) > 0) {
                 foreach ($data as $row) {
-
-                    $patientFullName = $row->user->name . ' ' . $row->user->prenom;
-                    $output .= "<li><option class='dropdown-item' value='{$row->id}'>{$patientFullName}</option></li>";
+                    $patientFullName = ($row->user->name ?? '') . ' ' . ($row->user->prenom ?? '');
+                    $codeDm = $row->code_patient ? " [{$row->code_patient}]" : "";
+                    $isDeceased = ($row->status === 0 || $row->status === '0') || !is_null($row->declarationDeces);
+                    if ($isDeceased) {
+                        $output .= "<li class='bg-danger-subtle'><option class='dropdown-item text-danger fw-bold' value='{$row->id}' data-deceased='1'><i class='fa-solid fa-skull-crossbones me-1'></i> {$patientFullName}{$codeDm} (DÉCÉDÉ)</option></li>";
+                    } else {
+                        $output .= "<li><option class='dropdown-item' value='{$row->id}' data-deceased='0'>{$patientFullName}{$codeDm}</option></li>";
+                    }
                 }
             } else {
-                $output .= '<li>Patients introuvable !</li>';
+                $output .= '<li class="p-2 text-muted">Patient introuvable !</li>';
             }
             $output .= '</ul></div></div>';
 

@@ -22,10 +22,10 @@
         <!-- Filtres -->
         <div class="box">
             <div class="box-body">
-                <form action="{{ route('accountant.accounting.journaux') }}" method="GET" class="row align-items-end g-3">
-                    <div class="col-md-3">
-                        <label class="form-label">Journal</label>
-                        <select name="journal" class="form-select">
+                <form action="{{ route('accountant.accounting.journaux') }}" method="GET" class="row align-items-end g-2">
+                    <div class="col-md-2 col-6">
+                        <label class="form-label small fw-600">Journal</label>
+                        <select name="journal" class="form-select form-select-sm">
                             <option value="ALL" {{ $journalCode == 'ALL' ? 'selected' : '' }}>Tous les journaux</option>
                             @foreach($journals as $j)
                                 <option value="{{ $j->code }}" {{ $journalCode == $j->code ? 'selected' : '' }}>
@@ -34,21 +34,32 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Date Début</label>
-                        <input type="date" name="start_date" value="{{ $startDate }}" class="form-control">
+                    <div class="col-md-2 col-6">
+                        <label class="form-label small fw-600">Date Début</label>
+                        <input type="date" name="start_date" value="{{ $startDate }}" class="form-control form-control-sm">
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Date Fin</label>
-                        <input type="date" name="end_date" value="{{ $endDate }}" class="form-control">
+                    <div class="col-md-2 col-6">
+                        <label class="form-label small fw-600">Date Fin</label>
+                        <input type="date" name="end_date" value="{{ $endDate }}" class="form-control form-control-sm">
                     </div>
-                    <div class="col-md-3 d-flex gap-2">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="fa-solid fa-filter me-5"></i> Filtrer
+                    <div class="col-md-4 col-12">
+                        <label class="form-label small fw-600">Recherche</label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="search" value="{{ $search ?? '' }}" class="form-control form-control-sm" placeholder="N° pièce, libellé, compte...">
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                <i class="ti-search"></i>
+                            </button>
+                            @if(!empty($search))
+                                <a href="{{ route('accountant.accounting.journaux', ['journal' => $journalCode, 'start_date' => $startDate, 'end_date' => $endDate]) }}" class="btn btn-sm btn-outline-secondary" title="Effacer la recherche">
+                                    <i class="ti-close"></i>
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-6 d-flex gap-1">
+                        <button type="submit" class="btn btn-sm btn-primary w-100">
+                            <i class="ti-filter me-1"></i> Filtrer
                         </button>
-                        <a href="{{ route('accountant.accounting.journaux') }}" class="btn btn-outline-secondary">
-                            <i class="fa-solid fa-rotate-left"></i>
-                        </a>
                     </div>
                 </form>
             </div>
@@ -125,10 +136,16 @@
                         </tbody>
                     </table>
                 </div>
-
-                <div class="mt-20">
-                    {{ $entries->withQueryString()->links() }}
+                @if($entries->hasPages())
+                <div class="px-15 py-10 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span class="text-muted small">
+                        Affichage de <strong>{{ $entries->firstItem() }}</strong> à <strong>{{ $entries->lastItem() }}</strong> sur <strong>{{ $entries->total() }}</strong> écritures
+                    </span>
+                    <div>
+                        {{ $entries->withQueryString()->links() }}
+                    </div>
                 </div>
+                @endif
             </div>
         </div>
     </div>

@@ -39,7 +39,12 @@
                     </div>
 
                     <div class="form-group mb-15">
-                        <label class="form-label">Compte de Charge (Classe 6) <span class="text-danger">*</span></label>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0">Compte de Charge (Classe 6) <span class="text-danger">*</span></label>
+                            <a href="{{ route('accountant.accounting.plan_comptable') }}" class="small text-primary fw-600" target="_blank">
+                                <i class="ti-plus"></i> Nouveau compte
+                            </a>
+                        </div>
                         <select name="account_number" class="form-select" required>
                             @foreach($chargeAccounts as $acc)
                                 <option value="{{ $acc->account_number }}">
@@ -91,18 +96,27 @@
         <div class="box mb-15">
             <div class="box-body py-15">
                 <form action="{{ route('accountant.accounting.expenses') }}" method="GET" class="row align-items-end g-2">
-                    <div class="col-md-4">
-                        <label class="form-label small">Date Début</label>
+                    <div class="col-md-3 col-6">
+                        <label class="form-label small fw-600">Date Début</label>
                         <input type="date" name="start_date" value="{{ $startDate }}" class="form-control form-control-sm">
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label small">Date Fin</label>
+                    <div class="col-md-3 col-6">
+                        <label class="form-label small fw-600">Date Fin</label>
                         <input type="date" name="end_date" value="{{ $endDate }}" class="form-control form-control-sm">
                     </div>
-                    <div class="col-md-4">
-                        <button type="submit" class="btn btn-sm btn-primary w-100">
-                            <i class="ti-filter"></i> Filtrer
-                        </button>
+                    <div class="col-md-6 col-12">
+                        <label class="form-label small fw-600">Recherche</label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="search" value="{{ $search ?? '' }}" class="form-control form-control-sm" placeholder="Motif, bénéficiaire, n° facture, compte...">
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                <i class="ti-search"></i>
+                            </button>
+                            @if(!empty($search))
+                                <a href="{{ route('accountant.accounting.expenses', ['start_date' => $startDate, 'end_date' => $endDate]) }}" class="btn btn-sm btn-outline-secondary" title="Effacer la recherche">
+                                    <i class="ti-close"></i>
+                                </a>
+                            @endif
+                        </div>
                     </div>
                 </form>
             </div>
@@ -194,10 +208,16 @@
                         </tbody>
                     </table>
                 </div>
-
-                <div class="mt-15">
-                    {{ $expenses->withQueryString()->links() }}
+                @if($expenses->hasPages())
+                <div class="px-15 py-10 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span class="text-muted small">
+                        Affichage de <strong>{{ $expenses->firstItem() }}</strong> à <strong>{{ $expenses->lastItem() }}</strong> sur <strong>{{ $expenses->total() }}</strong> dépenses
+                    </span>
+                    <div>
+                        {{ $expenses->withQueryString()->links() }}
+                    </div>
                 </div>
+                @endif
             </div>
         </div>
     </div>

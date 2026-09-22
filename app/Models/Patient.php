@@ -66,10 +66,20 @@ class Patient extends Model
         return $this->hasMany(Declaration::class, 'patient_id', 'id')->where('type', 'birth')->with('naissance');
     }
 
-    //patient declaré décedé
+    // Patient déclaré décédé (relation)
+    public function declarationDeces()
+    {
+        return $this->hasOne(Declaration::class, 'patient_id', 'id')->where('type', 'death')->with('deces');
+    }
+
     public function deces()
     {
-        return $this->hasMany(Declaration::class, 'patient_id', 'id')->where('type', 'deces');
+        return $this->hasMany(Declaration::class, 'patient_id', 'id')->where('type', 'death');
+    }
+
+    public function isDeceased(): bool
+    {
+        return ($this->status === 0 || $this->status === '0') || $this->declarationDeces()->exists();
     }
 
     public function passagePatients(): HasMany
@@ -155,3 +165,4 @@ class Patient extends Model
         return !empty($this->fingerprint_left_index) && !empty($this->fingerprint_right_index);
     }
 }
+

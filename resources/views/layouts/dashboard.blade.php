@@ -35,6 +35,64 @@
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
+    <!-- Style de Pagination Moderne -->
+    <style>
+        .pagination {
+            display: inline-flex;
+            gap: 4px;
+            align-items: center;
+            margin: 0;
+            padding: 0;
+        }
+        .page-item .page-link {
+            border-radius: 8px !important;
+            border: 1px solid #e2e8f0;
+            color: #475569;
+            font-weight: 600;
+            padding: 6px 13px;
+            font-size: 13px;
+            background-color: #ffffff;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 34px;
+            min-height: 34px;
+        }
+        .page-item.active .page-link {
+            background-color: #0d6efd !important;
+            border-color: #0d6efd !important;
+            color: #ffffff !important;
+            box-shadow: 0 3px 8px rgba(13, 110, 253, 0.35);
+            font-weight: 700;
+        }
+        .page-item:not(.active):not(.disabled) .page-link:hover {
+            background-color: #f1f5f9;
+            border-color: #cbd5e1;
+            color: #0d6efd;
+            transform: translateY(-1px);
+        }
+        .page-item.disabled .page-link {
+            background-color: #f8fafc;
+            border-color: #f1f5f9;
+            color: #94a3b8;
+            cursor: not-allowed;
+            opacity: 0.65;
+        }
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 12px 15px;
+            background-color: #ffffff;
+            border-top: 1px solid #f1f5f9;
+            border-radius: 0 0 8px 8px;
+        }
+    </style>
+
     <!-- Personnal style -->
     @stack('css')
 
@@ -222,15 +280,15 @@
         @include('partials.infirmier_incoming_call_modal')
     @endif
 
-    @if((auth()->check() && auth()->user()->role_as === 'doctor') || request()->has('embed'))
-        <script src="{{ asset('js/offline-consultations.js') }}?v={{ time() }}"></script>
-        <script>
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register("{{ asset('sw-doctor.js') }}?v={{ time() }}")
-                    .catch(function(err) { console.warn('ServiceWorker registration failed:', err); });
-            }
-        </script>
-    @endif
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for (let registration of registrations) {
+                    registration.unregister();
+                }
+            });
+        }
+    </script>
 
     @stack('js')
 

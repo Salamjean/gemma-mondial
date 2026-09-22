@@ -12,6 +12,7 @@ use App\Models\Invoice;
 use App\Models\Expense;
 use App\Models\InsuranceSettlement;
 use App\Models\DrugSale;
+use App\Models\BankDeposit;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -47,8 +48,30 @@ class AccountingService
             ['account_number' => '411200', 'label' => 'Clients - Assurances & Tiers Payants', 'type' => 'tiers'],
             ['account_number' => '531100', 'label' => 'Caisse Principale Espèces', 'type' => 'tresorerie'],
             ['account_number' => '512100', 'label' => 'Banque', 'type' => 'tresorerie'],
+            ['account_number' => '511200', 'label' => 'Chèques à encaisser', 'type' => 'tresorerie'],
             ['account_number' => '518100', 'label' => 'Trésorerie Mobile Money (Wave, Orange, MTN)', 'type' => 'tresorerie'],
-            ['account_number' => '601100', 'label' => 'Achats Médicaments & Consommables', 'type' => 'charge'],
+            ['account_number' => '585000', 'label' => 'Virements Internes de Fonds', 'type' => 'tresorerie'],
+            ['account_number' => '455100', 'label' => 'Compte Courant Associés / Apports', 'type' => 'tiers'],
+            ['account_number' => '771000', 'label' => 'Subventions d\'Exploitation & Dons', 'type' => 'produit'],
+            ['account_number' => '758000', 'label' => 'Autres Produits de Gestion Courante', 'type' => 'produit'],
+            // 2.3 Charges d'Exploitation & Dépenses (Classe 6)
+            ['account_number' => '601100', 'label' => 'Achats Médicaments & Produits Pharmaceutiques', 'type' => 'charge'],
+            ['account_number' => '601200', 'label' => 'Achats Consommables Médicaux & Réactifs', 'type' => 'charge'],
+            ['account_number' => '605100', 'label' => 'Fournitures de Bureau & Imprimés', 'type' => 'charge'],
+            ['account_number' => '605200', 'label' => 'Eau & Électricité (CIE / SODECI)', 'type' => 'charge'],
+            ['account_number' => '605300', 'label' => 'Carburant (Ambulance / Groupe Électrogène)', 'type' => 'charge'],
+            ['account_number' => '613100', 'label' => 'Locations Immobilières & Loyers', 'type' => 'charge'],
+            ['account_number' => '618100', 'label' => 'Entretien & Maintenance Matériel Médical', 'type' => 'charge'],
+            ['account_number' => '622100', 'label' => 'Honoraires & Prestations Extérieures', 'type' => 'charge'],
+            ['account_number' => '624100', 'label' => 'Transports & Déplacements', 'type' => 'charge'],
+            ['account_number' => '626100', 'label' => 'Télécoms, Internet & Frais Postaux', 'type' => 'charge'],
+            ['account_number' => '627100', 'label' => 'Frais & Services Bancaires', 'type' => 'charge'],
+            ['account_number' => '632100', 'label' => 'Impôts, Taxes & Droits Directs', 'type' => 'charge'],
+            ['account_number' => '658100', 'label' => 'Charges Diverses de Gestion Courante', 'type' => 'charge'],
+            ['account_number' => '661100', 'label' => 'Salaires & Rémunérations du Personnel', 'type' => 'charge'],
+            ['account_number' => '661200', 'label' => 'Primes, Indemnités & Gratifications', 'type' => 'charge'],
+            ['account_number' => '661300', 'label' => 'Vacations & Honoraires Médicaux', 'type' => 'charge'],
+            ['account_number' => '664100', 'label' => 'Charges Sociales & Cotisations CNPS', 'type' => 'charge'],
         ];
 
         foreach ($defaultAccounts as $acc) {
@@ -315,7 +338,7 @@ class AccountingService
                 $montantAssurance = floatval($admission->montant_assurance ?? 0);
                 if ($montantAssurance > 0) {
                     $codeAssurance = $admission->typeAssurance ? ('ASSUR-' . $admission->typeAssurance->id) : 'ASSUR-GEN';
-                    $nomAssurance = $admission->typeAssurance ? $admission->typeAssurance->nom : 'Assurance';
+                    $nomAssurance = $admission->typeAssurance ? ($admission->typeAssurance->libelle ?? 'Assurance') : 'Assurance';
 
                     AccountingEntryLine::create([
                         'accounting_entry_id' => $entry->id,
@@ -631,7 +654,7 @@ class AccountingService
         $entryDate = $settlement->settlement_date ? Carbon::parse($settlement->settlement_date)->toDateString() : date('Y-m-d');
         $pieceNumber = $settlement->reference_piece ?: ('REG-ASSUR-' . str_pad($settlement->id, 6, '0', STR_PAD_LEFT));
 
-        $nomAssurance = $settlement->typeAssurance ? $settlement->typeAssurance->nom : 'Assurance';
+        $nomAssurance = $settlement->typeAssurance ? ($settlement->typeAssurance->libelle ?? 'Assurance') : 'Assurance';
         $codeAssurance = 'ASSUR-' . $settlement->type_assurance_id;
         $libelle = "Règlement Recouvrement Assurance " . $nomAssurance . ($settlement->reference_piece ? " (Réf: " . $settlement->reference_piece . ")" : "");
 
@@ -688,5 +711,91 @@ class AccountingService
             ->where('reference_id', $settlementId)
             ->delete();
     }
+
+    /**
+     * Enregistrer une écriture comptable pour un dépôt / versement bancaire multi-sources.
+     */
+    public static function recordBankDepositEntry(BankDeposit $deposit)
+    {
+        if (!$deposit || !$deposit->hospital_id) {
+            return null;
+        }
+
+        $hospitalId = $deposit->hospital_id;
+        self::initHospitalAccounting($hospitalId);
+
+        $amount = floatval($deposit->amount ?? 0);
+        if ($amount <= 0) {
+            return null;
+        }
+
+        $journalCode = 'BQ';
+        $journal = AccountingJournal::where('hospital_id', $hospitalId)->where('code', $journalCode)->first();
+        $entryDate = $deposit->deposit_date ? Carbon::parse($deposit->deposit_date)->toDateString() : date('Y-m-d');
+        $pieceNumber = $deposit->reference_piece ?: ('DEP-BQ-' . str_pad($deposit->id, 6, '0', STR_PAD_LEFT));
+
+        $bankAccountNumber = $deposit->bank_account_number ?: '512100';
+        $bankAccount = ChartOfAccount::where('hospital_id', $hospitalId)->where('account_number', $bankAccountNumber)->first();
+        $bankLabel = $bankAccount ? $bankAccount->label : ($deposit->bank_name ? "Banque ({$deposit->bank_name})" : "Banque");
+
+        $sourceAccountNumber = $deposit->source_account_number ?: '531100';
+        $sourceAccount = ChartOfAccount::where('hospital_id', $hospitalId)->where('account_number', $sourceAccountNumber)->first();
+        $sourceLabel = $sourceAccount ? $sourceAccount->label : 'Provenance Fonds';
+
+        $libelle = $deposit->label ?: "Dépôt Bancaire - " . ($deposit->depositor_name ? "Par {$deposit->depositor_name}" : "Bordereau #{$pieceNumber}");
+
+        return DB::transaction(function () use ($hospitalId, $journal, $journalCode, $entryDate, $pieceNumber, $deposit, $libelle, $amount, $bankAccountNumber, $bankLabel, $sourceAccountNumber, $sourceLabel) {
+            $entry = AccountingEntry::updateOrCreate(
+                [
+                    'hospital_id' => $hospitalId,
+                    'reference_type' => BankDeposit::class,
+                    'reference_id' => $deposit->id,
+                ],
+                [
+                    'journal_id' => $journal ? $journal->id : null,
+                    'journal_code' => $journalCode,
+                    'entry_date' => $entryDate,
+                    'piece_number' => $pieceNumber,
+                    'libelle' => $libelle,
+                    'status' => 'valide',
+                ]
+            );
+
+            $entry->lines()->delete();
+
+            // 1. Débit Compte Banque (Augmentation du solde bancaire)
+            AccountingEntryLine::create([
+                'accounting_entry_id' => $entry->id,
+                'account_number' => $bankAccountNumber,
+                'account_label' => $bankLabel,
+                'libelle' => $libelle,
+                'debit' => $amount,
+                'credit' => 0,
+            ]);
+
+            // 2. Crédit Compte Source (Caisse, Mobile Money, Chèques, Apport, Assurance, etc.)
+            AccountingEntryLine::create([
+                'accounting_entry_id' => $entry->id,
+                'account_number' => $sourceAccountNumber,
+                'account_label' => $sourceLabel,
+                'libelle' => $libelle,
+                'debit' => 0,
+                'credit' => $amount,
+            ]);
+
+            return $entry;
+        });
+    }
+
+    /**
+     * Supprimer l'écriture liée à un dépôt bancaire.
+     */
+    public static function deleteBankDepositEntry($depositId)
+    {
+        AccountingEntry::where('reference_type', BankDeposit::class)
+            ->where('reference_id', $depositId)
+            ->delete();
+    }
 }
+
 

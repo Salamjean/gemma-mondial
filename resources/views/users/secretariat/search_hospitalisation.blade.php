@@ -33,24 +33,29 @@
             <h5 class="fw-bold text-dark mb-20 fs-16"><i class="fa-solid fa-filter text-info me-2"></i> Critères de
                 Recherche</h5>
             <div class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label fw-bold text-dark fs-13">N° de Téléphone</label>
-                    <input type="search" class="form-control h-45 rounded-10" min="10" max="10" autofocus
+                <div class="col-md-2">
+                    <label class="form-label fw-bold text-dark fs-13"><i class="fa-solid fa-folder-open text-primary me-1"></i> N° Dossier (DM)</label>
+                    <input type="search" class="form-control h-45 rounded-10 fw-bold text-primary" id="code_patient"
+                        name="code_patient" placeholder="Ex: DM202409..." autofocus>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold text-dark fs-13"><i class="fa-solid fa-phone text-success me-1"></i> N° Téléphone</label>
+                    <input type="search" class="form-control h-45 rounded-10" min="10" max="10"
                         data-inputmask="'mask': ['9999999999', '99 99 99 99 99']" data-mask="" id="no_telephone"
                         name="no_telephone" placeholder="Ex: 0707000000">
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold text-dark fs-13">N° CMU (Sécurité Sociale)</label>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold text-dark fs-13"><i class="fa-solid fa-id-card text-warning me-1"></i> N° CMU</label>
                     <input type="search" class="form-control h-45 rounded-10" id="num_cmu" name="num_cmu"
                         placeholder="Ex: 12345678901">
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label fw-bold text-dark fs-13">Nom & Prénom(s)</label>
+                    <label class="form-label fw-bold text-dark fs-13"><i class="fa-solid fa-user text-info me-1"></i> Nom & Prénom(s)</label>
                     <input type="search" name="fullname" id="fullname" placeholder="Saisir nom/prénom(s)"
                         class="form-control h-45 rounded-10" oninput="convertToUppercase()">
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label fw-bold text-dark fs-13">Date de Naissance</label>
+                    <label class="form-label fw-bold text-dark fs-13"><i class="fa-regular fa-calendar text-secondary me-1"></i> Date de Naissance</label>
                     <div class="input-group">
                         <input type="text" name="birth_date" id="birth_date" class="form-control h-45 rounded-start-10"
                             data-inputmask="'alias': 'dd/mm/yyyy'" data-mask="" placeholder="dd/mm/yyyy">
@@ -424,14 +429,23 @@
                     });
                 }
 
+                // Déclencher la recherche avec la touche Entrée
+                $('#code_patient, #no_telephone, #fullname, #birth_date, #num_cmu').keypress(function (e) {
+                    if (e.which === 13) {
+                        e.preventDefault();
+                        $('#search-button').click();
+                    }
+                });
+
                 // Lancer la recherche
                 $('#search-button').click(function () {
+                    var code_patient = $('#code_patient').val();
                     var telephone = $('#no_telephone').val();
                     var fullname = $('#fullname').val();
                     var birth_date = $('#birth_date').val();
                     var num_cmu = $('#num_cmu').val();
 
-                    if (!telephone && !fullname && !birth_date && !num_cmu) {
+                    if (!code_patient && !telephone && !fullname && !birth_date && !num_cmu) {
                         Swal.fire({
                             text: "Veuillez renseigner au moins un critère de recherche.",
                             icon: "warning",
@@ -444,6 +458,7 @@
                         url: "{{ route('secretariat.searchPatients') }}",
                         method: 'GET',
                         data: {
+                            code_patient: code_patient,
                             telephone: telephone,
                             fullname: fullname,
                             birth_date: birth_date,
@@ -457,26 +472,41 @@
                                 var html = '<div class="card border-0 shadow-sm rounded-20 p-20 bg-white mb-25">';
                                 html += '<h5 class="fw-bold text-dark mb-15"><i class="fa-solid fa-list-check text-primary me-2"></i> Patients Trouvés (' + response.patients.length + ')</h5>';
                                 html += '<div class="table-responsive"><table class="table table-hover align-middle mb-0">';
-                                html += '<thead class="table-light"><tr><th class="text-center">Nom & Prénom(s)</th><th class="text-center">Sexe</th><th class="text-center">Téléphone</th><th class="text-center">N° CMU</th><th class="text-center">Date Naissance</th><th class="text-center">Actions</th></tr></thead><tbody>';
+                                html += '<thead class="table-light"><tr><th class="text-center">N° Dossier (DM)</th><th class="text-center">Nom & Prénom(s)</th><th class="text-center">Sexe</th><th class="text-center">Téléphone</th><th class="text-center">N° CMU</th><th class="text-center">Date Naissance</th><th class="text-center">Actions</th></tr></thead><tbody>';
 
                                 $.each(response.patients, function (key, patient) {
                                     var userName = (patient.user && patient.user.name) ? patient.user.name : '';
                                     var userPrenom = (patient.user && patient.user.prenom) ? patient.user.prenom : '';
                                     var fullName = (userName + ' ' + userPrenom).trim();
+                                    var codePatient = patient.code_patient || '-';
                                     var tel = patient.telephone || '-';
                                     var cmu = patient.num_cmu || '-';
                                     var birth = patient.birth_date || '-';
                                     var gender = patient.gender || '-';
+                                    var isDeceased = !!patient.is_deceased;
 
-                                    html += '<tr>';
-                                    html += '<td class="fw-bold text-dark text-center">' + fullName + '</td>';
+                                    html += '<tr class="' + (isDeceased ? 'table-danger border-danger-subtle' : '') + '">';
+                                    html += '<td class="text-center"><span class="badge bg-light text-primary border fw-bold fs-13 px-2 py-1"><i class="fa-solid fa-folder-open me-1"></i> ' + codePatient + '</span></td>';
+                                    html += '<td class="fw-bold text-dark text-center">';
+                                    html += fullName;
+                                    if (isDeceased) {
+                                        html += ' <span class="badge bg-danger text-white fw-bold px-2 py-1 ms-1 shadow-sm"><i class="fa-solid fa-skull-crossbones me-1"></i> DÉCÉDÉ</span>';
+                                    }
+                                    html += '</td>';
                                     html += '<td class="text-center"><span class="badge bg-light text-dark border">' + gender + '</span></td>';
                                     html += '<td class="text-center">' + tel + '</td>';
                                     html += '<td class="text-center">' + cmu + '</td>';
                                     html += '<td class="text-center">' + birth + '</td>';
                                     var detailUrl = "{{ route('secretariat.patient.detail', ':id') }}".replace(':id', patient.id);
                                     html += '<td class="text-center text-nowrap">';
-                                    html += '<button type="button" class="btn btn-sm btn-primary rounded-8 px-15 fw-bold me-2" onclick="showUpdateForm(' + patient.id + ')"><i class="fa-solid fa-user-pen me-1"></i> Sélectionner</button>';
+                                    if (isDeceased) {
+                                        var dDate = patient.deces_date || '';
+                                        var dLieu = patient.deces_lieu || '';
+                                        var safeName = fullName.replace(/'/g, "\\'");
+                                        html += '<button type="button" class="btn btn-sm btn-danger rounded-8 px-15 fw-bold me-2 shadow-sm" onclick="alertPatientDecede(\'' + safeName + '\', \'' + dDate + '\', \'' + dLieu + '\')"><i class="fa-solid fa-ban me-1"></i> Décédé (Bloqué)</button>';
+                                    } else {
+                                        html += '<button type="button" class="btn btn-sm btn-primary rounded-8 px-15 fw-bold me-2" onclick="showUpdateForm(' + patient.id + ')"><i class="fa-solid fa-user-pen me-1"></i> Sélectionner</button>';
+                                    }
                                     html += '<a href="' + detailUrl + '" class="btn btn-sm btn-info rounded-8 px-15 fw-bold text-white shadow-sm"><i class="fa-solid fa-id-card-clip me-1"></i> Fiche Patient</a>';
                                     html += '</td>';
                                     html += '</tr>';
@@ -572,6 +602,28 @@
                 });
             });
 
+            function alertPatientDecede(fullName, dateDeces, lieuDeces) {
+                var detailHtml = "<div class='text-danger fw-bold fs-16 mb-2'><i class='fa-solid fa-skull-crossbones fa-2x mb-2 text-danger'></i><br>ATTENTION : CE PATIENT EST DÉCÉDÉ !</div>";
+                detailHtml += "<div class='p-3 bg-light rounded text-start fs-14 border mb-2'>";
+                detailHtml += "<p class='mb-1'><strong>Patient :</strong> " + fullName + "</p>";
+                if (dateDeces) {
+                    detailHtml += "<p class='mb-1'><strong>Date du décès :</strong> " + dateDeces + "</p>";
+                }
+                if (lieuDeces) {
+                    detailHtml += "<p class='mb-1'><strong>Lieu :</strong> " + lieuDeces + "</p>";
+                }
+                detailHtml += "<p class='mb-0 text-danger fw-semibold'><i class='fa-solid fa-triangle-exclamation me-1'></i> Aucune affectation, consultation ou admission ne peut être enregistrée pour un patient défunt.</p>";
+                detailHtml += "</div>";
+
+                Swal.fire({
+                    title: "Dossier Clôturé (Décès)",
+                    html: detailHtml,
+                    icon: "error",
+                    confirmButtonColor: '#dc3545',
+                    confirmButtonText: "J'ai compris"
+                });
+            }
+
             // Fonction pour remplir le formulaire avec le patient sélectionné
             function showUpdateForm(patientId) {
                 $.ajax({
@@ -581,6 +633,12 @@
                     success: function (response) {
                         var patient = response.patient;
                         if (patient) {
+                            if (patient.is_deceased) {
+                                var fullName = ((patient.user && patient.user.name ? patient.user.name : '') + ' ' + (patient.user && patient.user.prenom ? patient.user.prenom : '')).trim();
+                                alertPatientDecede(fullName, patient.deces_date, patient.deces_lieu);
+                                return;
+                            }
+
                             var userName = (patient.user && patient.user.name) ? patient.user.name : '';
                             var userPrenom = (patient.user && patient.user.prenom) ? patient.user.prenom : '';
                             var userEmail = (patient.user && patient.user.email) ? patient.user.email : '';

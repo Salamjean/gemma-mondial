@@ -42,36 +42,39 @@
         @endif
     </ul>
 </li>
-@if (auth()->user()->doctor->chief == 1)
-    <li class="treeview">
-        <a href="#"
-            class="{{ routeActive(['doctor.declaration.deces.list', 'doctor.declaration.naissance.list', 'doctor.declaration.deces.add', 'doctor.declaration.naissance.add']) }}">
-            <i
-                class="fa-solid fa-registered {{ routeActive(['doctor.declaration.deces.list', 'doctor.declaration.naissance.list', 'doctor.declaration.deces.add', 'doctor.declaration.naissance.add']) }}">
-                <span class="path1"></span><span class="path2"></span><span class="path3"></span>
-            </i>
-            <span>Declarations</span>
-            <span class="pull-right-container">
-                <i class="fa-solid fa-angle-right"></i>
-            </span>
-        </a>
-        <ul class="treeview-menu">
-            <li>
-                <a href="{{ route('doctor.declaration.naissance.list') }}"
-                    class="{{ routeActive(['doctor.declaration.naissance.list', 'doctor.declaration.naissance.add']) }}">
-                    <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Liste des
-                    naissance
-                </a>
-            </li>
-            <li>
-                <a href="{{ route('doctor.declaration.deces.list') }}"
-                    class="{{ routeActive(['doctor.declaration.deces.list', 'doctor.declaration.naissance.add']) }}">
-                    <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Liste des décès
-                </a>
-            </li>
-        </ul>
-    </li>
-@endif
+<li class="treeview">
+    <a href="#"
+        class="{{ routeActive(['doctor.declaration.deces.list', 'doctor.declaration.deces.direct', 'doctor.declaration.naissance.list', 'doctor.declaration.deces.add', 'doctor.declaration.naissance.add']) }}">
+        <i
+            class="fa-solid fa-file-medical {{ routeActive(['doctor.declaration.deces.list', 'doctor.declaration.deces.direct', 'doctor.declaration.naissance.list', 'doctor.declaration.deces.add', 'doctor.declaration.naissance.add']) }}">
+            <span class="path1"></span><span class="path2"></span><span class="path3"></span>
+        </i>
+        <span>Déclarations</span>
+        <span class="pull-right-container">
+            <i class="fa-solid fa-angle-right"></i>
+        </span>
+    </a>
+    <ul class="treeview-menu">
+        <li>
+            <a href="{{ route('doctor.declaration.deces.direct') }}"
+                class="{{ routeActive('doctor.declaration.deces.direct') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i><span class="text-danger fw-bold">Enregistrer un décès</span>
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('doctor.declaration.deces.list') }}"
+                class="{{ routeActive(['doctor.declaration.deces.list', 'doctor.declaration.deces.add']) }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Liste des décès
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('doctor.declaration.naissance.list') }}"
+                class="{{ routeActive(['doctor.declaration.naissance.list', 'doctor.declaration.naissance.add']) }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Liste des naissances
+            </a>
+        </li>
+    </ul>
+</li>
 <li class="treeview">
     <a href="#"
         class="{{ routeActive(['doctor.hospitalisation.pending_room', 'doctor.hospitalisation.in_progress', 'doctor.hospitalisation.history']) }}">

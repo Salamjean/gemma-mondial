@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
@@ -23,5 +24,6 @@ class AppServiceProvider extends ServiceProvider
         //
         setlocale(LC_TIME, 'fr_FR.UTF-8');
         Schema::defaultStringLength(191);
+        Paginator::useBootstrapFive();
     }
 }

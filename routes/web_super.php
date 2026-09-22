@@ -56,6 +56,13 @@ Route::middleware(['auth'])->group(function() {
                 Route::get('bg', 'SettingController@bg')->name('bg');
             });
 
+            Route::prefix('logs')->name('logs.')->group(function () {
+                Route::get('/', 'LogController@index')->name('index');
+                Route::post('clear-laravel', 'LogController@clearLaravelLogs')->name('clear_laravel');
+                Route::get('download-laravel', 'LogController@downloadLaravelLog')->name('download_laravel');
+                Route::get('export-audit-excel', 'LogController@exportAuditExcel')->name('export_audit_excel');
+            });
+
         });
     });
 

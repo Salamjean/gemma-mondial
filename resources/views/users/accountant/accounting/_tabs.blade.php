@@ -28,6 +28,12 @@
                 </li>
                 @if(auth()->user()->role_as == 'accountant')
                 <li class="nav-item">
+                    <a class="nav-link py-10 px-15 {{ request()->routeIs('accountant.accounting.deposits*') ? 'active bg-primary fw-600' : 'bg-light text-dark' }}" 
+                       href="{{ route('accountant.accounting.deposits') }}">
+                        <i class="ti-server me-2"></i> Dépôts Bancaires
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link py-10 px-15 {{ request()->routeIs('accountant.accounting.plan_comptable') ? 'active bg-primary fw-600' : 'bg-light text-dark' }}" 
                        href="{{ route('accountant.accounting.plan_comptable') }}">
                         <i class="ti-list me-2"></i> Plan Comptable
@@ -36,7 +42,7 @@
                 <li class="nav-item">
                     <a class="nav-link py-10 px-15 {{ request()->routeIs('accountant.accounting.export_sage') ? 'active bg-primary text-white fw-bold' : 'bg-light text-primary fw-600' }}" 
                        href="{{ route('accountant.accounting.export_sage') }}">
-                        <i class="ti-export me-2 "></i> Passerelle Sage SAARI
+                        <i class="ti-export me-2 "></i> Passerelle Sage
                     </a>
                 </li>
                 @endif

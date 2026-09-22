@@ -33,6 +33,16 @@
                     </tbody>
                 </table>
             </div>
+            @if(method_exists($consultations, 'hasPages') && $consultations->hasPages())
+            <div class="mt-20 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span class="text-muted small">
+                    Affichage de <strong>{{ $consultations->firstItem() }}</strong> à <strong>{{ $consultations->lastItem() }}</strong> sur <strong>{{ $consultations->total() }}</strong> journées
+                </span>
+                <div>
+                    {{ $consultations->withQueryString()->links() }}
+                </div>
+            </div>
+            @endif
         </div>
     </div>
 @endsection

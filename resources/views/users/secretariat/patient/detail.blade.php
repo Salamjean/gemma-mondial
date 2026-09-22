@@ -87,6 +87,35 @@
 <div class="container-fluid">
 
     <!-- En-tête Profil Simple & Épuré -->
+    @if ($patient->isDeceased() || $patient->declarationDeces)
+        @php
+            $decesInfo = $patient->declarationDeces ? $patient->declarationDeces->deces : null;
+        @endphp
+        <div class="alert alert-danger border-0 shadow-sm rounded-16 p-20 mb-25 d-flex align-items-center justify-content-between flex-wrap gap-3" style="background-color: #fef2f2; border-left: 6px solid #ef4444 !important;">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-danger text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 52px; height: 52px; min-width: 52px;">
+                    <i class="fa-solid fa-skull-crossbones fs-24"></i>
+                </div>
+                <div>
+                    <h5 class="fw-bold text-danger mb-1 fs-16">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> DOSSIER CLÔTURÉ : PATIENT DÉCLARÉ DÉCÉDÉ
+                    </h5>
+                    <p class="mb-0 text-dark fs-14">
+                        Date de décès : <strong>{{ $decesInfo && $decesInfo->date ? \Carbon\Carbon::parse($decesInfo->date)->format('d/m/Y') : 'Enregistré' }}</strong>
+                        @if ($decesInfo && $decesInfo->heure) à <strong>{{ $decesInfo->heure }}</strong>@endif
+                        @if ($decesInfo && $decesInfo->lieu) — Lieu : <strong>{{ $decesInfo->lieu }}</strong>@endif
+                        @if ($decesInfo && $decesInfo->cause_directe) — Cause : <em>{{ $decesInfo->cause_directe }}</em>@endif
+                    </p>
+                </div>
+            </div>
+            <div>
+                <span class="badge bg-danger text-white fs-13 px-15 py-10 rounded-pill fw-bold shadow-sm">
+                    <i class="fa-solid fa-ban me-1"></i> AUCUNE AFFECTATION POSSIBLE
+                </span>
+            </div>
+        </div>
+    @endif
+
     <div class="patient-header-box mb-25">
         <div class="row align-items-center">
             <div class="col-lg-8 d-flex align-items-center flex-wrap gap-3">
@@ -105,6 +134,9 @@
                     <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                         <h2 class="fw-bold text-dark mb-0 fs-24">{{ $patient->user->name ?? '' }} {{ $patient->user->prenom ?? '' }}</h2>
                         <span class="badge bg-primary-light text-primary fw-bold px-3 py-1 fs-13">Dossier N° {{ $patient->code_patient }}</span>
+                        @if ($patient->isDeceased() || $patient->declarationDeces)
+                            <span class="badge bg-danger text-white fw-bold px-3 py-1 fs-13 shadow-sm"><i class="fa-solid fa-skull-crossbones me-1"></i> DÉCÉDÉ</span>
+                        @endif
                     </div>
                     <p class="text-muted mb-2 fs-14">
                         <span class="fw-semibold text-dark"><i class="fa-solid fa-mars-venus text-primary me-1"></i> {{ ucfirst($patient->gender) }}</span>
@@ -128,7 +160,7 @@
                         <i class="fa-solid fa-folder-open me-1"></i> Voir dossier
                     </a>
                     @endif
-                    @if (\Illuminate\Support\Facades\Route::has('secretariat.patient.edit'))
+                    @if (\Illuminate\Support\Facades\Route::has('secretariat.patient.edit') && !$patient->isDeceased())
                     <a href="{{ route('secretariat.patient.edit', $patient->id) }}" class="btn btn-warning fw-semibold rounded-10 px-20">
                         <i class="fa-solid fa-pen-to-square me-1"></i> Modifier
                     </a>

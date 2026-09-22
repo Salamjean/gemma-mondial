@@ -26,9 +26,197 @@ class DeclarationRepository
     {
     }
 
-    public function indexDeces()
+    public function indexDeces($search = null)
     {
-        return Declaration::with('patient.user')->where('type', 'death')->where('hospital_id', Auth::user()->doctor->hospital_id)->with('deces')->get();
+        $hospitalId = Auth::user()->doctor->hospital_id ?? Auth::user()->hospital_id;
+        $query = Declaration::with(['patient.user', 'deces', 'doctor.user'])
+            ->where('type', 'death')
+            ->where('hospital_id', $hospitalId)
+            ->latest();
+
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('reference', 'like', "%{$search}%")
+                  ->orWhereHas('patient.user', function ($uq) use ($search) {
+                      $uq->where('name', 'like', "%{$search}%")
+                         ->orWhere('prenom', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('patient', function ($pq) use ($search) {
+                      $pq->where('code_patient', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        return $query->paginate(10);
+    }
+
+    public function storeDirectDeces(Request $request)
+    {
+        $request->validate([
+            'patient_mode' => 'required|in:existing,new',
+            'date' => 'required',
+            'heure' => 'required',
+            'cause_initiale' => 'required|string',
+            'cause_directe' => 'required|string',
+        ]);
+
+        $hospitalId = Auth::user()->doctor->hospital_id ?? Auth::user()->hospital_id;
+        $doctorId = Auth::user()->doctor->id ?? null;
+        $hospital = optional(Auth::user()->doctor)->hospital ?? \App\Models\Hospital::find($hospitalId);
+
+        // Détermination du lieu de décès
+        $lieu = '';
+        if ($request->lieu_type === 'hospital') {
+            $lieu = $hospital->label ?? 'Centre Hospitalier';
+            if (!empty($request->service_hospital)) {
+                $lieu .= ' - ' . trim($request->service_hospital);
+            }
+        } elseif ($request->lieu_type === 'hors') {
+            $lieu = $request->lieu_autre ?? $request->lieu ?? 'Hors établissement';
+        } else {
+            $lieu = $request->lieu ?? ($hospital->label ?? 'Centre Hospitalier');
+        }
+
+        // 1. Détermination ou Création du Patient
+        if ($request->patient_mode === 'new') {
+            $request->validate([
+                'nom' => 'required|string|max:100',
+                'genre' => 'required|in:masculin,feminin',
+            ]);
+
+            $user = new User();
+            $user->name = strtoupper(trim($request->nom));
+            $user->prenom = ucwords(trim($request->prenom ?? ''));
+            $user->phone = $request->telephone ?? '0000000000';
+            $user->email = 'deces_' . time() . '_' . rand(100, 999) . '@hopital.loc';
+            $user->password = Hash::make('deces' . rand(1000, 9999));
+            $user->role_id = 4; // Patient
+            $user->save();
+
+            // Date de naissance
+            $birthDate = null;
+            if (!empty($request->birth_date)) {
+                if (str_contains($request->birth_date, '-')) {
+                    $birthDate = Carbon::parse($request->birth_date)->format('d/m/Y');
+                } else {
+                    $birthDate = $request->birth_date;
+                }
+            } elseif (!empty($request->age_estime)) {
+                $birthDate = Carbon::now()->subYears((int) $request->age_estime)->format('d/m/Y');
+            }
+
+            $patientCount = Patient::count() + 1;
+            $codePatient = 'DM' . date('Ymd') . $patientCount;
+
+            $patient = new Patient();
+            $patient->user_id = $user->id;
+            $patient->code_patient = $codePatient;
+            $patient->hospital_id = $hospitalId;
+            $patient->doctor_id = $doctorId;
+            $patient->gender = $request->genre;
+            $patient->birth_date = $birthDate;
+            $patient->profession = $request->profession ?? null;
+            $patient->address = $request->lieu_residence ?? null;
+            $patient->status = 0; // Défunt
+            $patient->save();
+
+        } else {
+            $request->validate([
+                'patient_id' => 'required|exists:patients,id',
+            ]);
+
+            $patient = Patient::with('user')->find($request->patient_id);
+            if (!$patient) {
+                return ['status' => 'error', 'message' => 'Patient introuvable.'];
+            }
+
+            $person = $request->person ?? 'patient';
+            $exist = Declaration::where('patient_id', $patient->id)
+                ->where('type', 'death')
+                ->whereHas('deces', function (Builder $query) use ($person) {
+                    $query->where('person', $person);
+                })
+                ->first();
+
+            if ($exist && $person === 'patient') {
+                return ['status' => 'error', 'message' => 'Ce patient a déjà été déclaré décédé.'];
+            }
+        }
+
+        // 2. Formatage de la date de décès
+        $dateDeces = null;
+        if (str_contains($request->date, '/')) {
+            $parts = explode('/', $request->date);
+            if (count($parts) === 3) {
+                $dateDeces = $parts[2] . '-' . $parts[1] . '-' . $parts[0];
+            }
+        } elseif (str_contains($request->date, '-')) {
+            $dateDeces = $request->date;
+        } else {
+            $dateDeces = date('Y-m-d');
+        }
+
+        // 3. Calcul de l'âge au décès
+        $age = 0;
+        if ($request->person === 'enfant') {
+            $age = 0;
+        } elseif (!empty($request->age_estime)) {
+            $age = (int) $request->age_estime;
+        } elseif (!empty($patient->birth_date)) {
+            try {
+                if (str_contains($patient->birth_date, '/')) {
+                    $age = Carbon::createFromFormat('d/m/Y', $patient->birth_date)->diffInYears(Carbon::now());
+                } else {
+                    $age = Carbon::parse($patient->birth_date)->diffInYears(Carbon::now());
+                }
+            } catch (\Exception $e) {
+                $age = 0;
+            }
+        }
+
+        // 4. Création de la Déclaration
+        $counter = Declaration::where('hospital_id', $hospitalId)->where('type', 'death')->count();
+        $codeSub = $patient->code_patient ? substr($patient->code_patient, 2) : ('P' . $patient->id);
+
+        $declaration = new Declaration();
+        $declaration->type = 'death';
+        $declaration->reference = 'CMD' . $codeSub . $hospitalId . ($counter + 1);
+        $declaration->hospital_id = $hospitalId;
+        $declaration->doctor_id = $doctorId ?? 1;
+        $declaration->consultation_id = $request->consultation_id ?? null;
+        $declaration->patient_id = $patient->id;
+        $declaration->save();
+
+        // 5. Création du détail de décès
+        $death = new DeclarationDeces();
+        $death->reference = 'DD' . $codeSub . $hospitalId . ($counter + 1);
+        $death->numero_declaration = $counter + 1;
+        $death->declaration_id = $declaration->id;
+        $death->person = $request->person ?? 'patient';
+        $death->date = $dateDeces;
+        $death->heure = $request->heure;
+        $death->lieu = $lieu;
+        $death->nombre = 1;
+        $death->observations = $request->observation ?? $request->observations ?? null;
+        $death->milieu_residence = $request->milieu_residence ?? 'Urbain';
+        $death->cause_initiale = $request->cause_initiale;
+        $death->cause_directe = $request->cause_directe;
+        $death->deces_maternel = $request->deces_maternel ?? 'non';
+        $death->genre = $request->genre ?? $patient->gender ?? 'masculin';
+        $death->age = $age;
+        $death->save();
+
+        // Si c'est le patient lui-même qui est décédé, marquer son statut à 0
+        if (($request->person ?? 'patient') === 'patient') {
+            $patient->status = 0;
+            $patient->save();
+        }
+
+        return [
+            'status' => 'success',
+            'message' => 'La déclaration de décès a été enregistrée avec succès.',
+            'declaration_id' => $declaration->id,
+        ];
     }
 
     public function showDeces($id)
@@ -115,6 +303,8 @@ class DeclarationRepository
             $death->genre = $patient->gender;
             $age = Carbon::parse($patient->birth_date)->diffInYears(Carbon::now());
             $death->age = $age;
+            $patient->status = 0;
+            $patient->save();
         }
 
         $death->save();

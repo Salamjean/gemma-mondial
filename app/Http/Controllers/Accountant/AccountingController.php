@@ -10,12 +10,14 @@ use App\Models\AccountingJournal;
 use App\Models\ChartOfAccount;
 use App\Models\Expense;
 use App\Models\InsuranceSettlement;
+use App\Models\BankDeposit;
 use App\Models\TypeAssurance;
 use App\Models\Assurance;
 use App\Models\Admission;
 use App\Models\Hospital;
 use App\Services\AccountingService;
 use App\Services\SageSaariExportService;
+use App\Services\AuditLogService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -100,11 +102,20 @@ class AccountingController extends Controller
         $hospitalId = $this->getHospitalId();
         AccountingService::initHospitalAccounting($hospitalId);
 
-        $accounts = ChartOfAccount::where('hospital_id', $hospitalId)
-            ->orderBy('account_number', 'asc')
-            ->get();
+        $search = trim($request->get('search', ''));
+        $query = ChartOfAccount::where('hospital_id', $hospitalId);
 
-        return view('users.accountant.accounting.plan_comptable', compact('title', 'accounts'));
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('account_number', 'like', "%{$search}%")
+                  ->orWhere('label', 'like', "%{$search}%")
+                  ->orWhere('type', 'like', "%{$search}%");
+            });
+        }
+
+        $accounts = $query->orderBy('account_number', 'asc')->paginate(10);
+
+        return view('users.accountant.accounting.plan_comptable', compact('title', 'accounts', 'search'));
     }
 
     /**
@@ -196,6 +207,7 @@ class AccountingController extends Controller
         $journalCode = $request->get('journal', 'ALL');
         $startDate = $request->get('start_date', Carbon::now()->startOfMonth()->toDateString());
         $endDate = $request->get('end_date', Carbon::now()->endOfMonth()->toDateString());
+        $search = trim($request->get('search', ''));
 
         $query = AccountingEntry::with('lines')
             ->where('hospital_id', $hospitalId)
@@ -205,10 +217,22 @@ class AccountingController extends Controller
             $query->where('journal_code', $journalCode);
         }
 
-        $entries = $query->orderBy('entry_date', 'desc')->orderBy('id', 'desc')->paginate(25);
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('piece_number', 'like', "%{$search}%")
+                  ->orWhere('libelle', 'like', "%{$search}%")
+                  ->orWhereHas('lines', function ($lq) use ($search) {
+                      $lq->where('account_number', 'like', "%{$search}%")
+                         ->orWhere('account_label', 'like', "%{$search}%")
+                         ->orWhere('libelle', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $entries = $query->orderBy('entry_date', 'desc')->orderBy('id', 'desc')->paginate(10);
 
         return view('users.accountant.accounting.journaux', compact(
-            'title', 'journals', 'journalCode', 'startDate', 'endDate', 'entries'
+            'title', 'journals', 'journalCode', 'startDate', 'endDate', 'entries', 'search'
         ));
     }
 
@@ -327,6 +351,12 @@ class AccountingController extends Controller
 
         $filename = 'GRAND_LIVRE_' . $accountNumber . '_' . Carbon::parse($startDate)->format('Ymd') . '_' . Carbon::parse($endDate)->format('Ymd') . '.pdf';
 
+        AuditLogService::log('TELECHARGEMENT_PDF', 'COMPTABILITE', "Téléchargement PDF du Grand Livre (Compte: {$accountNumber})", [
+            'account_number' => $accountNumber,
+            'start_date' => $startDate,
+            'end_date' => $endDate
+        ]);
+
         return $pdf->download($filename);
     }
 
@@ -369,6 +399,11 @@ class AccountingController extends Controller
         $pdf->setPaper('A4', 'landscape');
 
         $filename = 'BALANCE_GENERALE_' . Carbon::parse($startDate)->format('Ymd') . '_' . Carbon::parse($endDate)->format('Ymd') . '.pdf';
+
+        AuditLogService::log('TELECHARGEMENT_PDF', 'COMPTABILITE', "Téléchargement PDF de la Balance Générale", [
+            'start_date' => $startDate,
+            'end_date' => $endDate
+        ]);
 
         return $pdf->download($filename);
     }
@@ -418,17 +453,186 @@ class AccountingController extends Controller
         $startDate = $request->get('start_date');
         $endDate = $request->get('end_date');
         $markExported = $request->has('mark_exported');
+        $formatType = $request->get('format_type', 'standard_semicolon');
+        $decimalSeparator = $request->get('decimal_separator', '.');
+        $journalMapping = [
+            'CAI' => $request->get('journal_caisse', 'CAIS'),
+            'BQ'  => $request->get('journal_banque', 'BQ1'),
+            'OD'  => $request->get('journal_od', 'OD'),
+            'VTE' => $request->get('journal_ventes', 'VTE'),
+        ];
 
-        $export = SageSaariExportService::generateSageExport($hospitalId, $startDate, $endDate, false);
+        $export = SageSaariExportService::generateSageExport($hospitalId, $startDate, $endDate, false, $formatType, $decimalSeparator, $journalMapping);
 
         if ($markExported && !empty($export['entry_ids'])) {
             SageSaariExportService::markAsExported($export['entry_ids']);
         }
 
-        $filename = 'EXPORT_SAGE_SAARI_' . Carbon::now()->format('Ymd_His') . '.txt';
+        $extension = 'txt';
+        $contentType = 'text/plain; charset=windows-1252';
 
-        return Response::make($export['content'], 200, [
-            'Content-Type' => 'text/plain; charset=ISO-8859-1',
+        if ($formatType === 'sage100_pnm') {
+            $extension = 'pnm';
+        } elseif ($formatType === 'excel_csv') {
+            $extension = 'csv';
+            $contentType = 'text/csv; charset=windows-1252';
+        }
+
+        $filename = 'EXPORT_COMPTABLE_' . Carbon::now()->format('Ymd_His') . '.' . $extension;
+
+        // Audit Trail
+        AuditLogService::log('EXPORT_SAGE', 'COMPTABILITE', "Exportation de {$export['count_entries']} écritures pour Sage 100 (.{$extension})", [
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'format_type' => $formatType,
+            'count' => $export['count_entries']
+        ]);
+
+        // Conversion sécurisée en Windows-1252 (ANSI standard Sage)
+        $content = @iconv('UTF-8', 'Windows-1252//TRANSLIT', $export['content']);
+        if ($content === false) {
+            $content = mb_convert_encoding($export['content'], 'Windows-1252', 'UTF-8');
+        }
+
+        return Response::make($content, 200, [
+            'Content-Type' => $contentType,
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
+
+    /**
+     * Téléchargement des écritures au format Tableur Excel (.xls)
+     */
+    public function exportExcelDownload(Request $request)
+    {
+        if (Auth::user()->role_as !== 'accountant') {
+            return redirect()->route('accountant.accounting.dashboard')->with('error', 'Accès non autorisé.');
+        }
+
+        $hospitalId = $this->getHospitalId();
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
+        $markExported = $request->has('mark_exported');
+
+        $query = AccountingEntry::with(['lines', 'journal'])
+            ->where('hospital_id', $hospitalId)
+            ->where('status', 'valide');
+
+        if ($startDate) {
+            $query->where('entry_date', '>=', $startDate);
+        }
+        if ($endDate) {
+            $query->where('entry_date', '<=', $endDate);
+        }
+
+        $entries = $query->orderBy('entry_date', 'asc')->orderBy('id', 'asc')->get();
+
+        if ($markExported) {
+            $entryIds = $entries->pluck('id')->toArray();
+            SageSaariExportService::markAsExported($entryIds);
+        }
+
+        $hospital = \App\Models\Hospital::find($hospitalId);
+        $hospitalName = $hospital ? $hospital->nom : 'Etablissement de Sante';
+        $periodText = ($startDate && $endDate) ? "Du " . Carbon::parse($startDate)->format('d/m/Y') . " au " . Carbon::parse($endDate)->format('d/m/Y') : "Toutes les dates";
+
+        $totalDebitGlobal = 0;
+        $totalCreditGlobal = 0;
+
+        // Construction du tableau HTML Spreadsheet pour Excel
+        $html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+        $html .= '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
+        $html .= '<style>';
+        $html .= 'body { font-family: Calibri, Arial, sans-serif; }';
+        $html .= 'table { border-collapse: collapse; width: 100%; }';
+        $html .= 'th { background-color: #1e40af; color: #ffffff; font-weight: bold; border: 1px solid #cbd5e1; padding: 10px; text-align: center; }';
+        $html .= 'td { border: 1px solid #e2e8f0; padding: 8px; font-size: 13px; }';
+        $html .= '.text-center { text-align: center; }';
+        $html .= '.text-end { text-align: right; }';
+        $html .= '.fw-bold { font-weight: bold; }';
+        $html .= '.bg-total { background-color: #f1f5f9; font-weight: bold; }';
+        $html .= '</style></head><body>';
+
+        $html .= '<h2>' . htmlspecialchars($hospitalName) . ' - JOURNAL DES ECRITURES COMPTABLES</h2>';
+        $html .= '<p><strong>Periode :</strong> ' . htmlspecialchars($periodText) . ' | <strong>Date generation :</strong> ' . Carbon::now()->format('d/m/Y H:i') . ' | <strong>Nb ecritures :</strong> ' . count($entries) . '</p>';
+
+        $html .= '<table>';
+        $html .= '<thead>';
+        $html .= '<tr>';
+        $html .= '<th>Date</th>';
+        $html .= '<th>Journal</th>';
+        $html .= '<th>N° Piece</th>';
+        $html .= '<th>Compte General</th>';
+        $html .= '<th>Intitule Compte</th>';
+        $html .= '<th>Compte Tiers</th>';
+        $html .= '<th>Libelle de l\'ecriture</th>';
+        $html .= '<th>Sens</th>';
+        $html .= '<th>Debit (FCFA)</th>';
+        $html .= '<th>Credit (FCFA)</th>';
+        $html .= '</tr>';
+        $html .= '</thead><tbody>';
+
+        $journalMapping = [
+            'CAI' => $request->get('journal_caisse', 'CAIS'),
+            'BQ'  => $request->get('journal_banque', 'BQ1'),
+            'OD'  => $request->get('journal_od', 'OD'),
+            'VTE' => $request->get('journal_ventes', 'VTE'),
+        ];
+
+        foreach ($entries as $entry) {
+            $dateFr = Carbon::parse($entry->entry_date)->format('d/m/Y');
+            $rawJournal = $entry->journal_code ?: 'CAI';
+            $journalCode = $journalMapping[$rawJournal] ?? $rawJournal;
+            $piece = $entry->piece_number ?: ('P' . $entry->id);
+
+            foreach ($entry->lines as $line) {
+                $compteNum = $line->account_number;
+                $compteNom = $line->account_label ?: '';
+                $tiers = $line->third_party_code ?? '';
+                $libelle = $line->libelle ?: $entry->libelle ?: '';
+                $debit = floatval($line->debit ?? 0);
+                $credit = floatval($line->credit ?? 0);
+                $sens = $debit > 0 ? 'D' : 'C';
+
+                $totalDebitGlobal += $debit;
+                $totalCreditGlobal += $credit;
+
+                $html .= '<tr>';
+                $html .= '<td class="text-center">' . htmlspecialchars($dateFr) . '</td>';
+                $html .= '<td class="text-center fw-bold">' . htmlspecialchars($journalCode) . '</td>';
+                $html .= '<td class="text-center">' . htmlspecialchars($piece) . '</td>';
+                $html .= '<td class="text-center fw-bold" style="mso-number-format:\'@\';">' . htmlspecialchars($compteNum) . '</td>';
+                $html .= '<td>' . htmlspecialchars($compteNom) . '</td>';
+                $html .= '<td class="text-center">' . htmlspecialchars($tiers) . '</td>';
+                $html .= '<td>' . htmlspecialchars($libelle) . '</td>';
+                $html .= '<td class="text-center fw-bold">' . htmlspecialchars($sens) . '</td>';
+                $html .= '<td class="text-end">' . number_format($debit, 2, '.', '') . '</td>';
+                $html .= '<td class="text-end">' . number_format($credit, 2, '.', '') . '</td>';
+                $html .= '</tr>';
+            }
+        }
+
+        $html .= '<tr class="bg-total">';
+        $html .= '<td colspan="8" class="text-end fw-bold" style="font-size: 14px;">TOTAL GENERAL :</td>';
+        $html .= '<td class="text-end fw-bold" style="font-size: 14px; color: #1e40af;">' . number_format($totalDebitGlobal, 2, '.', '') . '</td>';
+        $html .= '<td class="text-end fw-bold" style="font-size: 14px; color: #1e40af;">' . number_format($totalCreditGlobal, 2, '.', '') . '</td>';
+        $html .= '</tr>';
+
+        $html .= '</tbody></table></body></html>';
+
+        $filename = 'JOURNAL_ECRITURES_EXCEL_' . Carbon::now()->format('Ymd_His') . '.xls';
+
+        // Audit Trail
+        AuditLogService::log('EXPORT_EXCEL', 'COMPTABILITE', "Exportation des écritures comptables au format Excel (.xls) - " . count($entries) . " écritures", [
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'count' => count($entries),
+            'total_debit' => $totalDebitGlobal,
+            'total_credit' => $totalCreditGlobal
+        ]);
+
+        return Response::make($html, 200, [
+            'Content-Type' => 'application/vnd.ms-excel; charset=utf-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
     }
@@ -455,17 +659,26 @@ class AccountingController extends Controller
 
         $startDate = $request->get('start_date', Carbon::now()->startOfMonth()->toDateString());
         $endDate = $request->get('end_date', Carbon::now()->endOfMonth()->toDateString());
+        $search = trim($request->get('search', ''));
 
-        $expenses = Expense::with('accountant.user')
+        $query = Expense::with('accountant.user')
             ->where('hospital_id', $hospitalId)
-            ->whereBetween('expense_date', [$startDate, $endDate])
-            ->orderBy('expense_date', 'desc')
-            ->orderBy('id', 'desc')
-            ->paginate(20);
+            ->whereBetween('expense_date', [$startDate, $endDate]);
 
-        $totalExpenses = Expense::where('hospital_id', $hospitalId)
-            ->whereBetween('expense_date', [$startDate, $endDate])
-            ->sum('amount');
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('label', 'like', "%{$search}%")
+                  ->orWhere('beneficiaire', 'like', "%{$search}%")
+                  ->orWhere('piece_number', 'like', "%{$search}%")
+                  ->orWhere('account_number', 'like', "%{$search}%");
+            });
+        }
+
+        $totalExpenses = (clone $query)->sum('amount');
+
+        $expenses = $query->orderBy('expense_date', 'desc')
+            ->orderBy('id', 'desc')
+            ->paginate(10);
 
         // Comptes de charges disponibles
         $chargeAccounts = ChartOfAccount::where('hospital_id', $hospitalId)
@@ -478,7 +691,7 @@ class AccountingController extends Controller
         }
 
         return view('users.accountant.accounting.expenses', compact(
-            'title', 'expenses', 'totalExpenses', 'chargeAccounts', 'startDate', 'endDate'
+            'title', 'expenses', 'totalExpenses', 'chargeAccounts', 'startDate', 'endDate', 'search'
         ));
     }
 
@@ -510,6 +723,12 @@ class AccountingController extends Controller
         $pdf->setPaper('A4', 'landscape');
 
         $filename = 'ETAT_DEPENSES_' . Carbon::parse($startDate)->format('Ymd') . '_' . Carbon::parse($endDate)->format('Ymd') . '.pdf';
+
+        AuditLogService::log('TELECHARGEMENT_PDF', 'COMPTABILITE', "Téléchargement PDF de l'État des Dépenses ({$expenses->count()} dépenses)", [
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'total' => $totalExpenses
+        ]);
 
         return $pdf->download($filename);
     }
@@ -553,6 +772,13 @@ class AccountingController extends Controller
         // Générer l'écriture comptable en partie double
         AccountingService::recordExpenseEntry($expense);
 
+        AuditLogService::log('ENREGISTREMENT', 'DEPENSE', "Enregistrement d'une dépense: {$expense->label} (" . number_format($expense->amount, 0, ',', ' ') . " FCFA)", [
+            'expense_id' => $expense->id,
+            'amount' => $expense->amount,
+            'beneficiaire' => $expense->beneficiaire,
+            'account_number' => $expense->account_number
+        ]);
+
         return redirect()->back()->with('success', 'Dépense enregistrée et comptabilisée avec succès.');
     }
 
@@ -567,9 +793,16 @@ class AccountingController extends Controller
 
         $hospitalId = $this->getHospitalId();
         $expense = Expense::where('hospital_id', $hospitalId)->findOrFail($id);
+        $label = $expense->label;
+        $amount = $expense->amount;
         
         AccountingService::deleteExpenseEntry($expense->id);
         $expense->delete();
+
+        AuditLogService::log('SUPPRESSION', 'DEPENSE', "Suppression de la dépense: {$label} (" . number_format($amount, 0, ',', ' ') . " FCFA)", [
+            'expense_id' => $id,
+            'amount' => $amount
+        ]);
 
         return redirect()->back()->with('success', 'Dépense et écriture comptable supprimées.');
     }
@@ -583,19 +816,38 @@ class AccountingController extends Controller
         $hospitalId = $this->getHospitalId();
         AccountingService::initHospitalAccounting($hospitalId);
 
-        $assurancesList = TypeAssurance::where('hospital_id', $hospitalId)->get();
-        $assurancesSummary = [];
+        $allAssurances = TypeAssurance::where('hospital_id', $hospitalId)->get();
         $grandTotalPriseEnCharge = 0;
         $grandTotalRegle = 0;
         $grandTotalReste = 0;
 
-        foreach ($assurancesList as $assur) {
-            // Prise en charge totale facturée (table assurances)
+        foreach ($allAssurances as $assur) {
             $totalPriseEnCharge = Assurance::where('hospital_id', $hospitalId)
                 ->where('type_assurance_id', $assur->id)
                 ->sum('prix');
 
-            // Montant total déjà recouvré / payé par l'assurance
+            $totalRegle = InsuranceSettlement::where('hospital_id', $hospitalId)
+                ->where('type_assurance_id', $assur->id)
+                ->sum('amount');
+
+            $reste = max(0, $totalPriseEnCharge - $totalRegle);
+            $grandTotalPriseEnCharge += $totalPriseEnCharge;
+            $grandTotalRegle += $totalRegle;
+            $grandTotalReste += $reste;
+        }
+
+        // Pagination à 3 de l'État des Créances par Assureur
+        $assurancesList = TypeAssurance::where('hospital_id', $hospitalId)
+            ->orderBy('libelle', 'asc')
+            ->paginate(3, ['*'], 'page_assurances');
+
+        $assurancesSummary = [];
+
+        foreach ($assurancesList as $assur) {
+            $totalPriseEnCharge = Assurance::where('hospital_id', $hospitalId)
+                ->where('type_assurance_id', $assur->id)
+                ->sum('prix');
+
             $totalRegle = InsuranceSettlement::where('hospital_id', $hospitalId)
                 ->where('type_assurance_id', $assur->id)
                 ->sum('amount');
@@ -604,27 +856,36 @@ class AccountingController extends Controller
 
             $assurancesSummary[] = [
                 'id' => $assur->id,
-                'nom' => $assur->libelle ?? $assur->nom ?? 'Assurance',
+                'nom' => $assur->libelle ?? 'Assurance',
                 'total_prise_en_charge' => $totalPriseEnCharge,
                 'total_regle' => $totalRegle,
                 'reste_a_payer' => $reste,
             ];
-
-            $grandTotalPriseEnCharge += $totalPriseEnCharge;
-            $grandTotalRegle += $totalRegle;
-            $grandTotalReste += $reste;
         }
 
         // Règlements récents avec auteur
-        $settlements = InsuranceSettlement::with(['typeAssurance', 'accountant.user'])
-            ->where('hospital_id', $hospitalId)
-            ->orderBy('settlement_date', 'desc')
+        $search = trim($request->get('search', ''));
+        $querySettlements = InsuranceSettlement::with(['typeAssurance', 'accountant.user'])
+            ->where('hospital_id', $hospitalId);
+
+        if ($search !== '') {
+            $querySettlements->where(function ($q) use ($search) {
+                $q->where('reference_piece', 'like', "%{$search}%")
+                  ->orWhere('note', 'like', "%{$search}%")
+                  ->orWhereHas('typeAssurance', function ($aq) use ($search) {
+                      $aq->where('libelle', 'like', "%{$search}%")
+                         ->orWhere('reference', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $settlements = $querySettlements->orderBy('settlement_date', 'desc')
             ->orderBy('id', 'desc')
-            ->paginate(15);
+            ->paginate(10);
 
         return view('users.accountant.accounting.assurances', compact(
             'title', 'assurancesSummary', 'settlements', 'assurancesList',
-            'grandTotalPriseEnCharge', 'grandTotalRegle', 'grandTotalReste'
+            'grandTotalPriseEnCharge', 'grandTotalRegle', 'grandTotalReste', 'search'
         ));
     }
 
@@ -681,6 +942,12 @@ class AccountingController extends Controller
 
         $filename = 'ETAT_ASSURANCES_RECOUVREMENT_' . Carbon::now()->format('Ymd_His') . '.pdf';
 
+        AuditLogService::log('TELECHARGEMENT_PDF', 'ASSURANCE', "Téléchargement PDF de l'État des Assurances & Recouvrements", [
+            'total_prise_en_charge' => $grandTotalPriseEnCharge,
+            'total_regle' => $grandTotalRegle,
+            'reste_a_payer' => $grandTotalReste
+        ]);
+
         return $pdf->download($filename);
     }
 
@@ -719,6 +986,12 @@ class AccountingController extends Controller
         // Générer l'écriture comptable en partie double
         AccountingService::recordSettlementEntry($settlement);
 
+        AuditLogService::log('ENREGISTREMENT', 'ASSURANCE', "Enregistrement d'un règlement d'assurance (" . number_format($settlement->amount, 0, ',', ' ') . " FCFA)", [
+            'settlement_id' => $settlement->id,
+            'amount' => $settlement->amount,
+            'mode_paiement' => $settlement->mode_paiement
+        ]);
+
         return redirect()->back()->with('success', 'Règlement assurance enregistré et comptabilisé avec succès.');
     }
 
@@ -733,10 +1006,229 @@ class AccountingController extends Controller
 
         $hospitalId = $this->getHospitalId();
         $settlement = InsuranceSettlement::where('hospital_id', $hospitalId)->findOrFail($id);
+        $amount = $settlement->amount;
 
         AccountingService::deleteSettlementEntry($settlement->id);
         $settlement->delete();
 
+        AuditLogService::log('SUPPRESSION', 'ASSURANCE', "Suppression d'un règlement d'assurance (" . number_format($amount, 0, ',', ' ') . " FCFA)", [
+            'settlement_id' => $id,
+            'amount' => $amount
+        ]);
+
         return redirect()->back()->with('success', 'Règlement assurance et écriture comptable supprimés.');
+    }
+
+    /**
+     * Gestion des dépôts et versements bancaires multi-sources
+     */
+    public function deposits(Request $request)
+    {
+        $title = 'Comptabilité | Dépôts & Versements Bancaires';
+        $hospitalId = $this->getHospitalId();
+        AccountingService::initHospitalAccounting($hospitalId);
+
+        $startDate = $request->get('start_date', Carbon::now()->startOfMonth()->toDateString());
+        $endDate = $request->get('end_date', Carbon::now()->toDateString());
+        $selectedSource = $request->get('source_type');
+        $selectedBank = $request->get('bank_account_number');
+        $search = trim($request->get('search', ''));
+
+        $query = BankDeposit::where('hospital_id', $hospitalId)
+            ->whereBetween('deposit_date', [$startDate, $endDate]);
+
+        if ($selectedSource) {
+            $query->where('source_type', $selectedSource);
+        }
+        if ($selectedBank) {
+            $query->where('bank_account_number', $selectedBank);
+        }
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('reference_piece', 'like', "%{$search}%")
+                  ->orWhere('depositor_name', 'like', "%{$search}%")
+                  ->orWhere('label', 'like', "%{$search}%")
+                  ->orWhere('bank_name', 'like', "%{$search}%")
+                  ->orWhere('bank_account_number', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        $totalDeposits = (clone $query)->sum('amount');
+
+        $deposits = $query->orderBy('deposit_date', 'desc')
+            ->orderBy('id', 'desc')
+            ->paginate(10);
+        
+        $today = Carbon::today()->toDateString();
+        $todayDeposits = BankDeposit::where('hospital_id', $hospitalId)
+            ->whereDate('deposit_date', $today)
+            ->sum('amount');
+
+        $startOfMonth = Carbon::now()->startOfMonth()->toDateString();
+        $endOfMonth = Carbon::now()->endOfMonth()->toDateString();
+        $monthDeposits = BankDeposit::where('hospital_id', $hospitalId)
+            ->whereBetween('deposit_date', [$startOfMonth, $endOfMonth])
+            ->sum('amount');
+
+        // Récupérer les comptes disponibles
+        $accounts = ChartOfAccount::where('hospital_id', $hospitalId)->where('is_active', true)->orderBy('account_number')->get();
+        
+        // Tous les comptes de trésorerie pouvant recevoir des fonds (Banques 512xxx, Mobile Money 518xxx, Caisse 531xxx, etc.)
+        $bankAccounts = $accounts->where('type', 'tresorerie')->values();
+        if ($bankAccounts->isEmpty()) {
+            $bankAccounts = $accounts->whereIn('account_number', ['512100', '518100', '531100'])->values();
+        }
+
+        return view('users.accountant.accounting.deposits', compact(
+            'title', 'deposits', 'totalDeposits', 'todayDeposits', 'monthDeposits',
+            'startDate', 'endDate', 'selectedSource', 'selectedBank', 'accounts', 'bankAccounts'
+        ));
+    }
+
+    /**
+     * Enregistrer un nouveau dépôt bancaire
+     */
+    public function storeDeposit(Request $request)
+    {
+        if (Auth::user()->role_as !== 'accountant') {
+            return redirect()->back()->with('error', 'Action non autorisée. En tant qu\'administrateur, vous êtes en mode consultation seule.');
+        }
+
+        $hospitalId = $this->getHospitalId();
+        $accountant = Accountant::where('user_id', Auth::user()->id)->first();
+
+        $request->validate([
+            'deposit_date' => 'required|date',
+            'amount' => 'required|numeric|min:1',
+            'bank_account_number' => 'required|string',
+            'source_type' => 'required|string',
+            'source_account_number' => 'required|string',
+            'mode_depot' => 'required|string',
+            'label' => 'required|string|max:255',
+            'reference_piece' => 'nullable|string|max:100',
+            'depositor_name' => 'nullable|string|max:255',
+            'bank_name' => 'nullable|string|max:100',
+            'description' => 'nullable|string',
+        ]);
+
+        $deposit = BankDeposit::create([
+            'hospital_id' => $hospitalId,
+            'accountant_id' => $accountant ? $accountant->id : null,
+            'deposit_date' => $request->deposit_date,
+            'bank_account_number' => trim($request->bank_account_number),
+            'bank_name' => $request->bank_name ? trim($request->bank_name) : null,
+            'source_type' => $request->source_type,
+            'source_account_number' => trim($request->source_account_number),
+            'mode_depot' => $request->mode_depot,
+            'amount' => floatval($request->amount),
+            'reference_piece' => $request->reference_piece ? trim($request->reference_piece) : null,
+            'depositor_name' => $request->depositor_name ? trim($request->depositor_name) : null,
+            'label' => trim($request->label),
+            'description' => $request->description ? trim($request->description) : null,
+        ]);
+
+        // Générer l'écriture comptable en partie double
+        AccountingService::recordBankDepositEntry($deposit);
+
+        AuditLogService::log('ENREGISTREMENT', 'BANQUE', "Enregistrement d'un versement/dépôt bancaire: {$deposit->label} (" . number_format($deposit->amount, 0, ',', ' ') . " FCFA)", [
+            'deposit_id' => $deposit->id,
+            'amount' => $deposit->amount,
+            'bank_account' => $deposit->bank_account_number,
+            'source_type' => $deposit->source_type
+        ]);
+
+        return redirect()->back()->with('success', 'Dépôt bancaire enregistré et comptabilisé avec succès.');
+    }
+
+    /**
+     * Supprimer un dépôt bancaire
+     */
+    public function deleteDeposit($id)
+    {
+        if (Auth::user()->role_as !== 'accountant') {
+            return redirect()->back()->with('error', 'Action non autorisée. En tant qu\'administrateur, vous êtes en mode consultation seule.');
+        }
+
+        $hospitalId = $this->getHospitalId();
+        $deposit = BankDeposit::where('hospital_id', $hospitalId)->findOrFail($id);
+        $label = $deposit->label;
+        $amount = $deposit->amount;
+
+        AccountingService::deleteBankDepositEntry($deposit->id);
+        $deposit->delete();
+
+        AuditLogService::log('SUPPRESSION', 'BANQUE', "Suppression du dépôt bancaire: {$label} (" . number_format($amount, 0, ',', ' ') . " FCFA)", [
+            'deposit_id' => $id,
+            'amount' => $amount
+        ]);
+
+        return redirect()->back()->with('success', 'Dépôt bancaire et écriture comptable supprimés.');
+    }
+
+    /**
+     * Générer le bordereau / reçu PDF d'un dépôt individuel
+     */
+    public function depositPdf($id)
+    {
+        $hospitalId = $this->getHospitalId();
+        $deposit = BankDeposit::where('hospital_id', $hospitalId)->with('accountant.user')->findOrFail($id);
+        $hospital = Hospital::find($hospitalId);
+        $comptable = Auth::user();
+
+        $pdf = Pdf::loadView('users.accountant.accounting.deposit_single_pdf', compact(
+            'deposit', 'hospital', 'comptable'
+        ));
+
+        $pdf->setPaper('A5', 'landscape');
+        $filename = 'BORDEREAU_DEPOT_' . ($deposit->reference_piece ?: $deposit->id) . '.pdf';
+
+        AuditLogService::log('TELECHARGEMENT_PDF', 'BANQUE', "Téléchargement du bordereau de versement bancaire N° " . ($deposit->reference_piece ?: $deposit->id), [
+            'deposit_id' => $deposit->id,
+            'amount' => $deposit->amount
+        ]);
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Exporter la liste des dépôts en PDF
+     */
+    public function depositsPdf(Request $request)
+    {
+        $hospitalId = $this->getHospitalId();
+        $startDate = $request->get('start_date', Carbon::now()->startOfMonth()->toDateString());
+        $endDate = $request->get('end_date', Carbon::now()->toDateString());
+        $selectedSource = $request->get('source_type');
+
+        $query = BankDeposit::where('hospital_id', $hospitalId)
+            ->whereBetween('deposit_date', [$startDate, $endDate]);
+
+        if ($selectedSource) {
+            $query->where('source_type', $selectedSource);
+        }
+
+        $deposits = $query->orderBy('deposit_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $totalDeposits = $deposits->sum('amount');
+        $hospital = Hospital::find($hospitalId);
+        $comptable = Auth::user();
+
+        $pdf = Pdf::loadView('users.accountant.accounting.deposits_pdf', compact(
+            'deposits', 'totalDeposits', 'startDate', 'endDate', 'comptable', 'hospital'
+        ));
+
+        $pdf->setPaper('A4', 'landscape');
+        $filename = 'ETAT_DEPOTS_BANCAIRES_' . Carbon::parse($startDate)->format('Ymd') . '_' . Carbon::parse($endDate)->format('Ymd') . '.pdf';
+
+        AuditLogService::log('TELECHARGEMENT_PDF', 'BANQUE', "Téléchargement PDF de l'État des Dépôts Bancaires ({$deposits->count()} dépôts)", [
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'total' => $totalDeposits
+        ]);
+
+        return $pdf->download($filename);
     }
 }

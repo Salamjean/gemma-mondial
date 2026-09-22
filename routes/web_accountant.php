@@ -56,8 +56,14 @@ Route::middleware(['auth'])->group(function () {
                 Route::get('assurances-suivi/pdf', 'AccountingController@assurancesPdf')->name('assurances_pdf');
                 Route::post('store-settlement', 'AccountingController@storeSettlement')->name('store_settlement');
                 Route::get('delete-settlement/{id}', 'AccountingController@deleteSettlement')->name('delete_settlement');
+                Route::get('deposits', 'AccountingController@deposits')->name('deposits');
+                Route::get('deposits/pdf', 'AccountingController@depositsPdf')->name('deposits_pdf');
+                Route::get('deposits/pdf/{id}', 'AccountingController@depositPdf')->name('deposit_pdf');
+                Route::post('store-deposit', 'AccountingController@storeDeposit')->name('store_deposit');
+                Route::get('delete-deposit/{id}', 'AccountingController@deleteDeposit')->name('delete_deposit');
                 Route::get('export-sage', 'AccountingController@exportSageView')->name('export_sage');
                 Route::get('export-sage/download', 'AccountingController@exportSageDownload')->name('export_sage_download');
+                Route::get('export-excel/download', 'AccountingController@exportExcelDownload')->name('export_excel_download');
                 Route::get('sync', 'AccountingController@sync')->name('sync');
             });
         });

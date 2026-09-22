@@ -179,13 +179,36 @@
                         </tbody>
                     </table>
                 </div>
+                @if(isset($assurancesList) && method_exists($assurancesList, 'hasPages') && $assurancesList->hasPages())
+                <div class="px-15 py-10 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span class="text-muted small">
+                        Affichage de <strong>{{ $assurancesList->firstItem() }}</strong> à <strong>{{ $assurancesList->lastItem() }}</strong> sur <strong>{{ $assurancesList->total() }}</strong> assureurs
+                    </span>
+                    <div>
+                        {{ $assurancesList->withQueryString()->links() }}
+                    </div>
+                </div>
+                @endif
             </div>
         </div>
 
         <!-- Historique des Règlements Reçus -->
         <div class="box">
-            <div class="box-header with-border">
-                <h4 class="box-title"><i class="ti-receipt text-success me-2"></i> Historique des Règlements Encaissés</h4>
+            <div class="box-header with-border d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h4 class="box-title mb-0"><i class="ti-receipt text-success me-2"></i> Historique des Règlements Encaissés</h4>
+                <form action="{{ route('accountant.accounting.assurances_suivi') }}" method="GET" style="max-width: 320px;">
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="search" value="{{ $search ?? '' }}" class="form-control form-control-sm" placeholder="Assurance, n° chèque/virement...">
+                        <button type="submit" class="btn btn-sm btn-primary">
+                            <i class="ti-search"></i>
+                        </button>
+                        @if(!empty($search))
+                            <a href="{{ route('accountant.accounting.assurances_suivi') }}" class="btn btn-sm btn-outline-secondary" title="Effacer la recherche">
+                                <i class="ti-close"></i>
+                            </a>
+                        @endif
+                    </div>
+                </form>
             </div>
             <div class="box-body">
                 <div class="table-responsive">
@@ -241,10 +264,16 @@
                         </tbody>
                     </table>
                 </div>
-
-                <div class="mt-15">
-                    {{ $settlements->withQueryString()->links() }}
+                @if($settlements->hasPages())
+                <div class="px-15 py-10 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span class="text-muted small">
+                        Affichage de <strong>{{ $settlements->firstItem() }}</strong> à <strong>{{ $settlements->lastItem() }}</strong> sur <strong>{{ $settlements->total() }}</strong> règlements
+                    </span>
+                    <div>
+                        {{ $settlements->withQueryString()->links() }}
+                    </div>
                 </div>
+                @endif
             </div>
         </div>
     </div>

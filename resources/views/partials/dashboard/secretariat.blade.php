@@ -846,43 +846,55 @@
                             icon: "success",
                             button: "ok",
                         });
-                        if (patients.length > 1) {
+                        if (patients.length > 1 || (patients.length === 1 && patients[0].is_deceased)) {
                             // Afficher la liste des patients trouvés
                             var html = '<h2>Resultat de recherche</h2>';
                             html +=
                                 '<div class="box"><div class="table-responsive p-10"> <table id="example" class="table table-striped align-middle"> <thead class="bg-dark text-white"> <tr> <th class="text-center" style="border-radius: 5px"><span class="badge fw-bold fs-14">N° Dossier médical</span></th>  <th class="text-center" style="border-radius: 5px"><span class="badge fw-bold fs-14">Nom & prénom(s)</span></th> <th class="text-center" style="border-radius: 5px"><span class="badge fw-bold fs-14">Date de naissance</span></th> <th class="text-center" style="border-radius: 5px"><span class="badge fw-bold fs-14">N° téléphone</span></th>  <th class="text-center" style="border-radius: 5px"><span class="badge fw-bold fs-14">Sexe</span></th> <th class="text-center" style="border-radius: 5px"><span class="badge fw-bold fs-14">Actions</span></th></tr> </thead> <tbody id="tableBody" style="border-radius: 10px">';
                             for (var i = 0; i < patients.length; i++) {
-                                html += '<tr>';
+                                var p = patients[i];
+                                var isDec = !!p.is_deceased;
+                                var pFullName = ((p.user && p.user.name ? p.user.name : '') + ' ' + (p.user && p.user.prenom ? p.user.prenom : '')).trim();
+                                html += '<tr class="' + (isDec ? 'table-danger' : '') + '">';
                                 html +=
                                     '<td class="text-center"><span class="badge text-dark fw-bold fs-14"> ' +
-                                    patients[i].code_patient + '</span></td>';
+                                    (p.code_patient || '-') + '</span></td>';
                                 html +=
                                     '<td class="text-center"><span class="badge text-dark fw-bold fs-14"> ' +
-                                    patients[i].user.name + ' ' + patients[i].user.prenom +
+                                    pFullName + (isDec ? ' <span class="badge bg-danger text-white ms-1"><i class="fa-solid fa-skull-crossbones me-1"></i>DÉCÉDÉ</span>' : '') +
                                     '</span></td>';
                                 html +=
                                     '<td class="text-center"><span class="badge text-dark fw-bold fs-14"> ' +
-                                    patients[i].birth_date + '</span></td>';
+                                    (p.birth_date || '-') + '</span></td>';
                                 html +=
                                     '<td class="text-center"><span class="badge text-dark fw-bold fs-14"> ' +
-                                    patients[i].telephone + '</span></td>';
+                                    (p.telephone || '-') + '</span></td>';
                                 html +=
                                     '<td class="text-center"><span class="badge text-dark fw-bold fs-14"> ' +
-                                    patients[i].gender + '</span></td>';
-                                var ficheUrl = "{{ route('secretariat.patient.detail', ':id') }}".replace(':id', patients[i].id);
-                                html +=
-                                    '<td class="text-center text-nowrap">' +
-                                    '<a href="#" class="btn btn-sm btn-primary me-2 fw-semibold" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Sélectionner" onclick="showUpdateForm(' +
-                                    patients[i].id +
-                                    ')"><i class="fa-solid fa-pen-to-square me-1"></i>Sélectionner</a>' +
-                                    '<a href="' + ficheUrl + '" class="btn btn-sm btn-info text-white fw-semibold shadow-sm" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Fiche"><i class="fa-solid fa-id-card-clip me-1"></i>Fiche</a>' +
-                                    '</td>';
+                                    (p.gender || '-') + '</span></td>';
+                                var ficheUrl = "{{ route('secretariat.patient.detail', ':id') }}".replace(':id', p.id);
+                                html += '<td class="text-center text-nowrap">';
+                                if (isDec) {
+                                    var safeName = pFullName.replace(/'/g, "\\'");
+                                    html += '<button type="button" class="btn btn-sm btn-danger me-2 fw-semibold" onclick="alertPatientDecede(\'' + safeName + '\', \'' + (p.deces_date || '') + '\', \'' + (p.deces_lieu || '') + '\')"><i class="fa-solid fa-ban me-1"></i>Décédé</button>';
+                                } else {
+                                    html += '<a href="#" class="btn btn-sm btn-primary me-2 fw-semibold" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Sélectionner" onclick="showUpdateForm(' +
+                                        p.id +
+                                        ')"><i class="fa-solid fa-pen-to-square me-1"></i>Sélectionner</a>';
+                                }
+                                html += '<a href="' + ficheUrl + '" class="btn btn-sm btn-info text-white fw-semibold shadow-sm" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Fiche"><i class="fa-solid fa-id-card-clip me-1"></i>Fiche</a>';
+                                html += '</td>';
 
                                 html += '</tr>';
                             }
                             html += '</tbody></table></div></div>';
                             $('#resultat-recherche-patient').html(html);
                             addPatient.style.display = 'none';
+                            if (patients.length === 1 && patients[0].is_deceased) {
+                                var p0 = patients[0];
+                                var p0Name = ((p0.user && p0.user.name ? p0.user.name : '') + ' ' + (p0.user && p0.user.prenom ? p0.user.prenom : '')).trim();
+                                alertPatientDecede(p0Name, p0.deces_date, p0.deces_lieu);
+                            }
 
                         } else if (patients.length === 1) {
                             var patient = patients[0];
@@ -1036,6 +1048,28 @@
 
     });
 
+    function alertPatientDecede(fullName, dateDeces, lieuDeces) {
+        var detailHtml = "<div class='text-danger fw-bold fs-16 mb-2'><i class='fa-solid fa-skull-crossbones fa-2x mb-2 text-danger'></i><br>ATTENTION : CE PATIENT EST DÉCÉDÉ !</div>";
+        detailHtml += "<div class='p-3 bg-light rounded text-start fs-14 border mb-2'>";
+        detailHtml += "<p class='mb-1'><strong>Patient :</strong> " + fullName + "</p>";
+        if (dateDeces) {
+            detailHtml += "<p class='mb-1'><strong>Date du décès :</strong> " + dateDeces + "</p>";
+        }
+        if (lieuDeces) {
+            detailHtml += "<p class='mb-1'><strong>Lieu :</strong> " + lieuDeces + "</p>";
+        }
+        detailHtml += "<p class='mb-0 text-danger fw-semibold'><i class='fa-solid fa-triangle-exclamation me-1'></i> Aucune affectation, consultation ou admission ne peut être enregistrée pour un patient défunt.</p>";
+        detailHtml += "</div>";
+
+        Swal.fire({
+            title: "Dossier Clôturé (Décès)",
+            html: detailHtml,
+            icon: "error",
+            confirmButtonColor: '#dc3545',
+            confirmButtonText: "J'ai compris"
+        });
+    }
+
     function showUpdateForm(patientId) {
         // Fetch patient details using AJAX and populate the update form
         $.ajax({
@@ -1046,6 +1080,11 @@
             },
             success: function(response) {
                 var patient = response.patient;
+                if (patient && patient.is_deceased) {
+                    var pFullName = ((patient.user && patient.user.name ? patient.user.name : '') + ' ' + (patient.user && patient.user.prenom ? patient.user.prenom : '')).trim();
+                    alertPatientDecede(pFullName, patient.deces_date, patient.deces_lieu);
+                    return;
+                }
                 var userName = (patient.user && patient.user.name) ? patient.user.name : '';
                 var userPrenom = (patient.user && patient.user.prenom) ? patient.user.prenom : '';
                 var userEmail = (patient.user && patient.user.email) ? patient.user.email : '';

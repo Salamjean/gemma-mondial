@@ -40,6 +40,15 @@
     </a>
 </li>
 
+<li class="{{ routeActive(['accountant.accounting.deposits', 'accountant.accounting.deposits_pdf']) }}">
+    <a href="{{ route('accountant.accounting.deposits') }}">
+        <i class="fa-solid fa-building-columns">
+            <span class="path1"></span><span class="path2"></span>
+        </i>
+        <span>Dépôts Bancaires</span>
+    </a>
+</li>
+
 <li class="{{ routeActive('accountant.accounting.journaux') }}">
     <a href="{{ route('accountant.accounting.journaux') }}">
         <i class="fa-solid fa-book-journal-whills">
@@ -81,6 +90,6 @@
         <i class="fa-solid fa-file-export text-success">
             <span class="path1"></span><span class="path2"></span>
         </i>
-        <span><strong>Passerelle Sage SAARI</strong></span>
+        <span><strong>Passerelle Sage</strong></span>
     </a>
 </li>

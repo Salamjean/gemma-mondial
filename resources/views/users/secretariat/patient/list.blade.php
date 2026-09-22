@@ -75,7 +75,12 @@
                                             @endif
 
                                         </td>
-                                        <td><i>{{ $patient->user->name ?? '' }} {{ $patient->user->prenom ?? '' }}</i></td>
+                                        <td>
+                                            <i>{{ $patient->user->name ?? '' }} {{ $patient->user->prenom ?? '' }}</i>
+                                            @if ($patient->isDeceased() || $patient->declarationDeces)
+                                                <span class="badge bg-danger text-white ms-1 fw-bold fs-11"><i class="fa-solid fa-skull-crossbones me-1"></i>DÉCÉDÉ</span>
+                                            @endif
+                                        </td>
                                         <td>{{ $patient->gender ?? '-' }}</td>
                                         <td>{{ $age }}</td>
                                         <td>{{ $patient->lieuNaissance->name ?? '-' }}</td>

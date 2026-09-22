@@ -86,6 +86,12 @@
                             CARTE DE SANTE ELECTRONIQUE
                         </div>
 
+                        @if ($patient->isDeceased() || $patient->declarationDeces)
+                            <div style="position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%) rotate(-20deg); border: 4px solid #dc3545; color: #dc3545; font-size: 30px; font-weight: 900; padding: 6px 22px; border-radius: 10px; text-transform: uppercase; letter-spacing: 3px; background: rgba(255, 255, 255, 0.92); box-shadow: 0 6px 20px rgba(220, 53, 69, 0.35); z-index: 99; pointer-events: none;">
+                                <i class="fa-solid fa-skull-crossbones me-2"></i> DÉCÉDÉ
+                            </div>
+                        @endif
+
                         <!-- FOOTER -->
                         <div class="card-footer" style="background-color: #3596f7;">
                             <div class="footer-logo"><img src="{{ asset('home/assets/img/logo/GEMMA.jpeg') }}"

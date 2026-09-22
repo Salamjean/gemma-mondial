@@ -40,6 +40,23 @@
             </a>
         </li>
     </ul>
+<li class="treeview {{ request()->routeIs('super.logs.*') ? 'active' : '' }}">
+    <a href="#">
+        <i class="fa fa-shield-alt">
+            <span class="path1"></span><span class="path2"></span><span class="path3"></span>
+        </i>
+        <span>Logs & Audit</span>
+        <span class="pull-right-container">
+            <i class="fa-solid fa-angle-right"></i>
+        </span>
+    </a>
+    <ul class="treeview-menu">
+        <li class="{{ request()->routeIs('super.logs.*') ? 'active' : '' }}">
+            <a href="{{ route('super.logs.index') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Journal & Erreurs
+            </a>
+        </li>
+    </ul>
 </li>
 </br></br></br></br></br>
 <footer class="main-footer">

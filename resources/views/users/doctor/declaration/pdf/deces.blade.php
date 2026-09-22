@@ -98,8 +98,8 @@
 
         <div class="section" style="margin-top: 30px;">
             <div class="section-content-nob">
-                <p>Formation Sanitaire : {{ $declaration->hospital->label }}</p>
-                <p>Ville/Commune de Décès : {{ $declaration->hospital->localiteH->name }}</p>
+                <p>Formation Sanitaire : {{ optional($declaration->hospital)->label ?? 'Centre Hospitalier' }}</p>
+                <p>Ville/Commune de Décès : {{ optional(optional($declaration->hospital)->localiteH)->name ?? optional($declaration->hospital)->localite ?? 'N/A' }}</p>
                 <p>Date : {{ Carbon\Carbon::parse($declaration->created_at)->format('d-m-Y') }}</p>
                 <p>Numéro de Déclaration : {{ $declaration->reference }}</p>
             </div>
@@ -108,48 +108,57 @@
         <div class="section" style="margin-top: 30px;">
             <div class="section-content">
                 <p class="content" style="margin-top: 20px;">Le {{ dateFr($declaration->created_at) }} à
-                    {{ heureFr($declaration->created_at) }} - {{ $declaration->hospital->label }}
+                    {{ heureFr($declaration->created_at) }} - {{ optional($declaration->hospital)->label ?? 'Centre Hospitalier' }}
                 </p>
-                @if ($declaration->deces->person == 'patient')
+                @if (optional($declaration->deces)->person == 'patient')
                     <p class="content" style="margin-top: 20px;">
 
-                        @if ($declaration->patient->gender == 'masculin')
+                        @if (optional($declaration->patient)->gender == 'masculin')
                             est décédé :
                         @else
                             est décédée :
                         @endif
-                        {{ $declaration->patient->user->name }} {{ $declaration->patient->user->prenom }}
-                        née le {{ $declaration->patient->birth_date }} à
-                        {{ $declaration->patient->birthPlace->name }},
+                        {{ optional(optional($declaration->patient)->user)->name }} {{ optional(optional($declaration->patient)->user)->prenom }}
+                        @if(optional($declaration->patient)->birth_date)
+                            né(e) le {{ $declaration->patient->birth_date }}
+                        @endif
+                        @if(optional(optional($declaration->patient)->birthPlace)->name)
+                            à {{ $declaration->patient->birthPlace->name }},
+                        @endif
 
 
                     </p>
                     <p class="content" style="margin-top: 20px;">
-                        Numéro de dossier médical : {{ $declaration->patient->code_patient }}
+                        Numéro de dossier médical : {{ optional($declaration->patient)->code_patient ?? 'N/A' }}
                     </p>
                     <p class="content" style="margin-top: 20px;">
                         Circonstance du décès :
-                        @if ($declaration->deces->deces_maternel == 'oui')
+                        @if (optional($declaration->deces)->deces_maternel == 'oui')
                             Accouchement Difficile
                         @else
-                            {{ $declaration->deces->cause_initiale }}
+                            {{ optional($declaration->deces)->cause_initiale ?? 'Non précisée' }}
                         @endif
                     </p>
                 @else
-                    @if ($declaration->deces->genre == 'masculin')
+                    @if (optional($declaration->deces)->genre == 'masculin')
                         est décédé le nouveau née de :
                     @else
                         est décédée le nouveau née de :
                     @endif
-                    {{ $declaration->patient->user->name }} {{ $declaration->patient->user->prenom }}
-                    née le {{ $declaration->patient->birth_date }} à {{ $declaration->patient->birthPlace->name }},
+                    {{ optional(optional($declaration->patient)->user)->name }} {{ optional(optional($declaration->patient)->user)->prenom }}
+                    @if(optional($declaration->patient)->birth_date)
+                        née le {{ $declaration->patient->birth_date }}
+                    @endif
+                    @if(optional(optional($declaration->patient)->birthPlace)->name)
+                        à {{ $declaration->patient->birthPlace->name }},
+                    @endif
 
                 @endif
 
                 <p class="content" style="margin-top: 20px;">
                     <br>
-                    Medecin déclarant(e) : {{ $declaration->doctor->user->name }}
-                    {{ $declaration->doctor->user->prenom }}
+                    Médecin déclarant(e) : {{ optional(optional($declaration->doctor)->user)->name }}
+                    {{ optional(optional($declaration->doctor)->user)->prenom }}
                 </p>
 
                 <br>
@@ -157,7 +166,7 @@
                 <br>
                 <div>
                     <p style="float: right;margin-right : 50px;">
-                        Fait à {{ $declaration->hospital->localite }} . Le {{ date('d-m-Y') }}.
+                        Fait à {{ optional($declaration->hospital)->localite ?? 'l\'hôpital' }} . Le {{ date('d-m-Y') }}.
                     </p>
                 </div>
                 <br>
@@ -166,12 +175,14 @@
                 <br>
                 <div>
                     <p style="float: right;margin-right : 150px;">
-                        @if ($declaration->doctor->typeAgent->libelle == 'Médecin')
+                        @if (optional(optional($declaration->doctor)->typeAgent)->libelle == 'Médecin')
                             Le Médecin :
-                        @elseif ($declaration->doctor->typeAgent->libelle == 'Sage femme')
+                        @elseif (optional(optional($declaration->doctor)->typeAgent)->libelle == 'Sage femme')
                             La sage femme :
-                        @elseif ($declaration->doctor->typeAgent->libelle == 'Infirmier')
-                            L'infirmier' :
+                        @elseif (optional(optional($declaration->doctor)->typeAgent)->libelle == 'Infirmier')
+                            L'infirmier :
+                        @else
+                            Le Praticien :
                         @endif
 
                     </p>
@@ -179,8 +190,8 @@
                     <br>
 
                     <div style="color: gray;float: right;margin-right : 150px;">
-                        {{ $declaration->doctor->user->name }}
-                        {{ $declaration->doctor->user->prenom }}
+                        {{ optional(optional($declaration->doctor)->user)->name }}
+                        {{ optional(optional($declaration->doctor)->user)->prenom }}
                     </div>
                 </div>
             </div>
