@@ -141,16 +141,17 @@ class PatientController extends Controller
             'prestation_service_id.required' => 'La sélection d\'une prestation médicale est obligatoire.',
         ];
 
-        $request->validate($rules, $messages);
-
         if ($request->filled('name_up')) {
-            $user->name = $request->name_up;
+            $user->name = strtoupper(trim($request->name_up));
         }
         if ($request->filled('prenom_up')) {
-            $user->prenom = $request->prenom_up;
+            $user->prenom = ucwords(trim($request->prenom_up));
         }
         if ($request->has('email_up')) {
             $user->email = $request->email_up;
+        }
+        if ($request->filled('lieu_de_naissance')) {
+            $patient->lieu_de_naissance_id = $request->lieu_de_naissance;
         }
         if ($request->filled('no_assurance_up')) {
             $patient->no_assurance = $request->no_assurance_up;
@@ -224,11 +225,14 @@ class PatientController extends Controller
         $user->save();
         $patient->save();
 
-        $hospitalId = optional(auth()->user()->secretariat)->hospital_id 
-            ?? optional(auth()->user()->infirmier)->hospital_id 
-            ?? optional(auth()->user()->doctor)->hospital_id 
-            ?? auth()->user()->hospital_id 
-            ?? (function_exists('getUserHospitalId') ? getUserHospitalId() : 1);
+        $authUser = auth()->user();
+        $rawHospitalId = optional(optional($authUser)->secretariat)->hospital_id 
+            ?? optional(optional($authUser)->infirmier)->hospital_id 
+            ?? optional(optional($authUser)->doctor)->hospital_id 
+            ?? optional($authUser)->hospital_id 
+            ?? (function_exists('getUserHospitalId') ? getUserHospitalId() : null);
+
+        $hospitalId = (!empty($rawHospitalId) && is_numeric($rawHospitalId)) ? (int)$rawHospitalId : ((!empty($patient->hospital_id) && is_numeric($patient->hospital_id)) ? (int)$patient->hospital_id : 1);
 
         //specifié le passage du patient dans l'hopital
         if (!PassagePatient::where('hospital_id', $hospitalId)->where('patient_id', $patient->id)->exists()) {
@@ -240,8 +244,8 @@ class PatientController extends Controller
             $passage->save();
         }
 
-        $secretaire = Secretaire::where('user_id', auth()->user()->id)->first();
-        $caissiere = Caissiere::where('user_id', auth()->user()->id)->first();
+        $secretaire = $authUser ? Secretaire::where('user_id', $authUser->id)->first() : null;
+        $caissiere = $authUser ? Caissiere::where('user_id', $authUser->id)->first() : null;
         $admissionHospitalId = optional(optional($secretaire)->hospital)->id 
             ?? optional(optional($caissiere)->hospital)->id 
             ?? $hospitalId;
@@ -446,46 +450,72 @@ class PatientController extends Controller
 
         $data = Patient::query();
 
-        if ($code_patient) {
-            $data->where('code_patient', 'like', '%' . trim($code_patient) . '%');
+        if (!empty($code_patient)) {
+            $cleanCode = trim(str_replace(' ', '', $code_patient));
+            $data->where('code_patient', 'like', '%' . $cleanCode . '%');
         }
 
-        if ($telephone) {
-            $data->where('telephone', $telephone);
+        if (!empty($telephone)) {
+            $rawTel = trim($telephone);
+            $cleanTel = preg_replace('/[^0-9]/', '', $rawTel);
+            if (str_starts_with($cleanTel, '225') && strlen($cleanTel) > 3) {
+                $cleanTel = substr($cleanTel, 3);
+            }
+            $data->where(function ($q) use ($rawTel, $cleanTel) {
+                $q->where('telephone', 'like', '%' . $rawTel . '%')
+                  ->orWhere('telephone_personne_cas_urgence', 'like', '%' . $rawTel . '%');
+                if (!empty($cleanTel)) {
+                    $q->orWhere('telephone', 'like', '%' . $cleanTel . '%')
+                      ->orWhere('telephone_personne_cas_urgence', 'like', '%' . $cleanTel . '%');
+                }
+            });
         }
 
-        if ($num_cmu) {
-            $data->where('num_cmu', 'like', '%' . $num_cmu . '%');
+        if (!empty($num_cmu)) {
+            $data->where('num_cmu', 'like', '%' . trim($num_cmu) . '%');
         }
 
-        if ($fullname) {
-            $terms = array_values(array_filter(explode(" ", trim($request->input('fullname')))));
+        if (!empty($fullname)) {
+            $terms = array_values(array_filter(explode(" ", trim($fullname))));
             if (count($terms) >= 2) {
                 $first = $terms[0];
                 $second = implode(" ", array_slice($terms, 1));
-                $data->whereHas('user', function ($q) use ($first, $second) {
-                    $q->where(function ($sub) use ($first, $second) {
-                        $sub->where('name', 'like', '%' . $first . '%')
-                            ->where('prenom', 'like', '%' . $second . '%');
-                    })->orWhere(function ($sub) use ($first, $second) {
-                        $sub->where('name', 'like', '%' . $second . '%')
-                            ->where('prenom', 'like', '%' . $first . '%');
-                    });
+                $data->where(function ($query) use ($first, $second) {
+                    $query->whereHas('user', function ($q) use ($first, $second) {
+                        $q->where(function ($sub) use ($first, $second) {
+                            $sub->where('name', 'like', '%' . $first . '%')
+                                ->where('prenom', 'like', '%' . $second . '%');
+                        })->orWhere(function ($sub) use ($first, $second) {
+                            $sub->where('name', 'like', '%' . $second . '%')
+                                ->where('prenom', 'like', '%' . $first . '%');
+                        });
+                    })->orWhere('nom_personne_cas_urgence', 'like', '%' . $first . '%')
+                      ->orWhere('nom_personne_cas_urgence', 'like', '%' . $second . '%')
+                      ->orWhereHas('mere.user', function ($mq) use ($first, $second) {
+                          $mq->where('name', 'like', '%' . $first . '%')
+                             ->orWhere('name', 'like', '%' . $second . '%');
+                      });
                 });
             } else if (count($terms) === 1) {
                 $term = $terms[0];
-                $data->whereHas('user', function ($q) use ($term) {
-                    $q->where('name', 'like', '%' . $term . '%')
-                        ->orWhere('prenom', 'like', '%' . $term . '%');
+                $data->where(function ($query) use ($term) {
+                    $query->whereHas('user', function ($q) use ($term) {
+                        $q->where('name', 'like', '%' . $term . '%')
+                            ->orWhere('prenom', 'like', '%' . $term . '%');
+                    })->orWhere('nom_personne_cas_urgence', 'like', '%' . $term . '%')
+                      ->orWhereHas('mere.user', function ($mq) use ($term) {
+                          $mq->where('name', 'like', '%' . $term . '%')
+                             ->orWhere('prenom', 'like', '%' . $term . '%');
+                      });
                 });
             }
         }
 
-        if ($birth_date) {
-            $data->where('birth_date', $birth_date);
+        if (!empty($birth_date)) {
+            $data->where('birth_date', trim($birth_date));
         }
 
-        $patients = $data->with(['user', 'lieuNaissance', 'residenceActuelle', 'residenceHabituelle', 'declarationDeces.deces'])->get();
+        $patients = $data->with(['user', 'mere.user', 'lieuNaissance', 'residenceActuelle', 'residenceHabituelle', 'declarationDeces.deces'])->get();
 
         // Audit Trail pour la recherche de patient
         $searchTerms = array_filter([

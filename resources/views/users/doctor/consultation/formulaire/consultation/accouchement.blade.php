@@ -618,11 +618,11 @@
                                 <div class="col-md-4">
                                     <div class="form-group">
                                         <label class="form-label"><b>Resultat de test VIH :</b></label>
-									  <select class="form-select" id="resultat_test_positif" name="resultat_test_positif">
-                                        <option value="" selected="selected">---</option>
-                                        <option value="Positif">Positif</option>
-                                        <option value="Négatif">Négatif</option>
-                                        <option value="NA">NA</option>
+									  <select class="form-select" id="resultat_test_vih" name="resultat_test_vih">
+                                        <option value="" {{ ($consultation->registre && optional($consultation->registre->registreAccouchement)->resultat_test_vih == '') ? 'selected' : '' }}>---</option>
+                                        <option value="Positif" {{ ($consultation->registre && optional($consultation->registre->registreAccouchement)->resultat_test_vih == 'Positif') ? 'selected' : '' }}>Positif</option>
+                                        <option value="Négatif" {{ ($consultation->registre && optional($consultation->registre->registreAccouchement)->resultat_test_vih == 'Négatif') ? 'selected' : '' }}>Négatif</option>
+                                        <option value="NA" {{ ($consultation->registre && optional($consultation->registre->registreAccouchement)->resultat_test_vih == 'NA') ? 'selected' : '' }}>NA</option>
 									  </select>
 									</div>
 								</div>
@@ -1133,17 +1133,15 @@
                                                     </div>
                                                 </div>
                                                 <div class="col-md-4">
-                                                    <div class="col-md-4">
-                                                        <div class="form-group">
-                                                            <label for="issue_consultation" class="form-label"> <b>Mode de sortie : </b></label>
-                                                            <div class="c-inputs-stacked">
-                                                                <input type="radio" id="sortie_couche" value="suite-couche" name="mode_sortie" required>
-                                                                <label for="sortie_couche">Suites des couches</label>
-                                                                <input type="radio" id="sortie_domicile" value="Domicile" name="mode_sortie">
-                                                                <label for="sortie_domicile">Domiciles</label>
-                                                                <input type="radio" id="sortie_deces" value="Décédé" name="mode_sortie">
-                                                                <label for="sortie_deces">Décédée</label>
-                                                            </div>
+                                                    <div class="form-group">
+                                                        <label for="issue_consultation" class="form-label"> <b>Mode de sortie : </b></label>
+                                                        <div class="c-inputs-stacked">
+                                                            <input type="radio" id="sortie_couche" value="suite-couche" name="mode_sortie" checked required>
+                                                            <label for="sortie_couche">Suites des couches</label>
+                                                            <input type="radio" id="sortie_domicile" value="sortie" name="mode_sortie">
+                                                            <label for="sortie_domicile">Domicile (Sortie)</label>
+                                                            <input type="radio" id="sortie_deces" value="declaration-deces-patient" name="mode_sortie">
+                                                            <label for="sortie_deces">Décédée</label>
                                                         </div>
                                                     </div>                                                    
                                                 </div>

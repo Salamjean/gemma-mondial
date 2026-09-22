@@ -2,41 +2,23 @@
 
 @section('content')
     <div id="formIssue">
+        @php
+            $normalizedType = strtolower(trim((string) $type));
+        @endphp
 
-        @if ($type == 'declaration-naissance')
+        @if ($normalizedType == 'declaration-naissance')
             @include('users.doctor.consultation.formulaire.issue.naissance')
-        @elseif ($type == 'declaration-deces-patient')
+        @elseif ($normalizedType == 'declaration-deces-patient' || in_array($normalizedType, ['décédé', 'décédée', 'decede', 'decedee', 'deces']))
             @include('users.doctor.consultation.formulaire.issue.deces', ['person' => 'patient'])
-        @elseif ($type == 'declaration-deces-enfant')
+        @elseif ($normalizedType == 'declaration-deces-enfant')
             @include('users.doctor.consultation.formulaire.issue.deces', ['person' => 'enfant'])
-        @elseif ($type == 'hospitalisation')
+        @elseif ($normalizedType == 'hospitalisation' || in_array($normalizedType, ['hospitalise', 'hospitalisé', 'hospitalisée']))
             @include('users.doctor.consultation.formulaire.issue.hospitalisation')
-        @elseif ($type == 'observation')
+        @elseif ($normalizedType == 'observation')
             @include('users.doctor.consultation.formulaire.issue.hospitalisation')
-        @elseif ($type == 'sortie')
-            @include('users.doctor.consultation.formulaire.issue.justification')
-        @elseif ($type == 'refere-interne')
-            @include('users.doctor.consultation.formulaire.issue.justification')
-        @elseif ($type == 'refere-externe')
-            @include('users.doctor.consultation.formulaire.issue.justification')
-        @elseif ($type == 'cas-presume-tb-resume')
-            @include('users.doctor.consultation.formulaire.issue.justification')
-        @elseif ($type == 'a-revoir')
-            @include('users.doctor.consultation.formulaire.issue.justification')
-        @elseif ($type == 'autre')
-            @include('users.doctor.consultation.formulaire.issue.justification')
-        @elseif ($type == 'sortir-contre-avis-medical')
-            @include('users.doctor.consultation.formulaire.issue.justification')
-        @elseif ($type == 'suite-couche')
-            @include('users.doctor.consultation.formulaire.issue.justification')
-        @elseif ($type == 'grossesse-normale')
-            @include('users.doctor.consultation.formulaire.issue.justification')
-        @elseif ($type == 'grossesse-risque')
-            @include('users.doctor.consultation.formulaire.issue.justification')
         @else
-            <div style="font-size: 20px;">Formulaire introuvable...</div>
+            @include('users.doctor.consultation.formulaire.issue.justification')
         @endif
-
     </div>
 
     <div id="prescription">

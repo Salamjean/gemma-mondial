@@ -50,7 +50,7 @@
         <li>
             <a href="{{ route('doctor.declaration.deces.direct') }}"
                 class="{{ routeActive('doctor.declaration.deces.direct') }}">
-                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i><span class="text-danger fw-bold"><i class="fa-solid fa-circle-plus me-1"></i>Enregistrer un décès</span>
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i><span class="text-danger fw-bold">Enregistrer un décès</span>
             </a>
         </li>
         <li>

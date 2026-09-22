@@ -20,11 +20,11 @@
                         <table id="example" class="table table-striped table-hover display nowrap margin-top-10 w-p100">
                             <thead>
                                 <tr>
-                                    <th class="bb-2">N°</th>
-                                    <th class="bb-2">Photo</th>
-                                    <th class="bb-2">Code patient</th>
-                                    <th class="bb-2">Nom & Prenoms</th>
-                                    <th class="bb-2">Genre de l'enfant</th>
+                                    <th class="bb-2">N° Certificat (CMN)</th>
+                                    <th class="bb-2">Photo Mère</th>
+                                    <th class="bb-2">DM Enfant (Nouveau-né)</th>
+                                    <th class="bb-2">Mère (DM & Nom)</th>
+                                    <th class="bb-2">Genre Enfant</th>
                                     <th class="bb-2">Nombre</th>
                                     <th class="bb-2 text-center">Actions</th>
                                 </tr>
@@ -33,7 +33,9 @@
 
                                 @forelse ($declarations as $item)
                                     <tr>
-                                        <td>{{ $item->reference }}</td>
+                                        <td>
+                                            <span class="badge badge-primary">{{ $item->reference }}</span>
+                                        </td>
                                         <td>
 
                                                 @if ($item->patient->img_url != null)
@@ -49,23 +51,18 @@
 
                                         </td>
                                         <td>
-                                            <b>
-                                                <i>
-
-                                                        {{ $item->patient->code_patient }}
-
-                                                </i>
-                                            </b>
+                                            <span class="badge badge-success fw-bold fs-7">
+                                                {{ optional(optional($item->naissance)->enfant)->code_patient ?? '—' }}
+                                            </span>
                                         </td>
 
                                         <td>
-
-                                                {{ $item->patient->user->name }} {{ $item->patient->user->prenom }}
-
+                                            <b>{{ optional(optional($item->patient)->user)->name }} {{ optional(optional($item->patient)->user)->prenom }}</b><br>
+                                            <small class="text-muted">{{ optional($item->patient)->code_patient }}</small>
                                         </td>
                                         <td>
 
-                                            {{ $item->naissance->genre }}
+                                            {{ optional($item->naissance)->genre ?? 'N/A' }}
 
                                         </td>
                                         <td>{{ $item->naissance->nombre }} enfant (s)</td>

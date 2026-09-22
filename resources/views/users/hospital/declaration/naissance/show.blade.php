@@ -35,37 +35,37 @@
                                 <div class="row">
                                     <div class="col-sm-6">
                                         <div class="decalration-header">
-                                            <div class="declaration-header-title">Numéro de certificat : </div>
+                                            <div class="declaration-header-title">Numéro de certificat médical (CMN) :</div>
                                             <h5 class="declaration-header-description">
-                                                {{ $declaration->reference }}
+                                                <span class="badge badge-primary fs-6">{{ $declaration->reference }}</span>
                                             </h5>
                                         </div>
                                     </div>
                                     <div class="col-sm-6">
                                         <div class="decalration-header">
-                                            <div class="declaration-header-title">Numéro de declaration de naissance :</div>
+                                            <div class="declaration-header-title">Numéro de déclaration (DN) :</div>
                                             <h5 class="declaration-header-description">
-
-                                                {{ $declaration->naissance->reference }}
+                                                <span class="badge badge-info fs-6">{{ optional($declaration->naissance)->reference ?? '-' }}</span>
                                             </h5>
                                         </div>
                                     </div>
                                     <div class="col-sm-6">
                                         <div class="decalration-header">
-                                                <div class="declaration-header-title">Nom & Prénom :</div>
-                                                <h5 class="declaration-header-description">
-                                                    {{ $declaration->patient->user->name }} {{ $declaration->patient->user->prenom }}
-                                                </h5>
-
+                                            <div class="declaration-header-title">Code DM Nouveau-né (Enfant) :</div>
+                                            <h5 class="declaration-header-description">
+                                                <span class="badge badge-success fs-6 fw-bold">
+                                                    {{ optional(optional($declaration->naissance)->enfant)->code_patient ?? 'Généré à la déclaration' }}
+                                                </span>
+                                            </h5>
                                         </div>
                                     </div>
                                     <div class="col-sm-6">
                                         <div class="decalration-header">
-                                                <div class="declaration-header-title">Code du patient :</div>
-                                                <h5 class="declaration-header-description">
-                                                    {{ $declaration->patient->code_patient }}
-                                                </h5>
-
+                                            <div class="declaration-header-title">Mère (Code DM & Nom) :</div>
+                                            <h5 class="declaration-header-description">
+                                                <b>{{ optional(optional($declaration->patient)->user)->name }} {{ optional(optional($declaration->patient)->user)->prenom }}</b>
+                                                <span class="badge badge-secondary fs-7">({{ optional($declaration->patient)->code_patient }})</span>
+                                            </h5>
                                         </div>
                                     </div>
                                     <div class="col-sm-6">

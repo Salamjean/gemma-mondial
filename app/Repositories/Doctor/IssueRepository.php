@@ -25,46 +25,64 @@ class IssueRepository
 
     public function formulaireIssue($name)
     {
+        $cleanName = strtolower(trim((string) $name));
         $title = 'Formulaire ';
-        switch ($name) {
+
+        switch ($cleanName) {
             case 'declaration-naissance':
-                $title .= 'de declaration de naissance';
+                $title .= 'de déclaration de naissance';
                 break;
             case 'declaration-deces-patient':
-                $title .= 'de declaration de décès du patient';
+            case 'décédé':
+            case 'décédée':
+            case 'decede':
+            case 'decedee':
+            case 'deces':
+                $title .= 'de déclaration de décès de la patiente';
                 break;
             case 'declaration-deces-enfant':
-                $title .= 'de declaration de décès du nouveau né';
+                $title .= 'de déclaration de décès du nouveau-né';
                 break;
             case 'hospitalisation':
+            case 'hospitalise':
+            case 'hospitalisé':
+            case 'hospitalisée':
                 $title .= 'd\'hospitalisation';
                 break;
             case 'observation':
-                $title .= 'de mis en observation';
+                $title .= 'de mise en observation';
                 break;
             case 'suite-couche':
-                $title .= 'de suite de couche';
+            case 'suites-couches':
+            case 'suites des couches':
+                $title .= 'de suites de couches';
                 break;
             case 'sortie':
-                $title .= 'de sortie du patient';
+            case 'domicile':
+            case 'domiciles':
+                $title .= 'de sortie de la patiente';
                 break;
             case 'refere-interne':
-                $title .= 'de reference interne';
+            case 'refere_interne':
+            case 'référée':
+                $title .= 'de référence interne';
                 break;
             case 'refere-externe':
-                $title .= 'de reference externe';
+            case 'refere_externe':
+                $title .= 'de référence externe';
                 break;
             case 'cas-presume-tb-resume':
-                $title .= 'de cas reprumé TB résumé';
+                $title .= 'de cas présumé TB résumé';
                 break;
             case 'a-revoir':
+            case 'revoir':
                 $title .= 'à revoir';
                 break;
             case 'autre':
-                $title .= '';
+                $title .= 'complémentaire';
                 break;
             case 'sortir-contre-avis-medical':
-                $title .= '';
+                $title .= 'de sortie contre avis médical';
                 break;
             case 'grossesse-normale':
                 $title .= 'de grossesse normale';
@@ -74,8 +92,8 @@ class IssueRepository
                 break;
 
             default:
-                $title = 'introuvable';
-                return  $title;
+                $title .= 'de validation de sortie';
+                break;
         }
 
         return $title;

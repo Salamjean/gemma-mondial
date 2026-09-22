@@ -48,10 +48,9 @@
                                     </div>
                                     <div class="col-sm-6">
                                         <div class="decalration-header">
-                                            <div class="declaration-header-title">Numéro de declaration de décès :</div>
+                                            <div class="declaration-header-title">Numéro de déclaration de décès :</div>
                                             <h5 class="declaration-header-description">
-
-                                                {{ $declaration->deces->reference }}
+                                                {{ optional($declaration->deces)->reference ?? 'N/A' }}
                                             </h5>
                                         </div>
                                     </div>
@@ -59,87 +58,77 @@
                                         <div class="decalration-header">
                                                 <div class="declaration-header-title">Nom & Prénom :</div>
                                                 <h5 class="declaration-header-description">
-                                                    {{ $declaration->patient->user->name }} {{ $declaration->patient->user->prenom }}
+                                                    {{ optional(optional($declaration->patient)->user)->name ?? 'Défunt' }} {{ optional(optional($declaration->patient)->user)->prenom ?? '' }}
                                                 </h5>
-
                                         </div>
                                     </div>
                                     <div class="col-sm-6">
                                         <div class="decalration-header">
                                                 <div class="declaration-header-title">Code du patient :</div>
                                                 <h5 class="declaration-header-description">
-                                                    {{ $declaration->patient->code_patient }}
+                                                    {{ optional($declaration->patient)->code_patient ?? 'N/A' }}
                                                 </h5>
-
                                         </div>
                                     </div>
                                     <div class="col-sm-6">
                                         <div class="decalration-header">
-                                            <div class="declaration-header-title"></div>
+                                            <div class="declaration-header-title">Résidence habituelle :</div>
                                             <h5 class="declaration-header-description">
-                                                    <div class="declaration-header-title">Residence habituelle :</div>
-                                                    <h5 class="declaration-header-description">
-                                                        {{ $declaration->patient->habitualResidence->name }}
-                                                    </h5>
-
+                                                {{ optional(optional($declaration->patient)->habitualResidence)->name ?? optional($declaration->patient)->address ?? 'Non renseignée' }}
                                             </h5>
                                         </div>
                                     </div>
                                     <div class="col-sm-6">
                                         <div class="decalration-header">
-                                            <div class="declaration-header-title">Millieu de residence habituelle :</div>
+                                            <div class="declaration-header-title">Milieu de résidence :</div>
                                             <h5 class="declaration-header-description">
-
-                                                {{ $declaration->milieu_residence }}
+                                                {{ optional($declaration->deces)->milieu_residence ?? 'Urbain' }}
                                             </h5>
                                         </div>
                                     </div>
                                     <div class="col-sm-6">
                                         <div class="decalration-header">
-                                            <div class="declaration-header-title">Date decès :</div>
+                                            <div class="declaration-header-title">Date décès :</div>
                                             <h5 class="declaration-header-description">
-
-                                                {{ \Carbon\Carbon::parse($declaration->date)->format('d/m/Y') }}
+                                                {{ !empty(optional($declaration->deces)->date) ? \Carbon\Carbon::parse($declaration->deces->date)->format('d/m/Y') : \Carbon\Carbon::parse($declaration->created_at)->format('d/m/Y') }}
                                             </h5>
                                         </div>
                                     </div>
                                     <div class="col-sm-6">
                                         <div class="decalration-header">
-                                            <div class="declaration-header-title">Heure decès :</div>
+                                            <div class="declaration-header-title">Heure décès :</div>
                                             <h5 class="declaration-header-description">
-
-                                                {{ \Carbon\Carbon::parse($declaration->heure)->format('H:i') }}
+                                                {{ !empty(optional($declaration->deces)->heure) ? \Carbon\Carbon::parse($declaration->deces->heure)->format('H:i') : 'N/A' }}
                                             </h5>
                                         </div>
                                     </div>
 
-                                        <div class="col-sm-6">
-                                            <div class="declaration-header-title">Age du patient :</div>
-                                            <div class="decalration-header">
-                                                <h5 class="declaration-header-description">
-                                                     {{ $declaration->deces->age }}
-                                                </h5>
-                                            </div>
+                                    <div class="col-sm-6">
+                                        <div class="declaration-header-title">Âge du patient :</div>
+                                        <div class="decalration-header">
+                                            <h5 class="declaration-header-description">
+                                                 {{ optional($declaration->deces)->age !== null ? optional($declaration->deces)->age . ' an(s)' : 'N/A' }}
+                                            </h5>
                                         </div>
+                                    </div>
 
                                     <div class="col-sm-6">
                                         <div class="decalration-header">
-                                            <div class="declaration-header-title">Lieu de decès :</div>
+                                            <div class="declaration-header-title">Lieu de décès :</div>
                                             <h5 class="declaration-header-description">
-
-                                                {{ $declaration->deces->lieu }}
+                                                {{ optional($declaration->deces)->lieu ?? 'N/A' }}
                                             </h5>
                                         </div>
                                     </div>
 
-                                        <div class="col-sm-6">
-                                            <div class="decalration-header">
-                                                <div class="declaration-header-title">Décès maternel :</div>
-                                                <h5 class="declaration-header-description">
-                                                     {{ $declaration->deces->deces_maternel }}
-                                                </h5>
-                                            </div>
+                                    <div class="col-sm-6">
+                                        <div class="decalration-header">
+                                            <div class="declaration-header-title">Décès maternel :</div>
+                                            <h5 class="declaration-header-description">
+                                                 {{ ucfirst(optional($declaration->deces)->deces_maternel ?? 'non') }}
+                                            </h5>
                                         </div>
+                                    </div>
 
                                     <div class="col-sm-12">
 

@@ -63,11 +63,28 @@
 
                     <input type="hidden" name="id" value="{{ $patient->id }}">
 
+                    @php
+                        $isNewborn = str_contains(strtoupper($patient->user->name ?? ''), 'NOUVEAU');
+                    @endphp
+
                     <!-- Step 1 : Données sur le Patient -->
                     <div class="box bb-3 border-warning pe-95 pb-20 ps-95 pt-20 bg-color">
                         <div class="box-body ribbon-box">
                             <div class="ribbon ribbon-dark rounded5">Données sur le Patient</div>
                             <br /><br /><br />
+
+                            @if ($isNewborn)
+                                <div class="alert alert-warning border-0 rounded-10 shadow-sm p-15 mb-20">
+                                    <i class="fa-solid fa-baby-carriage fs-20 text-warning me-2"></i>
+                                    <strong>Dossier Nouveau-né :</strong> Vous pouvez renseigner le <strong>Nom</strong>, <strong>Prénom(s)</strong> et les coordonnées de l'enfant. Conformément à la déclaration de naissance, le <strong>Sexe</strong> et la <strong>Date de naissance</strong> restent strictement verrouillés.
+                                </div>
+                            @else
+                                <div class="alert alert-info border-0 rounded-10 shadow-sm p-15 mb-20">
+                                    <i class="fa-solid fa-user-pen fs-20 text-info me-2"></i>
+                                    <strong>Modification des informations :</strong> Vous pouvez modifier le <strong>Nom</strong>, <strong>Prénom(s)</strong>, <strong>Email</strong> et les coordonnées du patient. Conformément au dossier médical, le <strong>Sexe</strong> et la <strong>Date de naissance</strong> restent verrouillés.
+                                </div>
+                            @endif
+
                             <div class="box bb-3 border-danger p-10">
                                 <div class="row">
                                     <div class="col-md-3">
@@ -75,7 +92,9 @@
                                             <label for="name_up" class="form-label"> <b>Nom : </b> <span class="danger">*</span> </label>
                                             <div class="input-group mb-3">
                                                 <span class="input-group-text"><i class="ti-user"></i></span>
-                                                <input type="text" name="name_up" class="form-control" placeholder="Nom" id="name_up" value="{{ old('name_up', $patient->user->name) }}" required oninput="this.value = this.value.toUpperCase()">
+                                                <input type="text" name="name_up" class="form-control" placeholder="Nom" id="name_up" 
+                                                    value="{{ old('name_up', $patient->user->name) }}" required 
+                                                    oninput="this.value = this.value.toUpperCase()">
                                             </div>
                                         </div>
                                     </div>
@@ -84,7 +103,9 @@
                                             <label for="prenom_up" class="form-label"> <b>Prénom(s) : </b> <span class="danger">*</span> </label>
                                             <div class="input-group mb-3">
                                                 <span class="input-group-text"><i class="ti-user"></i></span>
-                                                <input type="text" name="prenom_up" class="form-control" placeholder="Prénom(s)" id="prenom_up" value="{{ old('prenom_up', $patient->user->prenom) }}" required oninput="this.value = this.value.toUpperCase()">
+                                                <input type="text" name="prenom_up" class="form-control" placeholder="Prénom(s)" id="prenom_up" 
+                                                    value="{{ old('prenom_up', $patient->user->prenom) }}" required 
+                                                    oninput="this.value = this.value.toUpperCase()">
                                             </div>
                                         </div>
                                     </div>
@@ -93,7 +114,8 @@
                                             <label for="email_up" class="form-label"> <b>E-mail : </b> </label>
                                             <div class="input-group mb-3">
                                                 <span class="input-group-text"><i class="ti-email"></i></span>
-                                                <input type="email" name="email_up" class="form-control" id="email_up" placeholder="Email" value="{{ old('email_up', $patient->user->email) }}">
+                                                <input type="email" name="email_up" class="form-control" id="email_up" placeholder="Email" 
+                                                    value="{{ old('email_up', $patient->user->email) }}">
                                             </div>
                                         </div>
                                     </div>
@@ -102,21 +124,21 @@
                                 <div class="row">
                                     <div class="col-md-2">
                                         <div class="form-group">
-                                            <label for="gender_up" class="form-label"> <b>Sexe : </b> <span class="danger">*</span> </label>
-                                            <select class="form-select" id="gender_up" name="gender_up">
-                                                <option value="masculin" {{ strtolower($patient->gender) == 'masculin' ? 'selected' : '' }}>Masculin</option>
-                                                <option value="feminin" {{ strtolower($patient->gender) == 'feminin' ? 'selected' : '' }}>Feminin</option>
-                                            </select>
+                                            <label for="gender_up" class="form-label"> <b>Sexe : </b> <span class="text-muted fs-11">(Verrouillé)</span> </label>
+                                            <input type="text" class="form-control" value="{{ ucfirst($patient->gender) }}" readonly style="background-color: #f1f3f5; cursor: not-allowed;">
+                                            <input type="hidden" name="gender_up" value="{{ $patient->gender }}">
                                         </div>
                                     </div>
                                     <div class="col-md-4">
                                         <div class="form-group">
-                                            <label for="birth_date_up" class="form-label"> <b>Date de naissance : </b> <span class="danger">*</span> </label>
+                                            <label for="birth_date_up" class="form-label"> <b>Date de naissance : </b> <span class="text-muted fs-11">(Verrouillée)</span> </label>
                                             <div class="input-group">
                                                 <div class="input-group-addon">
                                                     <i class="fa fa-calendar"></i>
                                                 </div>
-                                                <input type="text" name="birth_date_up" id="birth_date_up" class="form-control" value="{{ $patient->birth_date }}" data-inputmask="'alias': 'dd/mm/yyyy'" data-mask="">
+                                                <input type="text" name="birth_date_up" id="birth_date_up" class="form-control" 
+                                                    value="{{ $patient->birth_date }}" data-inputmask="'alias': 'dd/mm/yyyy'" data-mask=""
+                                                    readonly style="background-color: #f1f3f5; cursor: not-allowed;">
                                             </div>
                                         </div>
                                     </div>
@@ -125,7 +147,7 @@
                                             <label for="telephone" class="form-label"> <b>Téléphone : </b> <span class="danger">*</span> </label>
                                             <div class="d-flex">
                                                 <input type="text" name="prefix_telephone" id="prefix_telephone" class="form-control text-center fw-bold bg-white text-dark" style="max-width: 80px; border-top-right-radius: 0; border-bottom-right-radius: 0;" value="+225" placeholder="+225" title="Préfixe / Indicatif pays">
-                                                <input type="text" style="border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: none;" name="telephone" id="telephone" class="form-control" value="{{ old('telephone', $patient->telephone) }}" placeholder="0101010101" required>
+                                                <input type="text" style="border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: none;" name="telephone" id="telephone" class="form-control fw-bold border-primary" value="{{ old('telephone', $patient->telephone) }}" placeholder="0101010101" required>
                                             </div>
                                         </div>
                                     </div>

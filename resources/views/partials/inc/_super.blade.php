@@ -40,6 +40,29 @@
             </a>
         </li>
     </ul>
+<li class="treeview {{ request()->routeIs('super.ministere.*') ? 'active' : '' }}">
+    <a href="#">
+        <i class="fa fa-landmark">
+            <span class="path1"></span><span class="path2"></span><span class="path3"></span>
+        </i>
+        <span>Ministère de la Santé</span>
+        <span class="pull-right-container">
+            <i class="fa-solid fa-angle-right"></i>
+        </span>
+    </a>
+    <ul class="treeview-menu">
+        <li class="{{ request()->routeIs('super.ministere.index') ? 'active' : '' }}">
+            <a href="{{ route('super.ministere.index') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Liste des comptes
+            </a>
+        </li>
+        <li class="{{ request()->routeIs('super.ministere.add') ? 'active' : '' }}">
+            <a href="{{ route('super.ministere.add') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Inscrire un compte
+            </a>
+        </li>
+    </ul>
+</li>
 <li class="treeview {{ request()->routeIs('super.logs.*') ? 'active' : '' }}">
     <a href="#">
         <i class="fa fa-shield-alt">
@@ -58,6 +81,7 @@
         </li>
     </ul>
 </li>
+
 </br></br></br></br></br>
 <footer class="main-footer">
 			  <div class="sidebar-widgets">

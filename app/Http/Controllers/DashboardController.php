@@ -29,6 +29,9 @@ class DashboardController extends Controller
 
     public function index()
     {
+        if ($this->userAuth()['user']['role_as'] == 'ministere') {
+            return redirect()->route('ministere.dashboard');
+        }
 
         if ($this->userAuth()['user']['role_as'] == 'super') {
 

@@ -63,6 +63,16 @@ Route::middleware(['auth'])->group(function() {
                 Route::get('export-audit-excel', 'LogController@exportAuditExcel')->name('export_audit_excel');
             });
 
+            Route::prefix('ministere')->name('ministere.')->group(function () {
+                Route::get('/', 'MinistereController@index')->name('index');
+                Route::get('add', 'MinistereController@add')->name('add');
+                Route::post('store', 'MinistereController@store')->name('store');
+                Route::get('edit/{id}', 'MinistereController@edit')->name('edit');
+                Route::put('update/{id}', 'MinistereController@update')->name('update');
+                Route::get('status/{id}', 'MinistereController@toggleStatus')->name('status');
+                Route::delete('delete/{id}', 'MinistereController@destroy')->name('destroy');
+            });
+
         });
     });
 

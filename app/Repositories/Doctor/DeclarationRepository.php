@@ -87,10 +87,9 @@ class DeclarationRepository
             $user = new User();
             $user->name = strtoupper(trim($request->nom));
             $user->prenom = ucwords(trim($request->prenom ?? ''));
-            $user->phone = $request->telephone ?? '0000000000';
             $user->email = 'deces_' . time() . '_' . rand(100, 999) . '@hopital.loc';
             $user->password = Hash::make('deces' . rand(1000, 9999));
-            $user->role_id = 4; // Patient
+            $user->role_as = 'patient';
             $user->save();
 
             // Date de naissance
@@ -115,8 +114,10 @@ class DeclarationRepository
             $patient->doctor_id = $doctorId;
             $patient->gender = $request->genre;
             $patient->birth_date = $birthDate;
+            $patient->telephone = $request->telephone ?? null;
             $patient->profession = $request->profession ?? null;
             $patient->address = $request->lieu_residence ?? null;
+            $patient->nbre_enfant = 0;
             $patient->status = 0; // Défunt
             $patient->save();
 
@@ -355,9 +356,12 @@ class DeclarationRepository
 
             //create user
             $user = User::create([
+                "name" => "NOUVEAU-NÉ DE " . strtoupper($patient->user->name ?? ''),
+                "prenom" => $patient->user->prenom ?? '',
                 "mere_id" => $patient->id,
                 "email" => strtolower("$patient->code_patient$patient->nbre_enfant@patient.com"),
                 "password" => Hash::make('1234'),
+                "role_as" => 'patient',
             ]);
 
             $data = $request->validate([
@@ -379,8 +383,9 @@ class DeclarationRepository
                 'code_patient' => "DM$dataNaissRef$countNaissRef"."225",
                 'birth_date' => $request->date,
                 'lieu_de_naissance_id' =>  Auth()->user()->doctor->hospital->localite,
+                'telephone' => $patient->telephone,
                 'nbre_enfant' => 0,
-                'nom_personne_cas_urgence' => $patient->user->name . ' ' . $patient->user->prenom,
+                'nom_personne_cas_urgence' => ($patient->user->name ?? '') . ' ' . ($patient->user->prenom ?? ''),
                 'telephone_personne_cas_urgence' => $patient->telephone,
                 'lien_personne_cas_urgence' => "Mère",
                 'status' => 1,

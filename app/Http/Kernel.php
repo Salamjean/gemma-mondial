@@ -83,5 +83,6 @@ class Kernel extends HttpKernel
         'isPatient' => \App\Http\Middleware\RedirectIfNotPatientMiddleware::class,
         'isMaternite' => \App\Http\Middleware\MaterniteMiddleware::class,
         'isPharmacist' => \App\Http\Middleware\PharmacistMiddleware::class,
+        'isMinistere' => \App\Http\Middleware\RedirectIfNotMinistereMiddleware::class,
     ];
 }

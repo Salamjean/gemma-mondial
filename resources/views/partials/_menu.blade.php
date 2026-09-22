@@ -184,7 +184,11 @@
                         @include('partials.inc._pharmacist')
                     @endif
 
-                    @if (auth()->user()->role_as !== 'super')
+                    @if (auth()->user()->role_as === 'ministere')
+                        @include('partials.inc._ministere')
+                    @endif
+
+                    @if (auth()->user()->role_as !== 'super' && auth()->user()->role_as !== 'ministere')
                     <li class="treeview">
                         <a href="#" class="{{ routeActive('permission.status') }}">
                             <i class="fa-solid fa-shield {{ routeActive('permission') }}">
@@ -231,7 +235,8 @@
                     @endif
                     @if (auth()->user()->role_as !== 'super' &&
                             auth()->user()->role_as !== 'hospital' &&
-                            auth()->user()->role_as !== 'secretariat')
+                            auth()->user()->role_as !== 'secretariat' &&
+                            auth()->user()->role_as !== 'ministere')
                         <li class="treeview">
                             <a href="#" class="{{ routeActive('planning') }}">
                                 <i class="fa-solid fa-hourglass {{ routeActive('planning') }}">

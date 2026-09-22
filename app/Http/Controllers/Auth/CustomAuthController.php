@@ -145,10 +145,16 @@ class CustomAuthController extends Controller
 
     private function roleResponse($email) : array
     {
-        if ($user = User::where('email', $email)->with('hospital', 'doctor', 'accountant', 'cashier', 'infirmier', 'pharmacy', 'secretariat', 'admin', 'patient')->first()) {
+        if ($user = User::where('email', $email)->with('hospital', 'doctor', 'accountant', 'cashier', 'infirmier', 'pharmacy', 'secretariat', 'admin', 'patient', 'ministere')->first()) {
             switch ($user->role_as) {
                 case 'super':
                     
+                    return ['status' => 'success', 'message' => 'Ok!'];
+
+                case 'ministere':
+
+                    if ($user->ministere && ($user->ministere->status == 1 || $user->ministere->delete == 1))
+                        return ['status' => 'error', 'message' => 'Compte Ministère désactivé ou suspendu !'];
                     return ['status' => 'success', 'message' => 'Ok!'];
 
                 case 'hospital':

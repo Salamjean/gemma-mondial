@@ -110,6 +110,11 @@ class User extends Authenticatable
         return $this->hasOne(Availability::class);
     }
 
+    public function ministere()
+    {
+        return $this->hasOne(Ministere::class, 'user_id');
+    }
+
     public function getTelephoneAttribute()
     {
         if ($this->doctor && !empty($this->doctor->contact)) {

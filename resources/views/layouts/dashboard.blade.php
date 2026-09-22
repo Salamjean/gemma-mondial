@@ -9,7 +9,7 @@
     <meta name="author" content="">
     <link rel="icon" href="{{ asset(iconsLoad()['favicon']) }}?v={{ time() }}">
 
-    <title>{{ $title }}</title>
+    <title>{{ $title ?? 'GEMMA - Tableau de bord' }}</title>
 
     <!-- Vendors Style-->
     <link rel="stylesheet" href="{{ asset('assets/src/css/vendors_css.css') }}">

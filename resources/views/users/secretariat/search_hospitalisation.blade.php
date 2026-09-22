@@ -88,24 +88,38 @@
                     </div>
                 </div>
 
-                <!-- Étape 1 : Identité & Coordonnées (Lecture Seule) -->
+                <!-- Étape 1 : Identité & Coordonnées -->
                 <div class="p-20 bg-light rounded-16 mb-20 border">
-                    <div class="d-flex align-items-center justify-content-between mb-15">
+                    <div class="d-flex align-items-center justify-content-between mb-15 flex-wrap gap-2">
                         <h5 class="fw-bold text-dark mb-0 fs-15"><i class="fa-solid fa-id-card text-primary me-2"></i>
                             Identité du Patient</h5>
-                        <span class="badge bg-secondary text-white px-2 py-1 fs-12"><i class="fa-solid fa-lock me-1"></i>
-                            Non modifiable (Lecture seule)</span>
+                        <span id="badge_identity_lock" class="badge bg-secondary text-white px-2 py-1 fs-12">
+                            <i class="fa-solid fa-lock me-1"></i> Non modifiable (Lecture seule)
+                        </span>
                     </div>
+
+                    <div id="newborn_alert_box" class="alert alert-warning border-0 rounded-12 p-15 mb-20 shadow-sm" style="display: none;">
+                        <div class="d-flex align-items-center">
+                            <i class="fa-solid fa-baby-carriage fs-24 text-warning me-3"></i>
+                            <div>
+                                <h6 class="fw-bold text-dark mb-1">Dossier Nouveau-né détecté</h6>
+                                <p class="mb-0 fs-13 text-dark">
+                                    Vous pouvez saisir le <strong>Nom</strong>, <strong>Prénom(s)</strong> et les coordonnées de l'enfant. Conformément à la déclaration de naissance, le <strong>Sexe</strong> et la <strong>Date de naissance</strong> restent strictement verrouillés.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="row g-3">
                         <div class="col-md-3">
-                            <label class="form-label fw-bold fs-12 text-muted">Nom</label>
+                            <label class="form-label fw-bold fs-12 text-muted">Nom <span id="star_name" class="text-danger" style="display:none;">*</span></label>
                             <input type="text" name="name_up" id="name_up" class="form-control h-45 rounded-10" readonly
-                                style="background-color: #f1f3f5; cursor: not-allowed;">
+                                style="background-color: #f1f3f5; cursor: not-allowed;" oninput="this.value = this.value.toUpperCase()">
                         </div>
                         <div class="col-md-5">
-                            <label class="form-label fw-bold fs-12 text-muted">Prénom(s)</label>
+                            <label class="form-label fw-bold fs-12 text-muted">Prénom(s) <span id="star_prenom" class="text-danger" style="display:none;">*</span></label>
                             <input type="text" name="prenom_up" id="prenom_up" class="form-control h-45 rounded-10" readonly
-                                style="background-color: #f1f3f5; cursor: not-allowed;">
+                                style="background-color: #f1f3f5; cursor: not-allowed;" oninput="this.value = this.value.toUpperCase()">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold fs-12 text-muted">Email</label>
@@ -120,11 +134,11 @@
                         <div class="col-md-3">
                             <label class="form-label fw-bold fs-12 text-muted">Date de naissance</label>
                             <input type="text" name="birth_date_up" id="birth_date_up" class="form-control h-45 rounded-10"
-                                readonly style="background-color: #f1f3f5; cursor: not-allowed;">
+                                readonly style="background-color: #f1f3f5; cursor: not-allowed;" data-inputmask="'alias': 'dd/mm/yyyy'" data-mask="">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label fw-bold fs-12 text-muted">N° Téléphone</label>
-                            <input type="text" name="telephone" id="telephone" class="form-control h-45 rounded-10 fw-bold text-dark"
+                            <label class="form-label fw-bold fs-12 text-muted">N° Téléphone <span class="text-danger">*</span></label>
+                            <input type="text" name="telephone" id="telephone" class="form-control h-45 rounded-10 fw-bold text-dark border-primary"
                                 placeholder="+225 0101010101" required>
                         </div>
                         <div class="col-md-2">
@@ -478,8 +492,12 @@
                                     var userName = (patient.user && patient.user.name) ? patient.user.name : '';
                                     var userPrenom = (patient.user && patient.user.prenom) ? patient.user.prenom : '';
                                     var fullName = (userName + ' ' + userPrenom).trim();
+                                    if (!fullName) {
+                                        var motherName = (patient.mere && patient.mere.user) ? (patient.mere.user.name + ' ' + (patient.mere.user.prenom || '')) : (patient.nom_personne_cas_urgence || '');
+                                        fullName = 'Nouveau-né' + (motherName ? ' (Enfant de ' + motherName.trim() + ')' : '');
+                                    }
                                     var codePatient = patient.code_patient || '-';
-                                    var tel = patient.telephone || '-';
+                                    var tel = patient.telephone || patient.telephone_personne_cas_urgence || '-';
                                     var cmu = patient.num_cmu || '-';
                                     var birth = patient.birth_date || '-';
                                     var gender = patient.gender || '-';
@@ -657,6 +675,26 @@
                             $('#telephone').val(tel);
                             $('#num_cmu_up').val(patient.num_cmu || '');
                             $('#residence_habituelle_up').val(resHabituelleName);
+
+                            var isNewborn = userName.toUpperCase().includes('NOUVEAU');
+                            if (isNewborn) {
+                                $('#newborn_alert_box').slideDown();
+                                $('#badge_identity_lock').removeClass('bg-secondary text-white').addClass('bg-warning text-dark').html('<i class="fa-solid fa-baby me-1"></i> Nouveau-né : Identité modifiable (Sauf Sexe & Date Naiss.)');
+                                $('#star_name, #star_prenom').show();
+                                // Champs modifiables pour nouveau-né
+                                $('#name_up, #prenom_up, #email_up, #num_cmu_up, #residence_habituelle_up').prop('readonly', false).css({'background-color': '#ffffff', 'cursor': 'text'});
+                                // Sexe et Date de naissance restent verrouillés
+                                $('#gender_up, #birth_date_up').prop('readonly', true).css({'background-color': '#f1f3f5', 'cursor': 'not-allowed'});
+                                if (userName.toUpperCase().includes('NOUVEAU-NÉ DE ')) {
+                                    var rawMother = userName.toUpperCase().replace('NOUVEAU-NÉ DE ', '').trim();
+                                    $('#name_up').val(rawMother).attr('placeholder', 'Nom de famille (Ex: ' + rawMother + ')');
+                                }
+                            } else {
+                                $('#newborn_alert_box').slideUp();
+                                $('#badge_identity_lock').removeClass('bg-warning text-dark').addClass('bg-secondary text-white').html('<i class="fa-solid fa-lock me-1"></i> Identité verrouillée (Seul le numéro est modifiable)');
+                                $('#star_name, #star_prenom').hide();
+                                $('#name_up, #prenom_up, #email_up, #birth_date_up, #gender_up, #num_cmu_up, #residence_habituelle_up').prop('readonly', true).css({'background-color': '#f1f3f5', 'cursor': 'not-allowed'});
+                            }
 
                             // Filtrer le service médical selon le sexe du patient
                             populateServices(patient.gender);

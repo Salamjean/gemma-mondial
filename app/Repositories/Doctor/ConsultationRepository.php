@@ -260,6 +260,14 @@ class ConsultationRepository
     public function storeAccouchements(ConsultationAccouchementRequest $request)
     {
         $data = $request->except(['consultation_id', '_token', 'mode_sortie']);
+
+        if (isset($data['resultat_test_positif'])) {
+            if (!isset($data['resultat_test_vih']) || empty($data['resultat_test_vih'])) {
+                $data['resultat_test_vih'] = $data['resultat_test_positif'];
+            }
+            unset($data['resultat_test_positif']);
+        }
+
         $consultation = Consultation::findOrFail($request->consultation_id);
 
         if ($request->motif_consultation)
