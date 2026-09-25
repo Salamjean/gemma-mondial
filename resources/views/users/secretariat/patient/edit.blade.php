@@ -40,15 +40,17 @@
             <!-- En-tête de la page -->
             <div class="box bb-3 border-danger">
                 <div class="box-header with-border">
-                    <div>
-                        <h4 class="box-title fw-bold fs-28">Modification des informations du patient</h4>
-                        <h6 class="box-subtitle">Patient : <b>{{ $patient->user->name }} {{ $patient->user->prenom }}</b> — N° Dossier Médical (DM) : <b>{{ $patient->code_patient }}</b></h6>
-                        <div class="float-end">
-                            <a href="{{ route('secretariat.patient.detail', $patient->id) }}" class="btn btn-info me-2 shadow">
-                                <i class="fa-solid fa-eye"></i>&nbsp;&nbsp;Fiche Patient
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                        <div>
+                            <h4 class="box-title fw-bold fs-22 fs-md-26 text-dark"><i class="fa-solid fa-pen-to-square text-primary me-2"></i> Modification du Dossier Patient</h4>
+                            <h6 class="box-subtitle mb-0 text-muted">Patient : <b>{{ $patient->user->name }} {{ $patient->user->prenom }}</b> — N° Dossier Médical : <b>{{ $patient->code_patient }}</b></h6>
+                        </div>
+                        <div class="d-flex align-items-center flex-wrap gap-2 w-100 w-md-auto">
+                            <a href="{{ route('secretariat.patient.detail', $patient->id) }}" class="btn btn-info btn-sm rounded-10 shadow-xs flex-fill flex-md-grow-0 text-center">
+                                <i class="fa-solid fa-eye me-1"></i> Fiche Patient
                             </a>
-                            <a href="{{ route('secretariat.patient.list') }}" class="btn btn-dark shadow">
-                                <i class="fa fa-arrow-left"></i>&nbsp;&nbsp;Liste des patients
+                            <a href="{{ route('secretariat.patient.list') }}" class="btn btn-dark btn-sm rounded-10 shadow-xs flex-fill flex-md-grow-0 text-center">
+                                <i class="fa fa-arrow-left me-1"></i> Liste des patients
                             </a>
                         </div>
                     </div>
@@ -56,7 +58,7 @@
             </div>
 
             <!-- Formulaire de modification du patient -->
-            <div class="container" id="addPatient">
+            <div class="container-fluid px-0" id="addPatient">
                 <form id="formEditPatient" action="{{ route('secretariat.patient.updatepatient', $patient->id) }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
@@ -68,10 +70,10 @@
                     @endphp
 
                     <!-- Step 1 : Données sur le Patient -->
-                    <div class="box bb-3 border-warning pe-95 pb-20 ps-95 pt-20 bg-color">
+                    <div class="box bb-3 border-warning p-15 p-md-25 bg-color">
                         <div class="box-body ribbon-box">
                             <div class="ribbon ribbon-dark rounded5">Données sur le Patient</div>
-                            <br /><br /><br />
+                            <br /><br />
 
                             @if ($isNewborn)
                                 <div class="alert alert-warning border-0 rounded-10 shadow-sm p-15 mb-20">

@@ -52,43 +52,43 @@
     }
 @endphp
 
-<div class="container-fluid px-20 py-15">
+<div class="container-fluid px-2 px-md-20 py-15">
 
     <!-- En-tête Navigation & Actions -->
-    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-25">
-        <div class="d-flex align-items-center gap-3">
-            <a href="{{ back()->getTargetUrl() }}" class="btn btn-outline-secondary rounded-12 px-20 py-10 fw-semibold shadow-xs">
-                <i class="fa-solid fa-arrow-left me-2"></i> Retour
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-20 mb-md-25">
+        <div class="d-flex align-items-center flex-wrap gap-2 gap-md-3">
+            <a href="{{ back()->getTargetUrl() }}" class="btn btn-outline-secondary rounded-12 px-15 px-md-20 py-10 fw-semibold shadow-xs btn-sm">
+                <i class="fa-solid fa-arrow-left me-1 me-md-2"></i> Retour
             </a>
             <div>
-                <h3 class="fw-bold text-dark mb-0 fs-22">
+                <h3 class="fw-bold text-dark mb-0 fs-18 fs-md-22">
                     Admission <span class="text-primary font-monospace">#{{ $admission->code_admission ?? ('ADM-' . str_pad($admission->id, 5, '0', STR_PAD_LEFT)) }}</span>
                 </h3>
-                <small class="text-muted"><i class="fa-regular fa-calendar-check me-1"></i> {{ ucfirst($dateAdmissionStr) }}</small>
+                <small class="text-muted fs-12 fs-md-13"><i class="fa-regular fa-calendar-check me-1"></i> {{ ucfirst($dateAdmissionStr) }}</small>
             </div>
         </div>
-        <div class="d-flex align-items-center gap-2">
-            <a href="{{ $imprimerUrl }}" target="_blank" class="btn btn-primary rounded-12 px-20 py-10 fw-semibold shadow-sm">
+        <div class="d-flex align-items-center gap-2 w-100 w-md-auto">
+            <a href="{{ $imprimerUrl }}" target="_blank" class="btn btn-primary rounded-12 px-15 px-md-20 py-10 fw-semibold shadow-sm w-100 w-md-auto text-center btn-sm">
                 <i class="fa-solid fa-print me-2"></i> Imprimer le Reçu / Fiche
             </a>
         </div>
     </div>
 
     <!-- CARTE PATIENT (Header Banner) -->
-    <div class="card border-0 shadow-sm rounded-20 p-25 bg-white mb-25 position-relative overflow-hidden">
+    <div class="card border-0 shadow-sm rounded-20 p-15 p-md-25 bg-white mb-25 position-relative overflow-hidden">
         <div class="position-absolute top-0 end-0 p-3 opacity-10 pointer-events-none d-none d-md-block">
             <i class="fa-solid fa-hospital-user text-primary" style="font-size: 140px; transform: rotate(10deg); margin-top: -30px; margin-right: -20px;"></i>
         </div>
         <div class="row align-items-center position-relative">
-            <div class="col-lg-8 d-flex align-items-center flex-wrap gap-4">
-                <div class="position-relative">
+            <div class="col-12 col-lg-8 d-flex align-items-center flex-column flex-sm-row gap-3 text-center text-sm-start">
+                <div class="position-relative flex-shrink-0">
                     @if ($patient && $patient->img_url && file_exists(public_path('assets/uploads/patient/' . $patient->img_url)))
-                        <img src="{{ asset('assets/uploads/patient/' . $patient->img_url) }}" class="rounded-circle shadow-sm border border-3 border-white" alt="Avatar" style="width: 90px; height: 90px; object-fit: cover;" />
+                        <img src="{{ asset('assets/uploads/patient/' . $patient->img_url) }}" class="rounded-circle shadow-sm border border-3 border-white" alt="Avatar" style="width: 80px; height: 80px; object-fit: cover;" />
                     @else
                         @if ($patient && (strtolower($patient->gender) == 'masculin' || strtolower($patient->gender) == 'm'))
-                            <img src="{{ asset('assets/images/avatar/6.png') }}" class="rounded-circle shadow-sm border border-3 border-white" alt="Avatar" style="width: 90px; height: 90px; object-fit: cover;" />
+                            <img src="{{ asset('assets/images/avatar/6.png') }}" class="rounded-circle shadow-sm border border-3 border-white" alt="Avatar" style="width: 80px; height: 80px; object-fit: cover;" />
                         @else
-                            <img src="{{ asset('assets/images/avatar/2.png') }}" class="rounded-circle shadow-sm border border-3 border-white" alt="Avatar" style="width: 90px; height: 90px; object-fit: cover;" />
+                            <img src="{{ asset('assets/images/avatar/2.png') }}" class="rounded-circle shadow-sm border border-3 border-white" alt="Avatar" style="width: 80px; height: 80px; object-fit: cover;" />
                         @endif
                     @endif
                     <span class="position-absolute bottom-0 end-0 badge rounded-pill bg-primary border border-2 border-white px-2 py-1 fs-11">

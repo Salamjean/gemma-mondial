@@ -1,16 +1,24 @@
 <aside class="main-sidebar">
     <!-- sidebar-->
     <section class="sidebar position-relative">
+        <!-- Logo Desktop -->
         <div class="d-flex align-items-center logo-box justify-content-start d-md-block d-none">
-            <!-- Logo -->
             <a href="{{ route('dashboard') }}" class="logo">
-                <!-- logo-->
                 <div class="logo">
                     <span class="light-logo">
                         <img src="{{ asset(iconsLoad()['logo']) }}" alt="logo">
                     </span>
                 </div>
             </a>
+        </div>
+        <!-- En-tête Sidebar Mobile avec Logo et bouton Fermer -->
+        <div class="sidebar-mobile-header d-flex d-md-none align-items-center justify-content-between px-3 py-2 border-bottom bg-white">
+            <a href="{{ route('dashboard') }}" class="logo">
+                <img src="{{ asset(iconsLoad()['logo']) }}" alt="logo" style="max-height: 32px; width: auto;">
+            </a>
+            <button type="button" class="btn btn-sm btn-light sidebar-close-btn p-0" data-toggle="push-menu" aria-label="Fermer le menu" style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <i class="fa fa-times text-secondary"></i>
+            </button>
         </div>
         <div class="user-profile my-15 px-20 py-10 b-1 rounded10 mx-15" style="background-color: orange;">
             <div class="d-flex align-items-center justify-content-between">

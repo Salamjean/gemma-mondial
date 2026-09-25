@@ -106,58 +106,58 @@
     </div>
 
     <!-- Cartes de Statistiques / KPI -->
-    <div class="row mb-25">
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card agenda-stat-card shadow-sm border-0 bg-white p-20">
+    <div class="row mb-20 mb-md-25">
+        <div class="col-12 col-sm-6 col-xl-3 mb-3">
+            <div class="card agenda-stat-card shadow-sm border-0 bg-white p-15 p-md-20">
                 <div class="d-flex align-items-center">
                     <div class="agenda-stat-icon bg-primary-light text-primary me-15">
                         <i class="fa-solid fa-calendar-check"></i>
                     </div>
                     <div>
                         <h4 class="fw-bold mb-0 text-dark">{{ $totalAvailabilities }}</h4>
-                        <span class="text-muted fs-14 fw-semibold">Disponibilités enregistrées</span>
+                        <span class="text-muted fs-13 fs-md-14 fw-semibold">Disponibilités enregistrées</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card agenda-stat-card shadow-sm border-0 bg-white p-20">
+        <div class="col-12 col-sm-6 col-xl-3 mb-3">
+            <div class="card agenda-stat-card shadow-sm border-0 bg-white p-15 p-md-20">
                 <div class="d-flex align-items-center">
                     <div class="agenda-stat-icon bg-indigo-light text-indigo me-15" style="background-color: #e0e7ff; color: #4f46e5;">
                         <i class="fa-solid fa-user-doctor"></i>
                     </div>
                     <div>
                         <h4 class="fw-bold mb-0 text-dark">{{ $doctorsCount }}</h4>
-                        <span class="text-muted fs-14 fw-semibold">Médecins actifs</span>
+                        <span class="text-muted fs-13 fs-md-14 fw-semibold">Médecins actifs</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card agenda-stat-card shadow-sm border-0 bg-white p-20">
+        <div class="col-12 col-sm-6 col-xl-3 mb-3">
+            <div class="card agenda-stat-card shadow-sm border-0 bg-white p-15 p-md-20">
                 <div class="d-flex align-items-center">
                     <div class="agenda-stat-icon bg-success-light text-success me-15">
                         <i class="fa-solid fa-user-nurse"></i>
                     </div>
                     <div>
                         <h4 class="fw-bold mb-0 text-dark">{{ $infirmiersCount }}</h4>
-                        <span class="text-muted fs-14 fw-semibold">Infirmiers de service</span>
+                        <span class="text-muted fs-13 fs-md-14 fw-semibold">Infirmiers de service</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card agenda-stat-card shadow-sm border-0 bg-white p-20">
+        <div class="col-12 col-sm-6 col-xl-3 mb-3">
+            <div class="card agenda-stat-card shadow-sm border-0 bg-white p-15 p-md-20">
                 <div class="d-flex align-items-center">
                     <div class="agenda-stat-icon bg-danger-light text-danger me-15">
                         <i class="fa-solid fa-clock"></i>
                     </div>
                     <div>
                         <h4 class="fw-bold mb-0 text-dark">{{ $rdvCount }}</h4>
-                        <span class="text-muted fs-14 fw-semibold">Rendez-vous programmés</span>
+                        <span class="text-muted fs-13 fs-md-14 fw-semibold">Rendez-vous programmés</span>
                     </div>
                 </div>
             </div>
@@ -165,12 +165,12 @@
     </div>
 
     <!-- Barre de Filtrage Interactif -->
-    <div class="agenda-filter-bar shadow-sm">
-        <div class="row align-items-center g-3">
-            <div class="col-md-4">
+    <div class="agenda-filter-bar shadow-sm p-15 p-md-20">
+        <div class="row align-items-center g-2 g-md-3">
+            <div class="col-12 col-md-4">
                 <div class="input-group">
                     <span class="input-group-text bg-light border-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
-                    <input type="text" id="calendarSearch" class="form-control bg-light border-0" placeholder="Rechercher un membre du personnel ou un patient...">
+                    <input type="text" id="calendarSearch" class="form-control bg-light border-0" placeholder="Rechercher...">
                 </div>
             </div>
             <div class="col-md-4">

@@ -7,18 +7,18 @@
             <!-- Validation wizard -->
             <div class="box bb-3 border-danger">
                 <div class="box-header with-border">
-                    <div>
-                        <h4 class="box-title fw-bold fs-28">Enregistrement d'un nouveau patient</h4>
-                        <h6 class="box-subtitle">Avant d'enregistrer un nouveau patient, vous pouvez vérifier si le patient
-                            est déjà enregistré en cliquant sur le bouton <i class="fw-bold">"Rechercher Patient"</i> et
-                            faire la mise à jour .</h6>
-                        <div class="float-end">
-                            <a href="{{ route('dashboard')}}">
-                                <button class="btn btn-dark"><i class="fa fa-search"></i>&nbsp;&nbsp;Rechercher
-                                    Patient</button>
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                        <div>
+                            <h4 class="box-title fw-bold fs-22 fs-md-26 text-dark"><i class="fa-solid fa-user-plus text-primary me-2"></i> Enregistrement d'un nouveau patient</h4>
+                            <h6 class="box-subtitle mb-0 text-muted">Avant d'enregistrer un nouveau patient, vous pouvez vérifier si le dossier existe déjà via la recherche.</h6>
+                        </div>
+                        <div class="d-flex align-items-center flex-wrap gap-2 w-100 w-md-auto">
+                            <a href="{{ route('secretariat.search_hospitalisation') }}" class="btn btn-dark btn-sm rounded-10 flex-fill flex-md-grow-0 text-center shadow-xs">
+                                <i class="fa fa-search me-1"></i> Rechercher Patient
                             </a>
-                            <button class="btn btn-primary" id="seeForm"><i class="fa fa-plus-circle"
-                                    aria-hidden="true"></i>&nbsp;&nbsp;Ajouter un nouveau</button>
+                            <button class="btn btn-primary btn-sm rounded-10 flex-fill flex-md-grow-0 shadow-xs" id="seeForm">
+                                <i class="fa fa-plus-circle me-1"></i> Formulaire
+                            </button>
                         </div>
                     </div>
                 </div>

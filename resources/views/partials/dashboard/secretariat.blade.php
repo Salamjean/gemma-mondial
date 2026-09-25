@@ -73,8 +73,8 @@
 </style>
 
 <!-- Section Statistiques KPI du Secrétariat -->
-<div class="row mb-25">
-    <div class="col-xl-3 col-md-6 mb-3">
+<div class="row mb-20 mb-md-25">
+    <div class="col-12 col-sm-6 col-xl-3 mb-3">
         <div class="dashboard-kpi-card d-flex align-items-center">
             <div class="kpi-icon-box bg-primary-light text-primary">
                 <i class="fa-solid fa-users"></i>
@@ -86,7 +86,7 @@
         </div>
     </div>
 
-    <div class="col-xl-3 col-md-6 mb-3">
+    <div class="col-12 col-sm-6 col-xl-3 mb-3">
         <div class="dashboard-kpi-card d-flex align-items-center">
             <div class="kpi-icon-box bg-success-light text-success">
                 <i class="fa-solid fa-hospital-user"></i>
@@ -98,7 +98,7 @@
         </div>
     </div>
 
-    <div class="col-xl-3 col-md-6 mb-3">
+    <div class="col-12 col-sm-6 col-xl-3 mb-3">
         <div class="dashboard-kpi-card d-flex align-items-center">
             <div class="kpi-icon-box bg-info-light text-info">
                 <i class="fa-solid fa-user-plus"></i>
@@ -110,7 +110,7 @@
         </div>
     </div>
 
-    <div class="col-xl-3 col-md-6 mb-3">
+    <div class="col-12 col-sm-6 col-xl-3 mb-3">
         <div class="dashboard-kpi-card d-flex align-items-center">
             <div class="kpi-icon-box bg-warning-light text-warning">
                 <i class="fa-solid fa-file-medical"></i>
@@ -124,9 +124,9 @@
 </div>
 
 <!-- Section Grandes Cartes d'Actions (Redirection au Clic) -->
-<div class="row mb-30">
+<div class="row mb-25 mb-md-30">
     <!-- Carte 1 : Enregistrer un Nouveau Patient -->
-    <div class="col-xl-6 col-lg-6 mb-4">
+    <div class="col-12 col-lg-6 mb-3 mb-lg-4">
         <a href="{{ route('secretariat.patient.create') }}" class="big-action-card big-action-card-primary">
             <div>
                 <div class="d-flex align-items-center justify-content-between">
@@ -135,12 +135,12 @@
                     </div>
                     <span class="badge bg-primary-light text-primary fw-bold px-3 py-2 rounded-pill fs-12">Action Rapide</span>
                 </div>
-                <h3 class="fw-bold text-dark mb-10 fs-22">Enregistrer un Nouveau Patient</h3>
-                <p class="text-muted mb-0 fs-15">
+                <h3 class="fw-bold text-dark mb-10 fs-20 fs-md-22">Enregistrer un Nouveau Patient</h3>
+                <p class="text-muted mb-0 fs-14 fs-md-15">
                     Ouvrez un nouveau dossier médical pour un patient en renseignant son état civil, ses pièces justificatives et contacts d'urgence.
                 </p>
             </div>
-            <div class="mt-25 d-flex align-items-center text-primary fw-bold fs-15">
+            <div class="mt-20 mt-md-25 d-flex align-items-center text-primary fw-bold fs-14 fs-md-15">
                 <span>Créer un Dossier Patient</span>
                 <i class="fa-solid fa-arrow-right ms-2"></i>
             </div>
@@ -148,7 +148,7 @@
     </div>
 
     <!-- Carte 2 : Rechercher / Vérifier un Patient -->
-    <div class="col-xl-6 col-lg-6 mb-4">
+    <div class="col-12 col-lg-6 mb-3 mb-lg-4">
         <a href="{{ route('secretariat.search_hospitalisation') }}" class="big-action-card big-action-card-success">
             <div>
                 <div class="d-flex align-items-center justify-content-between">
@@ -157,22 +157,23 @@
                     </div>
                     <span class="badge bg-success-light text-success fw-bold px-3 py-2 rounded-pill fs-12">Page de Recherche</span>
                 </div>
-                <h3 class="fw-bold text-dark mb-10 fs-22">Rechercher / Vérifier un Patient</h3>
-                <p class="text-muted mb-0 fs-15">
+                <h3 class="fw-bold text-dark mb-10 fs-20 fs-md-22">Rechercher / Vérifier un Patient</h3>
+                <p class="text-muted mb-0 fs-14 fs-md-15">
                     Accédez à la page dédiée de recherche pour consulter un dossier, vérifier le statut d'hospitalisation ou accéder à la fiche du patient.
                 </p>
             </div>
-            <div class="mt-25 d-flex align-items-center text-success fw-bold fs-15">
+            <div class="mt-20 mt-md-25 d-flex align-items-center text-success fw-bold fs-14 fs-md-15">
                 <span>Accéder à la Recherche</span>
                 <i class="fa-solid fa-arrow-right ms-2"></i>
             </div>
         </a>
     </div>
+</div>
 
 <!-- Longue Carte Centrèe : Registre des Patients & Disponibilités du Personnel du Jour -->
 <div class="row mb-30">
     <div class="col-12">
-        <div class="card border-0 shadow-sm rounded-20 p-25 bg-white">
+        <div class="card border-0 shadow-sm rounded-20 p-15 p-md-25 bg-white">
             <div class="row align-items-center g-4">
 
                 <!-- Espace Gauche : Compteur & Actions Rapides -->
@@ -266,31 +267,31 @@
             <div class="modal-body p-25" style="max-height: 80vh; overflow-y: auto;">
                 
                 <!-- Formulaire de recherche -->
-                <div class="p-20 bg-light rounded-16 mb-20 border">
-                    <div class="row g-3">
-                        <div class="col-md-3">
+                <div class="p-15 p-md-20 bg-light rounded-16 mb-20 border">
+                    <div class="row g-2 g-md-3">
+                        <div class="col-12 col-sm-6 col-lg-3">
                             <label class="form-label fw-bold text-dark fs-13">N° de Téléphone</label>
                             <input type="search" class="form-control h-45" min="10" max="10" autofocus
                                 data-inputmask="'mask': ['9999999999', '99 99 99 99 99']" data-mask=""
                                 id="no_telephone" name="no_telephone" placeholder="Ex: 0707000000">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-12 col-sm-6 col-lg-3">
                             <label class="form-label fw-bold text-dark fs-13">N° CMU (Sécurité Sociale)</label>
                             <input type="search" class="form-control h-45"
                                 id="num_cmu" name="num_cmu" placeholder="Ex: 12345678901">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-12 col-sm-6 col-lg-3">
                             <label class="form-label fw-bold text-dark fs-13">Nom & Prénom(s)</label>
                             <input type="search" name="fullname" id="fullname" placeholder="Nom et Prénom(s)"
                                 class="form-control h-45" oninput="convertToUppercase()">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-12 col-sm-6 col-lg-3">
                             <label class="form-label fw-bold text-dark fs-13">Date de Naissance</label>
                             <div class="input-group">
                                 <input type="text" name="birth_date" id="birth_date" class="form-control h-45"
                                     data-inputmask="'alias': 'dd/mm/yyyy'" data-mask="" placeholder="dd/mm/yyyy">
-                                <button type="button" id="search-button" class="btn btn-primary h-45 px-20 font-bold">
-                                    <i class="fa-solid fa-search me-1"></i> Rechercher
+                                <button type="button" id="search-button" class="btn btn-primary h-45 px-15 px-md-20 font-bold">
+                                    <i class="fa-solid fa-search me-1"></i> <span class="d-none d-sm-inline">Rechercher</span>
                                 </button>
                             </div>
                         </div>
@@ -301,26 +302,26 @@
 
         <div id="update-form" style="display: none;">
             
-            <div class="container">
+            <div class="container-fluid px-0">
                 <form id="editPatient">
                     @csrf
                     <input type="hidden" name="id" id="patient_id" />
-                    <div class="mont-aff border-dark">
-                        <label class="title mb-4">Montant à payer à la Caisse</label>
-                        <h3 class="box-title">
+                    <div class="mont-aff border-dark p-15 rounded-10 text-center">
+                        <label class="title mb-2 fs-15 fw-bold">Montant à payer à la Caisse</label>
+                        <h3 class="box-title mb-0">
                             <input type="hidden" class="form-control" name="montant" id="montant_up">
-                            <b id="prix_up"> 0 Frs CFA</b>
+                            <b id="prix_up" class="text-danger"> 0 Frs CFA</b>
                         </h3>
                     </div>
-                    <br /><br />
+                    <br />
                     <!-- Step 1 -->
-                    <div class="box bb-3 border-warning pe-95 pb-20 ps-95 pt-20 bg-color">
+                    <div class="box bb-3 border-warning p-15 p-md-25 bg-color">
                         <div class="box-body ribbon-box">
                             <div class="ribbon ribbon-dark rounded5">Données sur le Patient</div>
-                            <br /><br /><br />
+                            <br /><br />
                             <div class="box bb-3 border-danger p-10">
-                                <div class="row">
-                                    <div class="col-md-3">
+                                <div class="row g-2 g-md-3">
+                                    <div class="col-12 col-sm-6 col-md-3">
                                         <div class="form-group">
                                             <label for="name" class="form-label"> <b>Nom : </b> <span
                                                     class="danger">*</span> </label>
@@ -332,7 +333,7 @@
 
                                         </div>
                                     </div>
-                                    <div class="col-md-5">
+                                    <div class="col-12 col-sm-6 col-md-5">
                                         <div class="form-group">
                                             <label for="prenom" class="form-label"> <b>Prénom(s) : </b> <span
                                                     class="danger">*</span> </label>
@@ -345,7 +346,7 @@
 
                                         </div>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-12 col-sm-6 col-md-4">
                                         <div class="form-group">
                                             <label for="email" class="form-label"> <b>E-mail : </b> </label>
                                             <div class="input-group mb-3">
@@ -356,9 +357,8 @@
                                         </div>
                                     </div>
                                 </div>
-                                <br />
-                                <div class="row">
-                                    <div class="col-md-2">
+                                <div class="row g-2 g-md-3">
+                                    <div class="col-6 col-sm-3 col-md-2">
                                         <div class="form-group">
                                             <label for="gender" class="form-label"> <b>Sexe : </b> <span
                                                     class="danger">*</span>
@@ -366,7 +366,7 @@
                                             <input class="form-control" id="gender_up" name="gender_up" readonly />
                                         </div>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-6 col-sm-4 col-md-4">
                                         <div class="form-group">
                                             <label for="birth_date" class="form-label"> <b>Date de naissance : <span
                                                         class="danger">*</span></b>
@@ -381,7 +381,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="col-md-3">
+                                    <div class="col-12 col-sm-5 col-md-3">
                                         <div class="form-group">
                                             <label for="telephone" class="form-label"> <b>Téléphone : </b> <span
                                                     class="danger">*</span> </label>
@@ -392,7 +392,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="col-md-3">
+                                    <div class="col-12 col-sm-6 col-md-3">
                                         <div class="form-group">
                                             <label for="contact2_up" class="form-label"> <b>N° Téléphone 2 : </b> </label>
                                             <div class="input-group mb-3">
@@ -403,9 +403,8 @@
                                         </div>
                                     </div>
                                 </div>
-                                <br />
-                                <div class="row">
-                                    <div class="col-md-4">
+                                <div class="row g-2 g-md-3">
+                                    <div class="col-12 col-sm-6 col-md-4">
                                         <div class="form-group">
                                             <label for="lieu_de_naissance" class="form-label"> <b>Lieu de naissance :
                                                     <span class="danger">*</span></b> </label>
@@ -417,7 +416,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-12 col-sm-6 col-md-4">
                                         <div class="form-group">
                                             <label for="residence_habituelle" class="form-label"> <b>Lieu de résidence
                                                     habituelle : <span class="danger">*</span></b> </label>
@@ -427,7 +426,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-12 col-sm-6 col-md-4">
                                         <div class="form-group">
                                             <label for="residence_actuelle" class="form-label"> <b>Lieu de résidence
                                                     actuelle : </b> <span class="danger">*</span> </label>

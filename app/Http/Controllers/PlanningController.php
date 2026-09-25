@@ -14,9 +14,25 @@ class PlanningController extends Controller
         $rdv = [];
 
         if ($user && $doctor = $user->doctor) {
-            $rdv = RendezVous::whereHas('consultation', function ($query) use ($doctor) {
-                $query->with('patient.user')->where('doctor_id', $doctor->id);
-            })->get();
+            $hospitalId = $doctor->hospital_id ?? $doctor->service_hospital_id ?? 1;
+
+            $rdv = RendezVous::where(function ($query) use ($doctor, $user, $hospitalId) {
+                $query->where('doctor_id', $doctor->id)
+                    ->orWhere('doctor_id', $user->id)
+                    ->orWhereNull('doctor_id')
+                    ->orWhereHas('doctor', function ($dq) use ($hospitalId) {
+                        $dq->where('hospital_id', $hospitalId);
+                    })
+                    ->orWhereHas('patient', function ($pq) use ($hospitalId) {
+                        $pq->where('hospital_id', $hospitalId);
+                    })
+                    ->orWhereHas('consultation', function ($cq) use ($hospitalId, $doctor) {
+                        $cq->where('hospital_id', $hospitalId)->orWhere('doctor_id', $doctor->id);
+                    });
+            })
+            ->with(['patient.user', 'consultation.patient.user', 'doctor.user'])
+            ->orderBy('date', 'desc')
+            ->get();
 
             if (count($rdv) > 0) {
                 foreach ($rdv as $item) {

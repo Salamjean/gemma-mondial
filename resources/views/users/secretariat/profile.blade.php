@@ -1,55 +1,56 @@
 @extends('layouts.dashboard',['title' => $title])
 @section('content')
     <div class="row justify-content-center">
-        <div class="col-lg-10 col-md-10 col-sm-10 col-10">
+        <div class="col-12 col-lg-10">
             <div class="box">
                 <div class="box-header with-border">
-                    <div class="row">
-                        <div class="d-flex justify-content-end" style="gap: 10px">
-                            <a href="{{ route('dashboard') }}" class="btn btn-primary btn-md shadow">Retour</a>
-                        </div>
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <h4 class="box-title text-dark fw-bold mb-0"><i class="ti-user text-primary me-2"></i> Profil Secrétaire</h4>
+                        <a href="{{ route('dashboard') }}" class="btn btn-primary btn-sm rounded-10 shadow-xs">
+                            <i class="fa-solid fa-arrow-left me-1"></i> Retour
+                        </a>
                     </div>
                 </div>
 
                 <div class="box-body fs-14">
-                    <h4 class="box-title text-primary mb-0"><i class="ti-user me-15"></i> Informations<span class="text-lowercase"></span></h4>
+                    <h4 class="box-title text-primary mb-0"><i class="ti-user me-15"></i> Informations</h4>
                     <hr class="my-15">
-                    <div class="row">
-                        <div class="col-md-3">
+                    <div class="row g-3">
+                        <div class="col-12 col-md-4 col-lg-3 text-center">
                             <div class="form-group">
                                 <div class="image-upload">
                                     <div class="avatar-preview">
-                                    <div class="profilePicPreview" style="height:200px;">
-                                            <img src="{{ asset("assets/uploads/secretariat/$secretaire->img_url")}}" alt="Image de profil" class="img-thumbnail mt-3" >
+                                    <div class="profilePicPreview" style="max-height:200px;">
+                                            <img src="{{ asset("assets/uploads/secretariat/$secretaire->img_url")}}" alt="Image de profil" class="img-thumbnail mt-2" style="max-width: 160px;">
                                     </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-9 py-10">
-                            <div class="row">
-                                <div class="col-md-6">
+                        <div class="col-12 col-md-8 col-lg-9 py-10">
+                            <div class="row g-2">
+                                <div class="col-12 col-sm-6">
                                     <div class="form-label"><strong>Matricule : </strong><span style="color:red;">{{ $secretaire->matricule }}</span></div>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-12 col-sm-6">
                                     <div class="form-label"><strong>Nom & Prenoms :</strong> {{$secretaire->user->name }}</div>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-12 col-sm-6">
                                     <div class="form-label"><strong>Email :</strong> {{
                                         $secretaire->user->email }}</div>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-12 col-sm-6">
                                     <div class="form-label"><strong>Contact :</strong> {{ $secretaire->contact }}
                                     </div>
                                 </div>
                             </div>
-                            <h4 class="box-title text-success pt-25"><i class="ti-user me-15"></i> Modifier les données
+                            <h4 class="box-title text-success pt-25 mb-0"><i class="ti-user me-15"></i> Modifier les données
                             </h4>
-                            <hr class="my-0">   
-                            <form class="form pt-20" action="{{ route('secretariat.update') }}" method="post" enctype="multipart/form-data">
+                            <hr class="my-15">   
+                            <form class="form" action="{{ route('secretariat.update') }}" method="post" enctype="multipart/form-data">
                                 @csrf
-                                <div class="row">
-                                    <div class="col-md-6">
+                                <div class="row g-2 g-md-3">
+                                    <div class="col-12 col-md-6">
                                         <div class="form-group">
                                             <label for="label" class="form-label">Nom <span
                                                     class="text-danger fw-bold">*</span></label>

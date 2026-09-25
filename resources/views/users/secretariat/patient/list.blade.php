@@ -7,18 +7,18 @@
     <div class="row justify-content-center">
         <div class="col-12">
             <div class="box">
-                <div class="box-header">
-                    <div class="row align-items-center">
-                        <div class="col-xs-12 col-xl-6 col-lg-6 col-md-6 col-sm-6">
-                            <h4 class="box-title">PATIENTS</h4>
+                <div class="box-header with-border">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div>
+                            <h4 class="box-title fw-bold text-dark mb-0"><i class="fa-solid fa-users text-primary me-2"></i> REGISTRE DES PATIENTS</h4>
                         </div>
-                        <div class="col-xs-12 col-xl-6 col-lg-6 col-md-6 col-sm-6 text-end">
+                        <div class="d-flex align-items-center flex-wrap gap-2">
                             <a href="{{ route('secretariat.search_hospitalisation') }}"
-                                class="btn btn-info btn-sm shadow me-2">
-                                <i class="fa fa-search me-1"></i> Vérifier / Rechercher un patient
+                                class="btn btn-info btn-sm rounded-10 shadow-xs">
+                                <i class="fa fa-search me-1"></i> Vérifier / Rechercher
                             </a>
                             <a href="{{ route('secretariat.patient.create') }}"
-                                class="btn btn-primary btn-sm shadow">
+                                class="btn btn-primary btn-sm rounded-10 shadow-xs">
                                 <i class="fa fa-plus-circle me-1"></i> Ajouter un Patient
                             </a>
                         </div>

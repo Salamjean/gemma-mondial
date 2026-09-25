@@ -17,6 +17,7 @@
     <!-- Style-->
     <link rel="stylesheet" href="{{ asset('assets/src/css/style.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/src/css/skin_color.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/src/css/secretariat_responsive.css') }}?v={{ time() }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/min/dropzone.min.css" crossorigin="anonymous">
     <meta name="csrf-token" content="{{ csrf_token() }}" />
 
@@ -100,6 +101,14 @@
 </head>
 
 <body class="hold-transition light-skin theme-info bg-s {{ request()->has('embed') ? 'is-embedded-form' : 'sidebar-mini fixed' }}">
+    <script>
+        (function() {
+            var w = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+            if (w >= 768 && w <= 1199) {
+                document.body.classList.add('sidebar-collapse');
+            }
+        })();
+    </script>
 
     <div class="wrapper">
         @if(!request()->has('embed'))
@@ -107,6 +116,8 @@
             @include('partials._header')
             <!-- Dashbord Menu -->
             @include('partials._menu')
+            <!-- Backdrop mobile pour fermer la sidebar -->
+            <div class="sidebar-mobile-backdrop" id="sidebarBackdrop"></div>
         @endif
 
         <!-- Content Wrapper. Contains page content -->
@@ -289,6 +300,16 @@
                 }
             });
         }
+    </script>
+
+    <script>
+        $(document).ready(function() {
+            // Fermeture de la sidebar mobile au clic sur le backdrop ou le bouton fermer
+            $(document).on('click', '.sidebar-mobile-backdrop, .sidebar-close-btn', function(e) {
+                e.preventDefault();
+                $('body').removeClass('sidebar-open');
+            });
+        });
     </script>
 
     @stack('js')

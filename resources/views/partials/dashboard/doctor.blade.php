@@ -1,7 +1,7 @@
 <div class="row">
     <!-- Consultations du Jour -->
     <div class="col-xl-12 col-lg-12 col-12" id="doctorTodayConsultationsBox">
-        <div class="box" style="background: rgba(255, 145, 0, 0.288); padding : 10px 20px;">
+        <div class="box shadow-sm border-0 rounded-12" style="background: rgba(255, 145, 0, 0.12); border-left: 4px solid #ff9100 !important; padding: 15px 20px;">
             @php
                 $doctorId = \Illuminate\Support\Facades\Auth::user()->doctor->id;
                 $countAllConsultations = \App\Models\Consultation::where('doctor_id', $doctorId)
@@ -13,69 +13,90 @@
                     })
                     ->count();
             @endphp
-            <div class="d-flex justify-content-between align-items-center mb-10">
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-3">
                 <div class="d-flex align-items-center gap-2">
-                    <div class="badge badge-dark" style="font-size: 20px;">CONSULTATIONS DU JOUR</div>
+                    <div class="badge badge-dark fs-15 py-2 px-3 fw-bold rounded-8">
+                        <i class="fa-solid fa-stethoscope me-1 text-warning"></i> CONSULTATIONS DU JOUR
+                    </div>
                     <span class="badge bg-success-light text-success fs-12 fw-bold d-none d-sm-inline-flex align-items-center gap-1" title="Actualisation automatique toutes les 10s">
                         <i class="fa-solid fa-rotate fa-spin-pulse"></i> 10s
                     </span>
                 </div>
-                <a href="{{ route('doctor.consultation.all') }}" class="btn btn-primary fw-bold shadow-sm" style="font-size: 14px; border-radius: 8px;">
+                <a href="{{ route('doctor.consultation.all') }}" class="btn btn-sm btn-primary fw-bold shadow-sm rounded-8 d-inline-flex align-items-center">
                     <i class="fa-solid fa-layer-group me-1"></i> Toutes les consultations
-                    <span class="badge bg-white text-primary ms-2 fs-14 fw-bolder">{{ $countAllConsultations }}</span>
+                    <span class="badge bg-white text-primary ms-2 fs-12 fw-bolder">{{ $countAllConsultations }}</span>
                 </a>
             </div>
-            <div class="box-body text-center">
+            <div class="box-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-striped table-hover">
-                        <thead>
-                            <tr>
-                                <th class="bb-2" style="text-align: left;">Heure</th>
-                                <th class="bb-2">Code</th>
-                                <th class="bb-2">N° dossier médical</th>
-                                <th class="bb-2">Nom & prénom(s)</th>
-                                <th class="bb-2">Type de la visite</th>
-                                <th class="bb-2 text-center">Dossier médical</th>
-                                <th class="bb-2 text-center">Actions</th>
+                    <table class="table table-striped table-hover align-middle mb-0 bg-white rounded-10 overflow-hidden">
+                        <thead class="bg-light">
+                            <tr class="text-dark fw-bold fs-12 text-uppercase">
+                                <th class="ps-3 py-3" style="text-align: left;">Heure</th>
+                                <th class="py-3 text-center">Code</th>
+                                <th class="py-3 text-center">N° Dossier</th>
+                                <th class="py-3">Nom & prénom(s)</th>
+                                <th class="py-3 text-center">Type de visite</th>
+                                <th class="py-3 text-center">Dossier médical</th>
+                                <th class="pe-3 py-3 text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (\App\Models\Consultation::orderByDESC('created_at')->where('doctor_id', \Illuminate\Support\Facades\Auth::user()->doctor->id)->where('status_inf', 1)->whereNull('call_channel')->where(function($q) { $q->whereDate('created_at', date('Y-m-d'))->orWhereDate('date_consultation', date('Y-m-d')); })->where('status', '0')->where(function($q) { $q->whereNull('orientation_infirmier')->orWhere('orientation_infirmier', ''); })->get() as $item)
+                            @forelse (\App\Models\Consultation::orderByDESC('created_at')->where('doctor_id', \Illuminate\Support\Facades\Auth::user()->doctor->id)->where('status_inf', 1)->whereNull('call_channel')->where(function($q) { $q->whereDate('created_at', date('Y-m-d'))->orWhereDate('date_consultation', date('Y-m-d')); })->where('status', '0')->where(function($q) { $q->whereNull('orientation_infirmier')->orWhere('orientation_infirmier', ''); })->get() as $item)
                                 <tr>
-                                    <td style="text-align: left;">{{ $item->created_at ? $item->created_at->format('H:i:s') : '-' }}</td>
-                                    <td style="text-align: center;"><b>{{ $item->code_consultation ?? 'CONS-'.$item->id }}</b></td>
-                                    <td style="text-align: center;"><span class="fw-bold">{{ optional($item->patient)->code_patient ?? 'N/A' }}</span></td>
-                                    <td style="text-align: center; text-transform: capitalize; width: 300px;">
-                                        <span class="badge text-dark fw-900 fs-14">{{ optional(optional($item->patient)->user)->name }} {{ optional(optional($item->patient)->user)->prenom }}</span>
+                                    <td class="ps-3 fw-semibold text-muted fs-12" style="text-align: left;">
+                                        {{ $item->created_at ? $item->created_at->format('H:i:s') : '-' }}
                                     </td>
-                                    <td style="text-align: center;"><span class="badge badge-info">{{ optional(optional($item->prestationHospital)->prestationService)->libelle ?? 'Consultation' }}</span></td>
+                                    <td class="text-center">
+                                        <b class="text-dark">{{ $item->code_consultation ?? 'CONS-'.$item->id }}</b>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="fw-bold text-dark">{{ optional($item->patient)->code_patient ?? 'N/A' }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-dark text-capitalize fs-14">
+                                            {{ optional(optional($item->patient)->user)->name }} {{ optional(optional($item->patient)->user)->prenom }}
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary-light text-primary fw-semibold">
+                                            {{ optional(optional($item->prestationHospital)->prestationService)->libelle ?? 'Consultation' }}
+                                        </span>
+                                    </td>
 
-                                    <td class="text-center" style="width: 220px;">
+                                    <td class="text-center">
                                         @if (optional($item->patient)->id)
                                             <a href="{{ route('doctor.patient.dossier_medical', $item->patient->id) }}"
-                                                class="btn btn-sm btn-outline-info rounded-pill fw-bold shadow-xs px-3 py-1.5 text-nowrap d-inline-flex align-items-center gap-1.5" title="Ouvrir le dossier médical complet">
-                                                <i class="fa-solid fa-folder-open fs-13"></i>
+                                                class="btn btn-xs btn-sm btn-outline-info rounded-pill fw-bold shadow-xs px-2.5 py-1 text-nowrap d-inline-flex align-items-center gap-1" title="Ouvrir le dossier médical complet">
+                                                <i class="fa-solid fa-folder-open fs-12"></i>
                                                 <span>Dossier médical</span>
                                             </a>
                                         @else
                                             <span class="text-muted fs-11">-</span>
                                         @endif
-                                        <br>
-                                        @if ($item->status_inf == 1)
-                                            <span class="badge bg-light-success text-success fs-11 mt-1"><i class="fa-solid fa-check me-1"></i> Constantes prises</span>
-                                        @else
-                                            <span class="badge bg-light-warning text-warning fs-11 mt-1"><i class="fa-solid fa-clock me-1"></i> Constantes en attente</span>
-                                        @endif
+                                        <div class="mt-1">
+                                            @if ($item->status_inf == 1)
+                                                <span class="badge bg-light-success text-success fs-10"><i class="fa-solid fa-check me-1"></i> Constantes prises</span>
+                                            @else
+                                                <span class="badge bg-light-warning text-warning fs-10"><i class="fa-solid fa-clock me-1"></i> Constantes en attente</span>
+                                            @endif
+                                        </div>
                                     </td>
 
-                                    <td class="text-center">
-                                        <a href="{{ route('doctor.consultation.formulaire', $item->id) }}" class="btn btn-sm me-1" style="background: rgba(214, 110, 62, 0.452);" data-bs-toggle="tooltip"
+                                    <td class="pe-3 text-center">
+                                        <a href="{{ route('doctor.consultation.formulaire', $item->id) }}" class="btn btn-sm btn-warning text-dark fw-bold rounded-8 px-3 py-1 shadow-sm" data-bs-toggle="tooltip"
                                             data-bs-placement="bottom" title="Faire la consultation">
-                                            <span>Commencer</span>
+                                            <i class="fa-solid fa-play me-1"></i> <span>Commencer</span>
                                         </a>
                                     </td>
                                 </tr>
-                            @endforeach
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted fs-13">
+                                        Aucune consultation en attente pour aujourd'hui.
+                                    </td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
@@ -83,7 +104,7 @@
         </div>
     </div>
 
-    <!-- Demandes de téléconsultation en ligne en attente (Remplaçant Liste de vos consultations) -->
+    <!-- Demandes de téléconsultation en ligne en attente -->
     @if(optional(optional(auth()->user()->doctor)->hospital)->is_teleconsultation_active ?? true)
         <div class="col-xl-12 col-lg-12 col-12 mt-3">
             @include('partials.doctor_pending_teleconsultations')

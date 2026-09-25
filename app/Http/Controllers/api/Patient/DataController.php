@@ -26,7 +26,7 @@ class DataController extends Controller
             'date' => 'required|date',
             'heure' => 'required|string',
             'motif' => 'required|string',
-            'doctor_id' => 'required|integer|exists:doctors,id',
+            'doctor_id' => 'nullable|integer',
             'notes' => 'nullable|string',
             'image' => 'nullable|image|max:2048',
         ]);
@@ -41,22 +41,45 @@ class DataController extends Controller
 
         try {
             $patient = Auth::user()->patient;
+            if (!$patient) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Profil patient introuvable.'
+                ], 404);
+            }
+
+            $doctorId = $request->doctor_id;
+            if ($doctorId) {
+                // Trouver le bon ID de médecin (soit ID table doctors, soit user_id)
+                $doc = \App\Models\Doctor::where('id', $doctorId)->orWhere('user_id', $doctorId)->first();
+                if ($doc) {
+                    $doctorId = $doc->id;
+                }
+            } else {
+                // Si non spécifié, prendre un médecin de l'hôpital du patient
+                $hospitalId = $patient->hospital_id ?? 1;
+                $firstDoc = \App\Models\Doctor::where('hospital_id', $hospitalId)->first();
+                $doctorId = optional($firstDoc)->id ?? 1;
+            }
+
+            // Gérer l'image si fournie
+            $imageName = '';
+            if ($request->hasFile('image')) {
+                $image = $request->file('image');
+                $imageName = time() . '_' . $image->getClientOriginalName();
+                $image->storeAs('public/rendez-vous', $imageName);
+            }
 
             // Créer le rendez-vous
             $rendezVous = new RendezVous();
             $rendezVous->title = $request->title;
             $rendezVous->date = $request->date;
+            $rendezVous->heure = $request->heure;
+            $rendezVous->motif = $request->motif;
+            $rendezVous->image = $imageName;
             $rendezVous->patient_id = $patient->id;
-            $rendezVous->doctor_id = $request->doctor_id;
+            $rendezVous->doctor_id = $doctorId;
             $rendezVous->status = 'pending';
-
-            // Gérer l'image si fournie
-            if ($request->hasFile('image')) {
-                $image = $request->file('image');
-                $imageName = time() . '_' . $image->getClientOriginalName();
-                $image->storeAs('public/rendez-vous', $imageName);
-                $rendezVous->image = $imageName;
-            }
 
             // Sauvegarder les données supplémentaires dans un champ JSON
             $rendezVous->details = json_encode([
@@ -151,12 +174,122 @@ class DataController extends Controller
 
     public function consultations()
     {
-        return response(['consultations' => $this->instance()->consultations()], 200);
+        $consultations = $this->instance()->consultations();
+
+        $total = $consultations->count();
+        $enAttente = $consultations->filter(function ($c) {
+            return ($c->status == 0 && ($c->call_status === 'pending' || $c->call_status === 'payment_pending' || empty($c->call_status))) 
+                || in_array($c->call_status, ['pending', 'payment_pending']);
+        })->count();
+
+        $enCours = $consultations->filter(function ($c) {
+            return in_array($c->call_status, ['calling', 'in_progress', 'accepted', 'in_call']) || ($c->is_call_active ?? 0) == 1;
+        })->count();
+
+        $terminees = $consultations->filter(function ($c) {
+            return $c->status == 1 || in_array($c->call_status, ['completed', 'ended', 'doctor_ended']);
+        })->count();
+
+        $annulees = $consultations->filter(function ($c) {
+            return $c->status == 2 || in_array($c->call_status, ['cancelled', 'rejected']);
+        })->count();
+
+        return response([
+            'status' => 'success',
+            'total' => $total,
+            'stats' => [
+                'total' => $total,
+                'en_attente' => $enAttente,
+                'en_cours' => $enCours,
+                'terminees' => $terminees,
+                'annulees' => $annulees,
+            ],
+            'consultations' => $consultations
+        ], 200);
     }
 
     public function declarations()
     {
-        return response(['declarations' => $this->instance()->declarations()], 200);
+        $declarations = $this->instance()->declarations();
+        $total = $declarations->count();
+        $naissances = $declarations->filter(fn($d) => !is_null($d->naissance))->count();
+        $deces = $declarations->filter(fn($d) => !is_null($d->deces))->count();
+
+        return response([
+            'status' => 'success',
+            'total' => $total,
+            'stats' => [
+                'total' => $total,
+                'naissances' => $naissances,
+                'deces' => $deces,
+            ],
+            'declarations' => $declarations
+        ], 200);
+    }
+
+    public function detailDeclaration($id)
+    {
+        try {
+            $patient = Auth::user()->patient;
+            if (!$patient) {
+                return response()->json(['status' => 'error', 'message' => 'Patient introuvable.'], 404);
+            }
+
+            $declaration = \App\Models\Declaration::where('id', $id)
+                ->where('patient_id', $patient->id)
+                ->with([
+                    'doctor.user',
+                    'hospital',
+                    'naissance',
+                    'deces',
+                    'decesPatient',
+                    'patient.user',
+                    'consultation.registre'
+                ])
+                ->first();
+
+            if (!$declaration) {
+                return response()->json(['status' => 'error', 'message' => 'Déclaration introuvable.'], 404);
+            }
+
+            $type = !is_null($declaration->naissance) ? 'Naissance' : (!is_null($declaration->deces) ? 'Décès' : ($declaration->type ?? 'Médicale'));
+            $docUser = optional($declaration->doctor)->user;
+            $doctorName = $docUser ? ('Dr. ' . trim(($docUser->name ?? '') . ' ' . ($docUser->prenom ?? ''))) : 'Non renseigné';
+            $hospitalName = optional($declaration->hospital)->label 
+                ?? optional($declaration->hospital)->nom_direction_generale 
+                ?? 'Hôpital Général';
+
+            $printUrl = null;
+            if ($declaration->naissance) {
+                $printUrl = url("/impression/declaration/naissance/{$declaration->naissance->id}");
+            } elseif ($declaration->deces) {
+                $printUrl = url("/impression/declaration/deces/{$declaration->deces->id}");
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'declaration' => [
+                    'id' => $declaration->id,
+                    'type' => $type,
+                    'date' => $declaration->date ?? date('Y-m-d', strtotime($declaration->created_at)),
+                    'code_declaration' => $declaration->code ?? ('DECL-' . str_pad($declaration->id, 5, '0', STR_PAD_LEFT)),
+                    'doctor' => [
+                        'name' => $doctorName,
+                        'telephone' => optional($declaration->doctor)->contact,
+                    ],
+                    'hospital' => [
+                        'name' => $hospitalName,
+                    ],
+                    'naissance' => $declaration->naissance,
+                    'deces' => $declaration->deces ?? $declaration->decesPatient,
+                    'print_pdf_url' => $printUrl,
+                    'created_at' => date('Y-m-d H:i:s', strtotime($declaration->created_at)),
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Erreur serveur: ' . $e->getMessage()], 500);
+        }
     }
 
     public function rendezVous()
@@ -350,13 +483,48 @@ class DataController extends Controller
 
             $allRdv = $formattedRdv->concat($formattedOnline)->sortByDesc('created_at')->values();
 
-            Log::info('Nombre de rendez-vous trouvés: ' . $allRdv->count());
+            $today = date('Y-m-d');
+            $total = $allRdv->count();
+
+            $aVenir = $allRdv->filter(function ($r) use ($today) {
+                if (in_array($r['status'] ?? '', ['cancelled', 'complete'])) {
+                    return false;
+                }
+                if (in_array($r['status'] ?? '', ['pending', 'en_attente'])) {
+                    return true;
+                }
+                $rDate = !empty($r['date']) ? date('Y-m-d', strtotime($r['date'])) : null;
+                return $rDate && $rDate >= $today;
+            })->count();
+
+            $enAttente = $allRdv->filter(function ($r) {
+                return in_array($r['status'] ?? '', ['pending', 'en_attente']);
+            })->count();
+
+            $termines = $allRdv->filter(function ($r) {
+                return in_array($r['status'] ?? '', ['complete', 'termine', 'effectue']);
+            })->count();
+
+            $annules = $allRdv->filter(function ($r) {
+                return in_array($r['status'] ?? '', ['cancelled', 'annule', 'rejete']);
+            })->count();
+
+            Log::info('Nombre de rendez-vous trouvés: ' . $total);
             Log::info('=== FIN rendezVous() ===');
 
             return response([
                 'success' => true,
-                'rdv' => $allRdv,
-                'count' => $allRdv->count()
+                'status' => 'success',
+                'total' => $total,
+                'count' => $total,
+                'stats' => [
+                    'total' => $total,
+                    'a_venir' => $aVenir,
+                    'en_attente' => $enAttente,
+                    'termines' => $termines,
+                    'annules' => $annules,
+                ],
+                'rdv' => $allRdv
             ], 200);
 
         } catch (\Exception $e) {
@@ -371,16 +539,126 @@ class DataController extends Controller
         }
     }
 
+    public function detailRendezVous($id)
+    {
+        try {
+            $patient = Auth::user()->patient;
+            if (!$patient) {
+                return response()->json(['status' => 'error', 'message' => 'Patient non trouvé'], 404);
+            }
+
+            // Cas d'une téléconsultation virtuelle
+            if (is_string($id) && str_starts_with($id, 'online_')) {
+                $consultId = substr($id, 7);
+                $c = \App\Models\Consultation::where('id', $consultId)
+                    ->where('patient_id', $patient->id)
+                    ->with(['hospital', 'doctor.user', 'prestationHospital.prestationService.service'])
+                    ->first();
+
+                if (!$c) {
+                    return response()->json(['status' => 'error', 'message' => 'Rendez-vous introuvable'], 404);
+                }
+
+                $docUser = optional($c->doctor)->user;
+                $docName = $docUser ? ('Dr. ' . trim(($docUser->name ?? '') . ' ' . ($docUser->prenom ?? ''))) : 'Médecin Généraliste';
+                $specialite = optional($c->doctor)->type_name ?? 'Médecin Généraliste';
+                $hospitalName = optional($c->hospital)->label ?? optional($c->hospital)->nom_direction_generale ?? 'Hôpital Général';
+
+                $date = $c->desired_date ?: ($c->date_consultation ?: date('Y-m-d', strtotime($c->created_at)));
+                $heure = $c->desired_time ?: date('H:i', strtotime($c->created_at));
+
+                return response()->json([
+                    'status' => 'success',
+                    'rendez_vous' => [
+                        'id' => 'online_' . $c->id,
+                        'title' => 'Téléconsultation : ' . ($c->motif_consultation ?: 'Consultation en ligne'),
+                        'date' => $date,
+                        'heure' => $heure,
+                        'motif' => $c->motif_consultation ?: 'Téléconsultation en ligne',
+                        'notes' => 'Téléconsultation médicale en ligne',
+                        'status' => $c->call_status === 'completed' || $c->status == 1 ? 'complete' : ($c->call_status === 'rejected' ? 'cancelled' : 'pending'),
+                        'is_online' => true,
+                        'doctor' => [
+                            'id' => $c->doctor_id,
+                            'name' => $docName,
+                            'specialite' => $specialite,
+                            'telephone' => optional($c->doctor)->contact ?? 'Non spécifié',
+                            'email' => optional($docUser)->email ?? 'Non spécifié',
+                            'photo' => optional($c->doctor)->img_url ? asset('assets/uploads/doctor/' . $c->doctor->img_url) : null,
+                        ],
+                        'hospital' => [
+                            'id' => $c->hospital_id,
+                            'name' => $hospitalName,
+                            'contact' => optional($c->hospital)->contact ?? 'Non spécifié',
+                        ],
+                        'created_at' => date('Y-m-d H:i:s', strtotime($c->created_at)),
+                    ]
+                ], 200);
+            }
+
+            // Cas d'un rendez-vous en présentiel
+            $rdv = RendezVous::where('id', $id)
+                ->where('patient_id', $patient->id)
+                ->with(['doctor.user', 'doctor.hospital', 'consultation.hospital'])
+                ->first();
+
+            if (!$rdv) {
+                return response()->json(['status' => 'error', 'message' => 'Rendez-vous introuvable'], 404);
+            }
+
+            $details = is_string($rdv->details) ? (json_decode($rdv->details, true) ?? []) : ($rdv->details ?? []);
+            $doctorUser = optional($rdv->doctor)->user;
+            $doctorName = $doctorUser ? ('Dr. ' . trim(($doctorUser->name ?? '') . ' ' . ($doctorUser->prenom ?? ''))) : 'Dr. Non assigné';
+            $specialite = optional($rdv->doctor)->type_name ?? 'Médecin Généraliste';
+            $hospital = optional($rdv->doctor)->hospital ?? optional(optional($rdv->consultation)->hospital)->label;
+            $hospitalName = is_object($hospital) ? ($hospital->label ?: ($hospital->nom_direction_generale ?: 'Hôpital Général')) : ($hospital ?: 'Hôpital Général');
+
+            return response()->json([
+                'status' => 'success',
+                'rendez_vous' => [
+                    'id' => $rdv->id,
+                    'title' => $rdv->title,
+                    'date' => $rdv->date,
+                    'heure' => $rdv->heure ?: ($details['heure'] ?? 'Non spécifiée'),
+                    'motif' => $rdv->motif ?: ($details['motif'] ?? ($rdv->title ?? 'Non spécifié')),
+                    'notes' => $details['notes'] ?? null,
+                    'status' => $rdv->status,
+                    'image' => $rdv->image ? asset('storage/' . $rdv->image) : null,
+                    'is_online' => false,
+                    'doctor' => [
+                        'id' => $rdv->doctor_id,
+                        'name' => $doctorName,
+                        'specialite' => $specialite,
+                        'telephone' => optional($rdv->doctor)->contact ?? 'Non spécifié',
+                        'email' => optional($doctorUser)->email ?? 'Non spécifié',
+                        'photo' => optional($rdv->doctor)->img_url ? asset('assets/uploads/doctor/' . $rdv->doctor->img_url) : null,
+                    ],
+                    'hospital' => [
+                        'name' => $hospitalName,
+                    ],
+                    'created_at' => date('Y-m-d H:i:s', strtotime($rdv->created_at)),
+                    'details' => $details,
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Erreur serveur: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function deleteRendezVous($id)
     {
+        $patient = Auth::user()->patient;
+        $rdv = RendezVous::where('id', $id)
+            ->where('patient_id', optional($patient)->id)
+            ->first();
 
-        $rdv = RendezVous::find($id);
-        if ($rdv)
+        if ($rdv) {
             $rdv->delete();
-        else
-            return response(['message' => 'Rendez vous introuvable'], 403);
+            return response(['status' => 'success', 'message' => 'Rendez-vous supprimé avec succès'], 200);
+        }
 
-        return response(['message' => 'Rendez vous supprimé'], 200);
+        return response(['status' => 'error', 'message' => 'Rendez-vous introuvable'], 404);
     }
 
     public function checkActiveCall()

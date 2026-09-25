@@ -31,13 +31,19 @@
     $formattedEvents = [];
     if (isset($rendezVous) && count($rendezVous) > 0) {
         foreach ($rendezVous as $rdv) {
+            $patientObj = optional($rdv->consultation)->patient ?? $rdv->patient;
+            $patientUserObj = optional($patientObj)->user;
+            $patientFullName = $patientUserObj ? trim(($patientUserObj->name ?? '') . ' ' . ($patientUserObj->prenom ?? '')) : 'Patient';
+            $patientId = optional($patientObj)->id ?? $rdv->patient_id;
+            $timeText = !empty($rdv->heure) ? ' (' . $rdv->heure . ')' : '';
+
             $formattedEvents[] = [
-                'title' => $rdv->title,
-                'patient' => $rdv->consultation->patient->user->name . ' ' . $rdv->consultation->patient->user->prenom,
+                'title' => ($rdv->title ?: ($rdv->motif ?? 'Rendez-vous')) . $timeText,
+                'patient' => $patientFullName,
                 'start' => $rdv->date,
                 'color' => '#d9534f',
                 'type' => 'rendezVous',
-                'url' => route('doctor.patient.detail', $rdv->consultation->patient->id),
+                'url' => $patientId ? route('doctor.patient.detail', $patientId) : '#',
             ];
         }
     }

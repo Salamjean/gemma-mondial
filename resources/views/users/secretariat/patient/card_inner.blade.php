@@ -216,6 +216,19 @@
     @media (max-width: 768px) {
         .id-card-wrapper {
             zoom: 0.8;
+            max-width: 100%;
+        }
+    }
+    @media (max-width: 520px) {
+        .id-card-wrapper {
+            zoom: 0.55;
+            max-width: 100%;
+        }
+    }
+    @media (max-width: 380px) {
+        .id-card-wrapper {
+            zoom: 0.45;
+            max-width: 100%;
         }
     }
 

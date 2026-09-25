@@ -34,15 +34,23 @@
     }
     .detail-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 16px;
-        padding: 20px;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 14px;
+        padding: 18px;
+    }
+    @media (max-width: 575.98px) {
+        .detail-grid {
+            grid-template-columns: 1fr;
+            padding: 12px;
+            gap: 10px;
+        }
     }
     .detail-field {
         background: #f8fafc;
         padding: 12px 16px;
         border-radius: 10px;
         border: 1px solid #f1f5f9;
+        word-break: break-word;
     }
     .detail-label {
         font-size: 0.8rem;
@@ -117,9 +125,9 @@
     @endif
 
     <div class="patient-header-box mb-25">
-        <div class="row align-items-center">
-            <div class="col-lg-8 d-flex align-items-center flex-wrap gap-3">
-                <div>
+        <div class="row align-items-center g-3">
+            <div class="col-12 col-lg-8 d-flex align-items-center flex-column flex-sm-row gap-3 text-center text-sm-start">
+                <div class="flex-shrink-0">
                     @if ($patient->img_url != null)
                         <img src="{{ asset('assets/uploads/patient/' . $patient->img_url) }}" class="patient-avatar-img" alt="Photo de profil" />
                     @else
@@ -131,21 +139,21 @@
                     @endif
                 </div>
                 <div>
-                    <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                        <h2 class="fw-bold text-dark mb-0 fs-24">{{ $patient->user->name ?? '' }} {{ $patient->user->prenom ?? '' }}</h2>
-                        <span class="badge bg-primary-light text-primary fw-bold px-3 py-1 fs-13">Dossier N° {{ $patient->code_patient }}</span>
+                    <div class="d-flex align-items-center justify-content-center justify-content-sm-start gap-2 mb-1 flex-wrap">
+                        <h2 class="fw-bold text-dark mb-0 fs-20 fs-md-24">{{ $patient->user->name ?? '' }} {{ $patient->user->prenom ?? '' }}</h2>
+                        <span class="badge bg-primary-light text-primary fw-bold px-3 py-1 fs-12 fs-md-13">Dossier N° {{ $patient->code_patient }}</span>
                         @if ($patient->isDeceased() || $patient->declarationDeces)
-                            <span class="badge bg-danger text-white fw-bold px-3 py-1 fs-13 shadow-sm"><i class="fa-solid fa-skull-crossbones me-1"></i> DÉCÉDÉ</span>
+                            <span class="badge bg-danger text-white fw-bold px-3 py-1 fs-12 fs-md-13 shadow-sm"><i class="fa-solid fa-skull-crossbones me-1"></i> DÉCÉDÉ</span>
                         @endif
                     </div>
-                    <p class="text-muted mb-2 fs-14">
+                    <p class="text-muted mb-2 fs-13 fs-md-14">
                         <span class="fw-semibold text-dark"><i class="fa-solid fa-mars-venus text-primary me-1"></i> {{ ucfirst($patient->gender) }}</span>
                         &nbsp;•&nbsp;
                         <span class="fw-semibold text-dark"><i class="fa-solid fa-cake-candles text-info me-1"></i> {{ $ageStr }}</span>
                         &nbsp;•&nbsp;
                         <span><i class="fa-solid fa-briefcase text-muted me-1"></i> {{ $patient->profession ?? 'Profession non renseignée' }}</span>
                     </p>
-                    <div class="d-flex flex-wrap gap-2">
+                    <div class="d-flex flex-wrap justify-content-center justify-content-sm-start gap-2">
                         <span class="badge bg-light text-dark border px-3 py-1 fs-12"><i class="fa-solid fa-phone text-success me-1"></i> {{ $patient->telephone ?? 'Non renseigné' }}</span>
                         <span class="badge bg-light text-dark border px-3 py-1 fs-12"><i class="fa-solid fa-location-dot text-danger me-1"></i> {{ $patient->residenceActuelle->name ?? 'Résidence inconnue' }}</span>
                     </div>
@@ -153,19 +161,19 @@
             </div>
 
             <!-- Boutons d'Action -->
-            <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
-                <div class="d-flex flex-wrap align-items-center justify-content-lg-end gap-2">
+            <div class="col-12 col-lg-4 text-center text-lg-end">
+                <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-end gap-2">
                     @if (auth()->check() && !in_array(auth()->user()->role_as, ['secretariat', 'cashier']))
-                    <a href="{{ $dossierUrl }}" class="btn btn-primary fw-semibold rounded-10 px-20">
+                    <a href="{{ $dossierUrl }}" class="btn btn-primary fw-semibold rounded-10 px-20 btn-sm">
                         <i class="fa-solid fa-folder-open me-1"></i> Voir dossier
                     </a>
                     @endif
                     @if (\Illuminate\Support\Facades\Route::has('secretariat.patient.edit') && !$patient->isDeceased())
-                    <a href="{{ route('secretariat.patient.edit', $patient->id) }}" class="btn btn-warning fw-semibold rounded-10 px-20">
+                    <a href="{{ route('secretariat.patient.edit', $patient->id) }}" class="btn btn-warning fw-semibold rounded-10 px-20 btn-sm">
                         <i class="fa-solid fa-pen-to-square me-1"></i> Modifier
                     </a>
                     @endif
-                    <a href="{{ back()->getTargetUrl() }}" class="btn btn-secondary fw-semibold rounded-10 px-20">
+                    <a href="{{ back()->getTargetUrl() }}" class="btn btn-secondary fw-semibold rounded-10 px-20 btn-sm">
                         <i class="fa-solid fa-arrow-left me-1"></i> Retour
                     </a>
                 </div>

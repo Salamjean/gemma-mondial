@@ -46,6 +46,7 @@ Route::prefix('v1/patient')->group(
             Route::get('consultations', [DataController::class, 'consultations']);
             Route::get('parcours/{id}', [DataController::class, 'parcoursDetail']);
             Route::get('declarations', [DataController::class, 'declarations']);
+            Route::get('declarations/{id}', [DataController::class, 'detailDeclaration']);
             Route::post('rdv/create', [DataController::class, 'createRendezVous']);
             Route::get('rdv', [DataController::class, 'rendezVous']);
             Route::get('doctors', [DataController::class, 'getDoctors']);
@@ -61,7 +62,10 @@ Route::prefix('v1/patient')->group(
             Route::get('online-consultation/status/{id}', [DataController::class, 'checkOnlineConsultationStatus']);
             Route::get('verify-wave-payment/{id}', [DataController::class, 'verifyWavePayment']);
 
-            Route::get('rdv/{id}', [DataController::class, 'deleteRendezVous']);
+            Route::get('rdv/{id}', [DataController::class, 'detailRendezVous']);
+            Route::delete('rdv/{id}', [DataController::class, 'deleteRendezVous']);
+            Route::post('rdv/{id}/delete', [DataController::class, 'deleteRendezVous']);
+            Route::get('rdv/delete/{id}', [DataController::class, 'deleteRendezVous']);
         });
 
         Route::post('wave/webhook', [DataController::class, 'waveWebhook']);

@@ -1,27 +1,25 @@
 @extends('layouts.dashboard')
 
 @section('content')
-    <div class="container-fluid px-30 py-20">
+    <div class="container-fluid px-2 px-md-30 py-15 py-md-20">
 
         <!-- En-tête de la page -->
-        <div class="card border-0 shadow-sm rounded-20 mb-30 p-25 bg-white">
-            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-                <div>
-                    <h3 class="fw-bold text-dark mb-1 fs-24">
-                        <i class="fa-solid fa-magnifying-glass text-primary me-2"></i> Recherche & Affectation Directe des
-                        Patients
+        <div class="card border-0 shadow-sm rounded-20 mb-20 mb-md-25 p-15 p-md-25 bg-white">
+            <div class="row align-items-center g-3">
+                <div class="col-12 col-lg-8">
+                    <h3 class="fw-bold text-dark mb-1 fs-18 fs-md-22">
+                        <i class="fa-solid fa-magnifying-glass text-primary me-2"></i> Recherche & Affectation Directe des Patients
                     </h3>
-                    <p class="text-muted mb-0 fs-14">
-                        Recherchez un dossier existant par nom, prénom ou téléphone. Sélectionnez le patient pour mettre à
-                        jour sa fiche ou l'affecter immédiatement à un service, un acte/prestation, un médecin ou un
-                        infirmier.
+                    <p class="text-muted mb-0 fs-13 fs-md-14">
+                        Recherchez un dossier existant par nom, prénom ou téléphone pour mettre à jour la fiche ou effectuer une affectation.
                     </p>
                 </div>
                 @if(auth()->user()->role_as !== 'infirmier')
-                    <div>
+                    <div class="col-12 col-lg-4 text-start text-lg-end">
                         <a href="{{ route('secretariat.patient.create') }}"
-                            class="btn btn-primary rounded-12 px-20 py-10 fw-semibold shadow-sm">
-                            <i class="fa-solid fa-user-plus me-2"></i> Créer un Nouveau Patient
+                            class="btn btn-primary rounded-12 px-20 py-10 fw-semibold shadow-sm d-inline-flex align-items-center justify-content-center">
+                            <i class="fa-solid fa-user-plus me-2 fs-14"></i>
+                            <span>Créer un Nouveau Patient</span>
                         </a>
                     </div>
                 @endif
@@ -29,39 +27,38 @@
         </div>
 
         <!-- Formulaire de recherche -->
-        <div class="card border-0 shadow-sm rounded-20 p-25 bg-white mb-30">
-            <h5 class="fw-bold text-dark mb-20 fs-16"><i class="fa-solid fa-filter text-info me-2"></i> Critères de
-                Recherche</h5>
-            <div class="row g-3">
-                <div class="col-md-2">
+        <div class="card border-0 shadow-sm rounded-20 p-15 p-md-25 bg-white mb-25 mb-md-30">
+            <h5 class="fw-bold text-dark mb-15 mb-md-20 fs-16"><i class="fa-solid fa-filter text-info me-2"></i> Critères de Recherche</h5>
+            <div class="row g-2 g-md-3">
+                <div class="col-12 col-sm-6 col-lg-2">
                     <label class="form-label fw-bold text-dark fs-13"><i class="fa-solid fa-folder-open text-primary me-1"></i> N° Dossier (DM)</label>
                     <input type="search" class="form-control h-45 rounded-10 fw-bold text-primary" id="code_patient"
                         name="code_patient" placeholder="Ex: DM202409..." autofocus>
                 </div>
-                <div class="col-md-2">
+                <div class="col-12 col-sm-6 col-lg-2">
                     <label class="form-label fw-bold text-dark fs-13"><i class="fa-solid fa-phone text-success me-1"></i> N° Téléphone</label>
                     <input type="search" class="form-control h-45 rounded-10" min="10" max="10"
                         data-inputmask="'mask': ['9999999999', '99 99 99 99 99']" data-mask="" id="no_telephone"
                         name="no_telephone" placeholder="Ex: 0707000000">
                 </div>
-                <div class="col-md-2">
+                <div class="col-12 col-sm-6 col-lg-2">
                     <label class="form-label fw-bold text-dark fs-13"><i class="fa-solid fa-id-card text-warning me-1"></i> N° CMU</label>
                     <input type="search" class="form-control h-45 rounded-10" id="num_cmu" name="num_cmu"
                         placeholder="Ex: 12345678901">
                 </div>
-                <div class="col-md-3">
+                <div class="col-12 col-sm-6 col-lg-3">
                     <label class="form-label fw-bold text-dark fs-13"><i class="fa-solid fa-user text-info me-1"></i> Nom & Prénom(s)</label>
                     <input type="search" name="fullname" id="fullname" placeholder="Saisir nom/prénom(s)"
                         class="form-control h-45 rounded-10" oninput="convertToUppercase()">
                 </div>
-                <div class="col-md-3">
+                <div class="col-12 col-sm-12 col-lg-3">
                     <label class="form-label fw-bold text-dark fs-13"><i class="fa-regular fa-calendar text-secondary me-1"></i> Date de Naissance</label>
                     <div class="input-group">
                         <input type="text" name="birth_date" id="birth_date" class="form-control h-45 rounded-start-10"
                             data-inputmask="'alias': 'dd/mm/yyyy'" data-mask="" placeholder="dd/mm/yyyy">
                         <button type="button" id="search-button"
-                            class="btn btn-primary h-45 px-20 rounded-end-10 fw-bold shadow-sm">
-                            <i class="fa-solid fa-search me-1"></i> Rechercher
+                            class="btn btn-primary h-45 px-15 px-md-20 rounded-end-10 fw-bold shadow-sm">
+                            <i class="fa-solid fa-search me-1"></i> <span class="d-none d-sm-inline">Rechercher</span>
                         </button>
                     </div>
                 </div>
@@ -72,28 +69,28 @@
         <div id="resultat-recherche-patient" class="mb-30" style="display: none;"></div>
 
         <!-- Formulaire d'Affectation et de Mise à Jour du Patient -->
-        <div id="update-form" style="display: none;" class="card border-0 shadow-sm rounded-20 p-25 bg-white mb-30">
+        <div id="update-form" style="display: none;" class="card border-0 shadow-sm rounded-20 p-15 p-md-25 bg-white mb-30">
             <form id="editPatient">
                 @csrf
                 <input type="hidden" name="id" id="patient_id" />
                 <input type="hidden" name="admission_patient_up" value="Oui" />
 
-                <div class="d-flex align-items-center justify-content-between border-bottom pb-15 mb-25">
-                    <h4 class="fw-bold text-primary mb-0">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 border-bottom pb-15 mb-20 mb-md-25">
+                    <h4 class="fw-bold text-primary mb-0 fs-18 fs-md-20">
                         <i class="fa-solid fa-user-check me-2"></i> Affectation du Patient
                     </h4>
-                    <div class="badge bg-light-primary text-primary px-20 py-10 rounded-pill fs-15 fw-bold border">
+                    <div class="badge bg-light-primary text-primary px-15 px-md-20 py-10 rounded-pill fs-14 fs-md-15 fw-bold border">
                         Tarif Prestation : <span id="prix_up" class="text-danger fw-bold ms-1">0 FCFA</span>
                         <input type="hidden" name="montant" id="montant_up" value="0">
                     </div>
                 </div>
 
                 <!-- Étape 1 : Identité & Coordonnées -->
-                <div class="p-20 bg-light rounded-16 mb-20 border">
+                <div class="p-15 p-md-20 bg-light rounded-16 mb-20 border">
                     <div class="d-flex align-items-center justify-content-between mb-15 flex-wrap gap-2">
-                        <h5 class="fw-bold text-dark mb-0 fs-15"><i class="fa-solid fa-id-card text-primary me-2"></i>
+                        <h5 class="fw-bold text-dark mb-0 fs-14 fs-md-15"><i class="fa-solid fa-id-card text-primary me-2"></i>
                             Identité du Patient</h5>
-                        <span id="badge_identity_lock" class="badge bg-secondary text-white px-2 py-1 fs-12">
+                        <span id="badge_identity_lock" class="badge bg-secondary text-white px-2 py-1 fs-11 fs-md-12">
                             <i class="fa-solid fa-lock me-1"></i> Non modifiable (Lecture seule)
                         </span>
                     </div>
@@ -110,43 +107,43 @@
                         </div>
                     </div>
 
-                    <div class="row g-3">
-                        <div class="col-md-3">
+                    <div class="row g-2 g-md-3">
+                        <div class="col-12 col-sm-6 col-md-3">
                             <label class="form-label fw-bold fs-12 text-muted">Nom <span id="star_name" class="text-danger" style="display:none;">*</span></label>
                             <input type="text" name="name_up" id="name_up" class="form-control h-45 rounded-10" readonly
                                 style="background-color: #f1f3f5; cursor: not-allowed;" oninput="this.value = this.value.toUpperCase()">
                         </div>
-                        <div class="col-md-5">
+                        <div class="col-12 col-sm-6 col-md-5">
                             <label class="form-label fw-bold fs-12 text-muted">Prénom(s) <span id="star_prenom" class="text-danger" style="display:none;">*</span></label>
                             <input type="text" name="prenom_up" id="prenom_up" class="form-control h-45 rounded-10" readonly
                                 style="background-color: #f1f3f5; cursor: not-allowed;" oninput="this.value = this.value.toUpperCase()">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-12 col-sm-6 col-md-4">
                             <label class="form-label fw-bold fs-12 text-muted">Email</label>
                             <input type="email" name="email_up" id="email_up" class="form-control h-45 rounded-10" readonly
                                 style="background-color: #f1f3f5; cursor: not-allowed;">
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-6 col-sm-3 col-md-2">
                             <label class="form-label fw-bold fs-12 text-muted">Sexe</label>
                             <input type="text" name="gender_up" id="gender_up" class="form-control h-45 rounded-10" readonly
                                 style="background-color: #f1f3f5; cursor: not-allowed;">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-6 col-sm-4 col-md-3">
                             <label class="form-label fw-bold fs-12 text-muted">Date de naissance</label>
                             <input type="text" name="birth_date_up" id="birth_date_up" class="form-control h-45 rounded-10"
                                 readonly style="background-color: #f1f3f5; cursor: not-allowed;" data-inputmask="'alias': 'dd/mm/yyyy'" data-mask="">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-12 col-sm-5 col-md-3">
                             <label class="form-label fw-bold fs-12 text-muted">N° Téléphone <span class="text-danger">*</span></label>
                             <input type="text" name="telephone" id="telephone" class="form-control h-45 rounded-10 fw-bold text-dark border-primary"
                                 placeholder="+225 0101010101" required>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-6 col-sm-6 col-md-2">
                             <label class="form-label fw-bold fs-12 text-muted">N° CMU</label>
                             <input type="text" name="num_cmu_up" id="num_cmu_up" class="form-control h-45 rounded-10"
                                 readonly style="background-color: #f1f3f5; cursor: not-allowed;">
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-6 col-sm-6 col-md-2">
                             <label class="form-label fw-bold fs-12 text-muted">Lieu d'habitation</label>
                             <input type="text" name="residence_habituelle_up" id="residence_habituelle_up"
                                 class="form-control h-45 rounded-10" readonly
@@ -156,19 +153,19 @@
                 </div>
 
                 <!-- Étape 2 : Service Médical, Prestation & Intervenant -->
-                <div class="p-20 bg-light-primary rounded-16 mb-25 border border-primary">
-                    <h5 class="fw-bold text-primary mb-15 fs-15">
+                <div class="p-15 p-md-20 bg-light-primary rounded-16 mb-20 mb-md-25 border border-primary">
+                    <h5 class="fw-bold text-primary mb-15 fs-14 fs-md-15">
                         <i class="fa-solid fa-stethoscope me-2"></i> Affectation & Prestation Médicale
                     </h5>
-                    <div class="row g-3">
-                        <div class="col-md-3 service-field-col" id="col_service_up">
+                    <div class="row g-2 g-md-3">
+                        <div class="col-12 col-sm-6 col-lg-3 service-field-col" id="col_service_up">
                             <label class="form-label fw-bold text-dark fs-13">Service Médical <span
                                     class="text-danger">*</span></label>
                             <select name="service_id_up" id="service_id_up" class="form-select h-45 rounded-10 fw-semibold">
                                 <option value="">-- Sélectionner un service --</option>
                             </select>
                         </div>
-                        <div class="col-md-3 service-field-col" id="col_prestation_up">
+                        <div class="col-12 col-sm-6 col-lg-3 service-field-col" id="col_prestation_up">
                             <label class="form-label fw-bold text-dark fs-13">Prestation / Acte Médical <span
                                     class="text-danger">*</span></label>
                             <select name="prestation_service_id" id="prestation_service_id"
@@ -176,7 +173,7 @@
                                 <option value="">-- Sélectionner un service d'abord --</option>
                             </select>
                         </div>
-                        <div class="col-md-3 service-field-col" id="col_infirmier_up">
+                        <div class="col-12 col-sm-6 col-lg-3 service-field-col" id="col_infirmier_up">
                             <label class="form-label fw-bold text-dark fs-13">Infirmier(ère) De Service <span
                                     class="text-danger">*</span></label>
                             <select name="infirmier_id" id="infirmier_id_up" class="form-select h-45 rounded-10 fw-semibold"
@@ -184,7 +181,7 @@
                                 <option value="">-- Choisir Infirmier --</option>
                             </select>
                         </div>
-                        <div class="col-md-3 service-field-col" id="formDoctorUp">
+                        <div class="col-12 col-sm-6 col-lg-3 service-field-col" id="formDoctorUp">
                             <label class="form-label fw-bold text-dark fs-13">Médecin Traitant <span class="text-danger"
                                     id="doctor_required_star_up">*</span></label>
                             <select name="doctor_id" id="doctor_id_up" class="form-select h-45 rounded-10 fw-semibold"
@@ -192,14 +189,14 @@
                                 <option value="">-- Choisir Médecin --</option>
                             </select>
                         </div>
-                        <div class="col-md-9">
+                        <div class="col-12 col-lg-9">
                             <label class="form-label fw-bold text-dark fs-13">Motif de Consultation / Observation</label>
                             <input type="text" name="motif_consultation" id="motif_consultation"
                                 placeholder="Ex: Prise de tension, Consultation générale, Soins pansement..."
                                 class="form-control h-45 rounded-10">
                         </div>
-                        <div class="col-md-3 d-flex align-items-center">
-                            <div class="form-check form-switch pt-20">
+                        <div class="col-12 col-lg-3 d-flex align-items-center">
+                            <div class="form-check form-switch pt-10 pt-lg-20">
                                 <input class="form-check-input" type="checkbox" id="GRU05" name="gratuite" value="gratuit"
                                     style="width: 45px; height: 22px; cursor: pointer;">
                                 <label class="form-check-label fw-bold text-danger ms-2 fs-14" for="GRU05"
@@ -212,10 +209,10 @@
                 </div>
 
                 <!-- Boutons de Validation -->
-                <div class="d-flex justify-content-end gap-2">
+                <div class="d-flex flex-wrap justify-content-end gap-2">
                     <button type="button" onclick="$('#update-form').slideUp();"
-                        class="btn btn-light px-25 rounded-10 fw-semibold">Annuler</button>
-                    <button type="submit" id="btnSubmitAffectation" class="btn btn-primary px-30 rounded-10 fw-bold shadow-sm">
+                        class="btn btn-light px-20 px-md-25 rounded-10 fw-semibold flex-fill flex-md-grow-0">Annuler</button>
+                    <button type="submit" id="btnSubmitAffectation" class="btn btn-primary px-25 px-md-30 rounded-10 fw-bold shadow-sm flex-fill flex-md-grow-0">
                         <i class="fa-solid fa-check me-2"></i> Valider l'Affectation
                     </button>
                 </div>
