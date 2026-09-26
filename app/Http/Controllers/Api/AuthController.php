@@ -97,7 +97,7 @@ class AuthController extends Controller
         // Envoyer l'OTP par SMS
         if ($patient->telephone) {
             try {
-                $message = "Votre code de connexion GEMMA est : " . $otpCode;
+                $message = "GEMMA : Votre code de connexion sécurisé est {$otpCode}. Valable 10 min. Pour votre sécurité, ne le partagez jamais.";
                 // Instancier le SmsRepository avec le numéro et le message
                 // Attention : SmsRepository ajoute déjà +225, assurez-vous que $patient->telephone est au bon format (sans indicatif ou adapté)
                 $sms = new SmsRepository($patient->telephone, $message);
@@ -119,7 +119,7 @@ class AuthController extends Controller
         }
 
         return response([
-            'message' => 'Code OTP envoyé avec succès à votre adresse email.',
+            'message' => 'Code OTP envoyé avec succès par SMS et email.',
             'code' => $request->code // Retourner l'identifiant pour la confirmation
         ], 200);
     }
