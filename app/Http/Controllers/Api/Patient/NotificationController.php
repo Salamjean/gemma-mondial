@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\api\Patient;
+namespace App\Http\Controllers\Api\Patient;
 
 use App\Http\Controllers\Controller;
 use App\Models\PatientNotification;
@@ -159,3 +159,5 @@ class NotificationController extends Controller
         }
     }
 }
+
+

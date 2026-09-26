@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\api\Patient;
+namespace App\Http\Controllers\Api\Patient;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Patient\PatientRequest;
@@ -1634,3 +1634,5 @@ class DataController extends Controller
         }
     }
 }
+
+

@@ -201,3 +201,4 @@ class FingerprintController extends Controller
         }
     }
 }
+

@@ -168,3 +168,4 @@ class RealFingerprintController extends Controller
         ]);
     }
 }
+

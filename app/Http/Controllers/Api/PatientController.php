@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\api;
+namespace App\Http\Controllers\Api;
 
 use App\Models\Patient;
 use App\Http\Controllers\Controller;
@@ -14,3 +14,5 @@ class PatientController extends Controller
     }
     
 }
+
+

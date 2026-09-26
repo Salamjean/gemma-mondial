@@ -1,15 +1,15 @@
 <?php
 
-use App\Http\Controllers\api\AuthController;
-use App\Http\Controllers\api\OneSignalTokenController;
-use App\Http\Controllers\api\Patient\DataController;
-use App\Http\Controllers\api\Patient\NotificationController;
-use App\Http\Controllers\api\ContactController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\OneSignalTokenController;
+use App\Http\Controllers\Api\Patient\DataController;
+use App\Http\Controllers\Api\Patient\NotificationController;
+use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\FingerprintController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\api\Ministere\MinistereController;
-use App\Http\Controllers\api\PatientController;
+use App\Http\Controllers\Api\Ministere\MinistereController;
+use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\Api\RealFingerprintController;
 use App\Http\Controllers\BiometricController;
 use Illuminate\Support\Facades\Auth;
@@ -120,3 +120,4 @@ Route::prefix('ministere')->group(
         return Broadcast::auth($request);
     });
 });
+

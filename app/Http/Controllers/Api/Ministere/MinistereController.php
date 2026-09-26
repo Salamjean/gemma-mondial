@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\api\Ministere;
+namespace App\Http\Controllers\Api\Ministere;
 
 use App\Http\Controllers\Controller;
 use Carbon\Carbon;
@@ -41,3 +41,5 @@ class MinistereController extends Controller
         return response()->json(['count' => $count]);
     }
 }
+
+
