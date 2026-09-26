@@ -34,19 +34,20 @@ class NotificationService
 
             $userId = optional($patient->user)->id ?? $patient->user_id;
 
-            $admissionId = $data['admission_id'] ?? null;
-            $consultationId = $data['consultation_id'] ?? null;
-            $rdvId = $data['rdv_id'] ?? ($data['rendez_vous_id'] ?? null);
-            $declarationId = $data['declaration_id'] ?? null;
+            // Déterminer l'ID de référence selon le type ou les métadonnées fournies
+            $referenceId = $data['reference_id']
+                ?? ($data['rdv_id']
+                ?? ($data['rendez_vous_id']
+                ?? ($data['consultation_id']
+                ?? ($data['declaration_id']
+                ?? ($data['admission_id']
+                ?? ($data['patient_id'] ?? null))))));
 
             // 1. Enregistrement en base de données (In-App)
             $notification = PatientNotification::create([
                 'patient_id' => $patient->id,
                 'user_id' => $userId,
-                'admission_id' => $admissionId,
-                'consultation_id' => $consultationId,
-                'rdv_id' => $rdvId,
-                'declaration_id' => $declarationId,
+                'reference_id' => $referenceId,
                 'type' => $type,
                 'title' => $title,
                 'message' => $message,

@@ -34,7 +34,7 @@ class PatientNotification extends Model
             $data = is_array($this->data) ? $this->data : (json_decode($this->data ?? '[]', true) ?: []);
 
             // 1. Rendez-vous
-            $rdvId = $this->rdv_id ?? ($data['rdv_id'] ?? ($data['rendez_vous_id'] ?? null));
+            $rdvId = ($type === 'rdv' ? $this->reference_id : null) ?? ($data['rdv_id'] ?? ($data['rendez_vous_id'] ?? null));
             if ($type === 'rdv' || !empty($rdvId)) {
                 if ($rdvId) {
                     $rdv = RendezVous::with(['doctor.user', 'consultation.hospital'])->find($rdvId);
@@ -72,7 +72,7 @@ class PatientNotification extends Model
             }
 
             // 2. Consultation / Parcours
-            $consultationId = $this->consultation_id ?? ($data['consultation_id'] ?? null);
+            $consultationId = ($type === 'consultation' ? $this->reference_id : null) ?? ($data['consultation_id'] ?? null);
             if ($type === 'consultation' || !empty($consultationId)) {
                 if ($consultationId) {
                     $consultation = Consultation::with([
@@ -131,7 +131,7 @@ class PatientNotification extends Model
             }
 
             // 3. Déclaration médicale (Naissance / Décès)
-            $declarationId = $this->declaration_id ?? ($data['declaration_id'] ?? null);
+            $declarationId = ($type === 'declaration' ? $this->reference_id : null) ?? ($data['declaration_id'] ?? null);
             if ($type === 'declaration' || !empty($declarationId)) {
                 if ($declarationId) {
                     $dec = Declaration::with(['hospital', 'doctor.user', 'naissance', 'deces'])->find($declarationId);
@@ -159,7 +159,7 @@ class PatientNotification extends Model
             }
 
             // 4. Admission
-            $admissionId = $this->admission_id ?? ($data['admission_id'] ?? null);
+            $admissionId = ($type === 'admission' ? $this->reference_id : null) ?? ($data['admission_id'] ?? null);
             if ($type === 'admission' || !empty($admissionId)) {
                 if ($admissionId) {
                     $admission = Admission::with(['hospital'])->find($admissionId);
@@ -179,8 +179,9 @@ class PatientNotification extends Model
             }
 
             // 5. Affectation / Dossier patient
+            $patientId = ($type === 'affectation' ? $this->reference_id : null) ?? ($data['patient_id'] ?? $this->patient_id);
             if ($type === 'affectation' || !empty($data['patient_id'])) {
-                $patient = $this->patient ?: Patient::with('hospital')->find($data['patient_id'] ?? $this->patient_id);
+                $patient = $this->patient ?: Patient::with('hospital')->find($patientId);
                 if ($patient) {
                     $h = $patient->hospital;
                     $hospitalName = $h ? ($h->label ?: ($h->nom_direction_generale ?: $h->reference)) : null;
@@ -209,25 +210,5 @@ class PatientNotification extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function admission(): BelongsTo
-    {
-        return $this->belongsTo(Admission::class);
-    }
-
-    public function consultation(): BelongsTo
-    {
-        return $this->belongsTo(Consultation::class);
-    }
-
-    public function rendezVous(): BelongsTo
-    {
-        return $this->belongsTo(RendezVous::class, 'rdv_id');
-    }
-
-    public function declaration(): BelongsTo
-    {
-        return $this->belongsTo(Declaration::class);
     }
 }
