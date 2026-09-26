@@ -34,6 +34,8 @@ class User extends Authenticatable
         'role_as',
         'gender',
         'password',
+        'fcm_token',
+        'device_type',
     ];
 
     /**

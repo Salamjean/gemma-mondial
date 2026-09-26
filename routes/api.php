@@ -3,6 +3,7 @@
 use App\Http\Controllers\api\AuthController;
 use App\Http\Controllers\api\OneSignalTokenController;
 use App\Http\Controllers\api\Patient\DataController;
+use App\Http\Controllers\api\Patient\NotificationController;
 use App\Http\Controllers\api\ContactController;
 use App\Http\Controllers\Api\FingerprintController;
 use Illuminate\Http\Request;
@@ -36,11 +37,19 @@ Route::prefix('v1/patient')->group(
         Route::get('list', [PatientController::class, 'allPatients']);
 
         Route::get('cities', [DataController::class, 'cities']);
+        Route::get('hospitals', [DataController::class, 'getHospitals']);
+        Route::get('hospitals/{id}', [DataController::class, 'getHospitalDetail']);
+        Route::get('documents/{type}/{id}/pdf', [DataController::class, 'downloadDocumentPdf']);
+        Route::get('pdf/{type}/{id}', [DataController::class, 'downloadDocumentPdf']);
 
         Route::group(['middleware' => ['auth:sanctum']], function () {
 
             Route::post('update', [DataController::class, 'update']);
             Route::get('show', [DataController::class, 'show']);
+            Route::post('fcm-token', [DataController::class, 'updateFcmToken']);
+            Route::post('fcm/token', [DataController::class, 'updateFcmToken']);
+            Route::post('push-token', [DataController::class, 'updateFcmToken']);
+            Route::post('device-token', [DataController::class, 'updateFcmToken']);
             Route::post('one-signal/token', [OneSignalTokenController::class, 'store']);
 
             Route::get('consultations', [DataController::class, 'consultations']);
@@ -51,7 +60,6 @@ Route::prefix('v1/patient')->group(
             Route::get('rdv', [DataController::class, 'rendezVous']);
             Route::get('doctors', [DataController::class, 'getDoctors']);
             Route::get('services', [DataController::class, 'getServices']);
-            Route::get('hospitals', [DataController::class, 'getHospitals']);
             Route::get('pending-paid-consultation', [DataController::class, 'getPendingPaidConsultation']);
             Route::get('active-call', [DataController::class, 'checkActiveCall']);
             Route::post('accept-call', [DataController::class, 'acceptCall']);
@@ -66,6 +74,15 @@ Route::prefix('v1/patient')->group(
             Route::delete('rdv/{id}', [DataController::class, 'deleteRendezVous']);
             Route::post('rdv/{id}/delete', [DataController::class, 'deleteRendezVous']);
             Route::get('rdv/delete/{id}', [DataController::class, 'deleteRendezVous']);
+
+            // Notifications du patient
+            Route::get('notifications', [NotificationController::class, 'index']);
+            Route::post('notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+            Route::post('notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+            Route::delete('notifications/{id}', [NotificationController::class, 'destroy']);
+            Route::post('notifications/{id}/delete', [NotificationController::class, 'destroy']);
+            Route::delete('notifications', [NotificationController::class, 'destroyAll']);
+            Route::post('notifications/delete-all', [NotificationController::class, 'destroyAll']);
         });
 
         Route::post('wave/webhook', [DataController::class, 'waveWebhook']);

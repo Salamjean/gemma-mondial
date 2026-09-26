@@ -10,6 +10,8 @@ use App\Models\SubPrefecture;
 use App\Models\User;
 use App\Repositories\Patient\PatientRepository;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -18,6 +20,86 @@ use Illuminate\Support\Facades\Validator;
 
 class DataController extends Controller
 {
+    public function updateFcmToken(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'fcm_token' => 'required_without_all:token,device_token,push_token|nullable|string',
+            'token' => 'nullable|string',
+            'device_token' => 'nullable|string',
+            'push_token' => 'nullable|string',
+            'device_type' => 'nullable|string|max:50',
+            'platform' => 'nullable|string|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Le champ token ou fcm_token est requis.',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $fcmToken = $request->input('fcm_token')
+                ?: ($request->input('token')
+                ?: ($request->input('device_token')
+                ?: $request->input('push_token')));
+
+            $deviceType = $request->input('device_type')
+                ?: ($request->input('platform')
+                ?: ($request->input('type') ?: 'android'));
+
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Utilisateur non authentifié.'
+                ], 401);
+            }
+
+            // 1. Sauvegarder sur l'utilisateur
+            $user->fcm_token = $fcmToken;
+            $user->device_type = $deviceType;
+            $user->save();
+
+            // 2. Sauvegarder sur le profil patient s'il existe
+            if ($user->patient) {
+                $user->patient->fcm_token = $fcmToken;
+                $user->patient->device_type = $deviceType;
+                $user->patient->save();
+
+                // 3. Synchroniser également avec OneSignalToken pour compatibilité
+                try {
+                    \App\Models\OneSignalToken::where('patient_id', $user->patient->id)
+                        ->orWhere('token', $fcmToken)
+                        ->delete();
+
+                    \App\Models\OneSignalToken::create([
+                        'patient_id' => $user->patient->id,
+                        'token' => $fcmToken
+                    ]);
+                } catch (\Exception $ex) {
+                    Log::warning('OneSignalToken sync warning: ' . $ex->getMessage());
+                }
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'FCM Token (Push Notification) mis à jour avec succès.',
+                'fcm_token' => $fcmToken,
+                'device_type' => $deviceType,
+                'user_id' => $user->id,
+                'patient_id' => optional($user->patient)->id,
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Erreur updateFcmToken: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Erreur lors de la mise à jour du FCM Token: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function createRendezVous(Request $request)
     {
         // Validation
@@ -904,11 +986,26 @@ class DataController extends Controller
         }
     }
 
-    public function getHospitals()
+    public function getHospitals(?Request $request = null)
     {
         try {
-            $hospitals = \App\Models\Hospital::where('delete', 0)
-                ->orderBy('label')
+            $query = \App\Models\Hospital::with(['localiteH', 'user'])
+                ->where('delete', 0);
+
+            if ($request && $request->filled('search')) {
+                $search = $request->get('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where('label', 'like', "%{$search}%")
+                        ->orWhere('nom_direction_generale', 'like', "%{$search}%")
+                        ->orWhere('district_sanitaire', 'like', "%{$search}%");
+                });
+            }
+
+            if ($request && $request->filled('district')) {
+                $query->where('district_sanitaire', $request->get('district'));
+            }
+
+            $hospitals = $query->orderBy('label')
                 ->get()
                 ->map(function ($h) {
                     $name = $h->label ?: ($h->nom_direction_generale ?: ($h->reference ?: 'Hôpital #' . $h->id));
@@ -917,15 +1014,59 @@ class DataController extends Controller
                         'nom' => $name,
                         'name' => $name,
                         'label' => $h->label ?: $name,
+                        'reference' => $h->reference,
                         'contact' => $h->contact ?: 'Non renseigné',
+                        'email' => $h->user ? $h->user->email : null,
                         'district' => $h->district_sanitaire ?: 'Général',
+                        'localite' => $h->localiteH ? $h->localiteH->label : null,
                         'photo' => $h->img_url ? asset('assets/uploads/hospital/' . $h->img_url) : null,
+                        'is_teleconsultation_active' => (bool) ($h->is_teleconsultation_active ?? true),
+                        'status' => $h->status,
                     ];
                 });
 
             return response()->json([
                 'status' => 'success',
+                'total' => $hospitals->count(),
                 'hospitals' => $hospitals,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getHospitalDetail($id)
+    {
+        try {
+            $hospital = \App\Models\Hospital::with(['localiteH', 'user'])
+                ->where('delete', 0)
+                ->find($id);
+
+            if (!$hospital) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Hôpital introuvable',
+                ], 404);
+            }
+
+            $name = $hospital->label ?: ($hospital->nom_direction_generale ?: ($hospital->reference ?: 'Hôpital #' . $hospital->id));
+
+            return response()->json([
+                'status' => 'success',
+                'hospital' => [
+                    'id' => $hospital->id,
+                    'nom' => $name,
+                    'name' => $name,
+                    'label' => $hospital->label ?: $name,
+                    'reference' => $hospital->reference,
+                    'contact' => $hospital->contact ?: 'Non renseigné',
+                    'email' => $hospital->user ? $hospital->user->email : null,
+                    'district' => $hospital->district_sanitaire ?: 'Général',
+                    'localite' => $hospital->localiteH ? $hospital->localiteH->label : null,
+                    'photo' => $hospital->img_url ? asset('assets/uploads/hospital/' . $hospital->img_url) : null,
+                    'is_teleconsultation_active' => (bool) ($hospital->is_teleconsultation_active ?? true),
+                    'status' => $hospital->status,
+                ],
             ], 200);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
@@ -1404,9 +1545,45 @@ class DataController extends Controller
                 $caissiereName = $isOnline ? 'Paiement numérique (En ligne)' : 'Accueil Hôpital / Guichet Général';
             }
 
+            // Documents & URLs PDF
+            $ordonnance = $consultation->ordonnance ?: (optional($consultation->ordonnances)->first());
+            $examen = $consultation->examen;
+            $arret = $consultation->arret;
+            $declaration = $consultation->declaration;
+
+            $documents = [
+                'ordonnance' => $ordonnance ? [
+                    'id' => $ordonnance->id,
+                    'pdf_url' => url('api/v1/patient/documents/ordonnance/' . $ordonnance->id . '/pdf'),
+                    'prescriptions_count' => $ordonnance->prescriptions ? $ordonnance->prescriptions->count() : 0,
+                    'created_at' => $ordonnance->created_at,
+                ] : null,
+                'bulletin_examen' => $examen ? [
+                    'id' => $examen->id,
+                    'pdf_url' => url('api/v1/patient/documents/examen/' . $examen->id . '/pdf'),
+                    'code_bulletin' => $examen->code_bulletin,
+                    'examens_count' => $examen->examens ? $examen->examens->count() : 0,
+                    'created_at' => $examen->created_at,
+                ] : null,
+                'arret_travail' => $arret ? [
+                    'id' => $arret->id,
+                    'pdf_url' => url('api/v1/patient/documents/arret/' . $arret->id . '/pdf'),
+                    'duree' => $arret->nbre_jour ? $arret->nbre_jour . ' jour(s)' : null,
+                    'motif' => $arret->motif,
+                    'created_at' => $arret->created_at,
+                ] : null,
+                'declaration' => $declaration ? [
+                    'id' => $declaration->id,
+                    'pdf_url' => url('api/v1/patient/documents/' . ($declaration->naissance ? 'birth' : 'death') . '/' . $declaration->id . '/pdf'),
+                    'type' => $declaration->naissance ? 'naissance' : 'deces',
+                    'created_at' => $declaration->created_at,
+                ] : null,
+            ];
+
             return response()->json([
                 'status' => 'success',
                 'consultation' => $consultation,
+                'documents' => $documents,
                 'meta' => [
                     'hospital_name' => $hospitalName,
                     'service_name' => $serviceName,
@@ -1418,6 +1595,42 @@ class DataController extends Controller
             ], 200);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => 'Consultation introuvable: ' . $e->getMessage()], 404);
+        }
+    }
+
+    public function downloadDocumentPdf($type, $id)
+    {
+        try {
+            set_time_limit(120);
+
+            if ($type === 'ordonnance') {
+                $ordonnance = \App\Models\Ordonnance::with(['consultation.hospital', 'consultation.doctor.user', 'prescriptions.drug', 'patient.user'])->findOrFail($id);
+                $pdf = Pdf::loadView('users.doctor.consultation.formulaire.post-consultation.pdf.ordonnance', ['ordonnance' => $ordonnance]);
+            } elseif ($type === 'examen' || $type === 'bulletin') {
+                $bulletin = \App\Models\BulletinExamen::with(['consultation.hospital', 'consultation.doctor.user', 'examens', 'consultation.patient.user'])->findOrFail($id);
+                $pdf = Pdf::loadView('users.doctor.consultation.formulaire.post-consultation.pdf.examen', ['bulletin' => $bulletin]);
+            } elseif ($type === 'arret') {
+                $arret = \App\Models\ArretTravail::with(['consultation.hospital', 'consultation.doctor.user', 'patient.user'])->findOrFail($id);
+                $pdf = Pdf::loadView('users.doctor.consultation.formulaire.post-consultation.pdf.arret', ['arret' => $arret]);
+            } elseif ($type === 'death' || $type === 'deces') {
+                $declaration = \App\Models\Declaration::with(['hospital', 'doctor.user', 'patient.user', 'deces', 'decesPatient'])->findOrFail($id);
+                $pdf = Pdf::loadView('users.doctor.declaration.pdf.deces', ['declaration' => $declaration]);
+            } elseif ($type === 'birth' || $type === 'naissance') {
+                $declaration = \App\Models\Declaration::with(['hospital', 'doctor.user', 'patient.user', 'naissance'])->findOrFail($id);
+                $pdf = Pdf::loadView('users.doctor.declaration.pdf.naissance', ['declaration' => $declaration]);
+            } else {
+                return response()->json(['status' => 'error', 'message' => 'Type de document non supporté: ' . $type], 400);
+            }
+
+            $pdf->setPaper('A4', 'portrait')->render();
+
+            $response = new Response();
+            $response->setContent($pdf->output())->header('Content-Type', 'application/pdf');
+            $response->header('Content-Disposition', "inline; filename={$type}_{$id}_" . date('dmY') . ".pdf");
+
+            return $response;
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Erreur lors de la génération du PDF: ' . $e->getMessage()], 500);
         }
     }
 }

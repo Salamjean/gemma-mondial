@@ -11,6 +11,15 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Declaration extends Model
 {
     use HasFactory;
+    protected $guarded = [];
+
+    protected $appends = ['pdf_url'];
+
+    public function getPdfUrlAttribute()
+    {
+        $type = ($this->naissance_id || $this->relationLoaded('naissance') && $this->naissance) ? 'birth' : 'death';
+        return url('api/v1/patient/documents/' . $type . '/' . $this->id . '/pdf');
+    }
 
     public function naissance(): HasOne
     {

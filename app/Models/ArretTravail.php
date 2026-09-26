@@ -9,6 +9,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ArretTravail extends Model
 {
     use HasFactory;
+    protected $guarded = [];
+
+    protected $appends = ['pdf_url'];
+
+    public function getPdfUrlAttribute()
+    {
+        return url('api/v1/patient/documents/arret/' . $this->id . '/pdf');
+    }
     public function consultation(): BelongsTo
     {
         return $this->belongsTo(Consultation::class, 'consultation_id', 'id');

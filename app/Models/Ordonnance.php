@@ -13,6 +13,13 @@ class Ordonnance extends Model
     use HasFactory;
     protected $guarded = [];
 
+    protected $appends = ['pdf_url'];
+
+    public function getPdfUrlAttribute()
+    {
+        return url('api/v1/patient/documents/ordonnance/' . $this->id . '/pdf');
+    }
+
     public function prescriptions(): HasMany
     {
         return $this->hasMany(Prescription::class);
