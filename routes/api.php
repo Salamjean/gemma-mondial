@@ -53,6 +53,9 @@ Route::prefix('v1/patient')->group(
             Route::post('one-signal/token', [OneSignalTokenController::class, 'store']);
 
             Route::get('consultations', [DataController::class, 'consultations']);
+            Route::get('consultations/latest', [DataController::class, 'latestConsultation']);
+            Route::get('consultation/latest', [DataController::class, 'latestConsultation']);
+            Route::get('parcours/latest', [DataController::class, 'latestConsultation']);
             Route::get('parcours/{id}', [DataController::class, 'parcoursDetail']);
             Route::get('declarations', [DataController::class, 'declarations']);
             Route::get('declarations/{id}', [DataController::class, 'detailDeclaration']);

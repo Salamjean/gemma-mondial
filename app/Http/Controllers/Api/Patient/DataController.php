@@ -1470,6 +1470,38 @@ class DataController extends Controller
         }
     }
 
+    /**
+     * Récupère la toute dernière consultation du patient connecté avec tous ses détails et documents
+     */
+    public function latestConsultation()
+    {
+        try {
+            $patient = Auth::user()->patient;
+            if (!$patient) {
+                return response()->json(['status' => 'error', 'message' => 'Profil patient non trouvé'], 404);
+            }
+
+            // Récupérer la dernière consultation créée
+            $latest = \App\Models\Consultation::where('patient_id', $patient->id)
+                ->orderByDesc('created_at')
+                ->first();
+
+            if (!$latest) {
+                return response()->json([
+                    'status' => 'success',
+                    'consultation' => null,
+                    'documents' => null,
+                    'meta' => null,
+                    'message' => 'Aucune consultation trouvée pour ce patient.'
+                ], 200);
+            }
+
+            return $this->parcoursDetail($latest->id);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Erreur lors de la récupération de la dernière consultation: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function parcoursDetail($id)
     {
         try {

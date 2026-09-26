@@ -848,7 +848,8 @@ class PatientController extends Controller
             $passage->patient_id = $patient->id;
             $passage->save();
 
-            $message = "Inscription confirmée pour M/Mme $user->name $user->prenom . Utilisez le DM: $patient->code_patient pour vous connecter.";
+            $patientUrl = env('PATIENT_APP_URL', 'https://patient.gemma-ci.com');
+            $message = "Bienvenue sur GEMMA M/Mme {$user->name} {$user->prenom}. Votre DM: {$patient->code_patient}. L'application est disponible sur App Store et Play Store ou connectez-vous sur : {$patientUrl}";
 
             (new SmsRepository($patient->telephone, $message))->send();
 
