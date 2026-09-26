@@ -24,24 +24,27 @@ class PatientRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'name' => 'nullable|string|max:255',
+            'prenom' => 'nullable|string|max:255',
             'residence_actuelle' => 'nullable|integer',
             'residence_habituelle' => 'nullable|integer',
-            'profession' => 'nullable|string|min:3',
-            'situation_matrimoniale' => 'nullable',
-            'contact1' => 'nullable|min:10|max:10',
-            'contact2' => 'nullable|min:10|max:10',
-            'nom_persn_sos' => 'nullable',
-            'tel_persn_sos' => 'nullable',
-            'lien_persn_sos' => 'nullable',
-            'nom_persn_sos2' => 'nullable',
-            'tel_persn_sos2' => 'nullable',
-            'lien_persn_sos2' => 'nullable',
-            'adresse' => 'nullable',
+            'profession' => 'nullable|string|min:2|max:255',
+            'situation_matrimoniale' => 'nullable|string|max:100',
+            'contact1' => 'nullable|string|max:25',
+            'contact2' => 'nullable|string|max:25',
+            'nom_persn_sos' => 'nullable|string|max:255',
+            'tel_persn_sos' => 'nullable|string|max:25',
+            'lien_persn_sos' => 'nullable|string|max:100',
+            'nom_persn_sos2' => 'nullable|string|max:255',
+            'tel_persn_sos2' => 'nullable|string|max:25',
+            'lien_persn_sos2' => 'nullable|string|max:100',
+            'adresse' => 'nullable|string|max:255',
             'email' => 'nullable|email|unique:users,email,' . ($this->user() ? $this->user()->id : 'NULL'),
             'password' => 'nullable|string|confirmed|min:4',
-            'image' => ['nullable', 'image', new FileTypeValidate(['jpg', 'jpeg', 'png'])],
-
-
+            'image' => 'nullable',
+            'photo' => 'nullable',
+            'img_url' => 'nullable',
+            'imagef' => 'nullable|string',
         ];
     }
 }

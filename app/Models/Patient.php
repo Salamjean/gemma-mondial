@@ -23,6 +23,19 @@ class Patient extends Model
 
     protected $guarded = [];
 
+    protected $appends = ['photo_url'];
+
+    public function getPhotoUrlAttribute()
+    {
+        if (!empty($this->img_url)) {
+            if (str_starts_with($this->img_url, 'http://') || str_starts_with($this->img_url, 'https://')) {
+                return $this->img_url;
+            }
+            return asset('assets/uploads/patient/' . $this->img_url);
+        }
+        return null;
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id', 'id');

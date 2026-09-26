@@ -243,15 +243,21 @@ class DataController extends Controller
 
     public function update(PatientRequest $request)
     {
-        $request->validated();
-
-
         $res = $this->instance()->update($request);
 
-        if ($res['status'] == 'error')
-            return response()->json(['status' => $res['status'], 'message' => $res['message']], 400);
+        if (($res['status'] ?? 'error') === 'error') {
+            return response()->json([
+                'status' => 'error',
+                'message' => $res['message'] ?? 'Erreur lors de la mise à jour'
+            ], 400);
+        }
 
-        return response()->json(['status' => $res['status'], 'message' => $res['message']], 200);
+        return response()->json([
+            'status' => 'success',
+            'message' => $res['message'] ?? 'Données mises à jour avec succès',
+            'patient' => $res['patient'] ?? null,
+            'photo_url' => $res['photo_url'] ?? null,
+        ], 200);
     }
 
     public function consultations()
