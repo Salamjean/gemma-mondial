@@ -268,6 +268,26 @@ class SecretariatController extends Controller
                               $query->where('name', 'like', '%' . $search . '%')
                                     ->orWhere('prenom', 'like', '%' . $search . '%');
                           }
+                      })
+                      // Exception : contact d'urgence / nom de la mère UNIQUEMENT pour les nouveau-nés
+                      ->orWhere(function ($newbornQ) use ($search) {
+                          $newbornQ->where(function ($isNewborn) {
+                              $isNewborn->whereNotNull('mere_id')
+                                        ->orWhereNotNull('registre_naissance_id')
+                                        ->orWhereHas('user', function ($uq) {
+                                            $uq->where('name', 'like', 'Bébé%')
+                                               ->orWhere('name', 'like', 'Bebe%')
+                                               ->orWhere('name', 'like', 'Enfant%')
+                                               ->orWhere('name', 'like', 'Nouveau-né%')
+                                               ->orWhere('name', 'like', 'Nouveau ne%');
+                                        });
+                          })->where(function ($nq) use ($search) {
+                              $nq->where('nom_personne_cas_urgence', 'like', '%' . $search . '%')
+                                 ->orWhereHas('mere.user', function ($mq) use ($search) {
+                                     $mq->where('name', 'like', '%' . $search . '%')
+                                        ->orWhere('prenom', 'like', '%' . $search . '%');
+                                 });
+                          });
                       });
                 })->limit(10)->get();
 

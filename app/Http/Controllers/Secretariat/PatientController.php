@@ -462,12 +462,28 @@ class PatientController extends Controller
                 $cleanTel = substr($cleanTel, 3);
             }
             $data->where(function ($q) use ($rawTel, $cleanTel) {
-                $q->where('telephone', 'like', '%' . $rawTel . '%')
-                  ->orWhere('telephone_personne_cas_urgence', 'like', '%' . $rawTel . '%');
+                // 1. Recherche par téléphone du patient
+                $q->where('telephone', 'like', '%' . $rawTel . '%');
                 if (!empty($cleanTel)) {
-                    $q->orWhere('telephone', 'like', '%' . $cleanTel . '%')
-                      ->orWhere('telephone_personne_cas_urgence', 'like', '%' . $cleanTel . '%');
+                    $q->orWhere('telephone', 'like', '%' . $cleanTel . '%');
                 }
+                // 2. Exception : Téléphone de la personne en cas d'urgence UNIQUEMENT pour les nouveau-nés
+                $q->orWhere(function ($subQ) use ($rawTel, $cleanTel) {
+                    $subQ->where(function ($isNewborn) {
+                        $isNewborn->whereNotNull('mere_id')
+                                  ->orWhereNotNull('registre_naissance_id')
+                                  ->orWhereHas('user', function ($uq) {
+                                      $uq->where('name', 'like', 'Bébé%')
+                                         ->orWhere('name', 'like', 'Bebe%')
+                                         ->orWhere('name', 'like', 'Enfant%');
+                                  });
+                    })->where(function ($tq) use ($rawTel, $cleanTel) {
+                        $tq->where('telephone_personne_cas_urgence', 'like', '%' . $rawTel . '%');
+                        if (!empty($cleanTel)) {
+                            $tq->orWhere('telephone_personne_cas_urgence', 'like', '%' . $cleanTel . '%');
+                        }
+                    });
+                });
             });
         }
 
@@ -481,6 +497,7 @@ class PatientController extends Controller
                 $first = $terms[0];
                 $second = implode(" ", array_slice($terms, 1));
                 $data->where(function ($query) use ($first, $second) {
+                    // 1. Recherche directe sur le nom / prénom du patient
                     $query->whereHas('user', function ($q) use ($first, $second) {
                         $q->where(function ($sub) use ($first, $second) {
                             $sub->where('name', 'like', '%' . $first . '%')
@@ -489,24 +506,63 @@ class PatientController extends Controller
                             $sub->where('name', 'like', '%' . $second . '%')
                                 ->where('prenom', 'like', '%' . $first . '%');
                         });
-                    })->orWhere('nom_personne_cas_urgence', 'like', '%' . $first . '%')
-                      ->orWhere('nom_personne_cas_urgence', 'like', '%' . $second . '%')
-                      ->orWhereHas('mere.user', function ($mq) use ($first, $second) {
-                          $mq->where('name', 'like', '%' . $first . '%')
-                             ->orWhere('name', 'like', '%' . $second . '%');
-                      });
+                    })
+                    // 2. Exception : Nom de la personne d'urgence / Mère UNIQUEMENT pour les nouveau-nés
+                    ->orWhere(function ($subQuery) use ($first, $second) {
+                        $subQuery->where(function ($isNewborn) {
+                            $isNewborn->whereNotNull('mere_id')
+                                      ->orWhereNotNull('registre_naissance_id')
+                                      ->orWhereHas('user', function ($uq) {
+                                          $uq->where('name', 'like', 'Bébé%')
+                                             ->orWhere('name', 'like', 'Bebe%')
+                                             ->orWhere('name', 'like', 'Enfant%')
+                                             ->orWhere('name', 'like', 'Nouveau-né%')
+                                             ->orWhere('name', 'like', 'Nouveau ne%');
+                                      });
+                        })->where(function ($contactQuery) use ($first, $second) {
+                            $contactQuery->where(function ($cq) use ($first, $second) {
+                                $cq->where('nom_personne_cas_urgence', 'like', '%' . $first . '%')
+                                   ->where('nom_personne_cas_urgence', 'like', '%' . $second . '%');
+                            })->orWhereHas('mere.user', function ($mq) use ($first, $second) {
+                                $mq->where(function ($subM) use ($first, $second) {
+                                    $subM->where('name', 'like', '%' . $first . '%')
+                                         ->where('prenom', 'like', '%' . $second . '%');
+                                })->orWhere(function ($subM) use ($first, $second) {
+                                    $subM->where('name', 'like', '%' . $second . '%')
+                                         ->where('prenom', 'like', '%' . $first . '%');
+                                });
+                            });
+                        });
+                    });
                 });
             } else if (count($terms) === 1) {
                 $term = $terms[0];
                 $data->where(function ($query) use ($term) {
+                    // 1. Recherche directe sur le nom / prénom du patient
                     $query->whereHas('user', function ($q) use ($term) {
                         $q->where('name', 'like', '%' . $term . '%')
                             ->orWhere('prenom', 'like', '%' . $term . '%');
-                    })->orWhere('nom_personne_cas_urgence', 'like', '%' . $term . '%')
-                      ->orWhereHas('mere.user', function ($mq) use ($term) {
-                          $mq->where('name', 'like', '%' . $term . '%')
-                             ->orWhere('prenom', 'like', '%' . $term . '%');
-                      });
+                    })
+                    // 2. Exception : Nom de la personne d'urgence / Mère UNIQUEMENT pour les nouveau-nés
+                    ->orWhere(function ($subQuery) use ($term) {
+                        $subQuery->where(function ($isNewborn) {
+                            $isNewborn->whereNotNull('mere_id')
+                                      ->orWhereNotNull('registre_naissance_id')
+                                      ->orWhereHas('user', function ($uq) {
+                                          $uq->where('name', 'like', 'Bébé%')
+                                             ->orWhere('name', 'like', 'Bebe%')
+                                             ->orWhere('name', 'like', 'Enfant%')
+                                             ->orWhere('name', 'like', 'Nouveau-né%')
+                                             ->orWhere('name', 'like', 'Nouveau ne%');
+                                      });
+                        })->where(function ($contactQuery) use ($term) {
+                            $contactQuery->where('nom_personne_cas_urgence', 'like', '%' . $term . '%')
+                                         ->orWhereHas('mere.user', function ($mq) use ($term) {
+                                             $mq->where('name', 'like', '%' . $term . '%')
+                                                ->orWhere('prenom', 'like', '%' . $term . '%');
+                                         });
+                        });
+                    });
                 });
             }
         }
