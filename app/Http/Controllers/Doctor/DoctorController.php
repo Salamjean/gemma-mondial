@@ -14,7 +14,7 @@ use App\Models\PrestationService;
 use App\Models\PrestationHospital;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
-use App\Http\Requests\UpdateDoctorRequest;
+use App\Http\Requests\Doctor\UpdateDoctorRequest;
 use App\Repositories\Hospital\AgentRepository;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 

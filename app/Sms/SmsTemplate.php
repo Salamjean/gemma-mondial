@@ -4,7 +4,7 @@ namespace App\Sms;
 
 use GuzzleHttp\Client;
 
-class SMSTemplate
+class SmsTemplate
 {
 
         public function __construct($phone, $message){
