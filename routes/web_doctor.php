@@ -51,7 +51,7 @@ Route::middleware(['auth'])->group(function () {
                     Route::post('post-natale', 'ConsultationController@storePostNatale')->name('post.natale');
                     Route::post('pre-natale', 'ConsultationController@storePreNatale')->name('pre.natale');
                     Route::post('curative', 'ConsultationController@storeConsultationCurative')->name('curative');
-
+                    Route::post('laboratoire', 'ConsultationController@storeLaboratoire')->name('laboratoire');
                 });
 
                 //formulaire issue consultation

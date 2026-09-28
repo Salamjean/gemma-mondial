@@ -4,9 +4,13 @@
 
 @section('content')
 
-    @include('users.doctor.consultation.formulaire.consultation.entete')
+    @if ($type != 'laboratoire' && $type != 'examen-laboratoire')
+        @include('users.doctor.consultation.formulaire.consultation.entete')
+    @endif
 
-    @if ($type == 'consultation')
+    @if ($type == 'laboratoire' || $type == 'examen-laboratoire')
+        @include('users.doctor.consultation.formulaire.consultation.laboratoire')
+    @elseif ($type == 'consultation' || $type == 'currative')
         @include('users.doctor.consultation.formulaire.consultation.currative')
     @elseif ($type == 'consultation-pre-natale')
         @include('users.doctor.consultation.formulaire.consultation.pre-natale')

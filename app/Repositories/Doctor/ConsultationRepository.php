@@ -63,13 +63,26 @@ class ConsultationRepository
 
     public function formulaireMotif($id)
     {
-
-        $type = PrestationService::findOrFail($id);
+        $type = PrestationService::with('service')->find($id);
+        if (!$type) {
+            return ['consultation', 'Formulaire de consultation'];
+        }
 
         $title = 'Formulaire ';
         $section = 'consultation';
-        switch ($type->libelle) {
 
+        $libelleLower = strtolower($type->libelle . ' ' . (optional($type->service)->libelle ?? ''));
+        if (str_contains($libelleLower, 'laboratoire') || str_contains($libelleLower, 'labo') || str_contains($libelleLower, 'analyse')) {
+            return ['laboratoire', 'Formulaire de demande d\'examen - Laboratoire'];
+        }
+
+        switch ($type->libelle) {
+            case 'Laboratoire':
+            case 'Examen de laboratoire':
+            case 'Analyses médicales':
+                $title .= 'de demande d\'examen - Laboratoire';
+                $section = 'laboratoire';
+                break;
             case 'Consultation':
                 $title .= 'de consultation';
                 $section = 'curative';
@@ -78,21 +91,17 @@ class ConsultationRepository
                 $title .= 'de consultation prénatale';
                 $section = 'consultation-pre-natale';
                 break;
-
             case 'Consultation postnatale':
                 $title .= 'de consultation postnatale';
                 $section = 'consultation-post-natale';
                 break;
-
             case 'Accouchement':
                 $title .= 'd\'accouchement';
                 $section = 'accouchement';
                 break;
-
             default:
                 $title .= 'de consultation';
                 $section = 'curative';
-
                 return [$section, $title];
         }
 

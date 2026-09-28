@@ -60,22 +60,48 @@ class ConsultationController extends Controller
     //form generate
     public function formulaire($id)
     {
-        $consultation = Consultation::with(['patient.user', 'patient.residenceActuelle', 'prestationHospital.prestationService', 'admission.patient.user'])->findOrFail($id);
+        $consultation = Consultation::with([
+            'patient.user', 
+            'patient.residenceActuelle', 
+            'prestationHospital.prestationService.service', 
+            'admission.patient.user',
+            'admission.prestationHospital.prestationService.service',
+            'doctor.serviceHospital.service'
+        ])->findOrFail($id);
 
         // Déclencher l'annonce en salle d'attente (Écran TV H24 de l'hôpital)
         $this->triggerPatientCall($consultation);
 
-        $prestationServiceId = optional($consultation->prestationHospital)->prestation_service_id ?? 1;
+        $prestationService = optional($consultation->prestationHospital)->prestationService 
+            ?? optional(optional($consultation->admission)->prestationHospital)->prestationService;
+        $service = optional($prestationService)->service 
+            ?? optional(optional($consultation->doctor)->serviceHospital)->service;
+
+        $serviceLibelle = strtolower(trim(($service->libelle ?? '') . ' ' . ($prestationService->libelle ?? '')));
+
+        $prestationServiceId = optional($consultation->prestationHospital)->prestation_service_id 
+            ?? optional(optional($consultation->admission)->prestationHospital)->prestation_service_id 
+            ?? 1;
+
         try {
             $data = $this->instance()->formulaireMotif($prestationServiceId);
         } catch (\Throwable $e) {
             $data = ['consultation', 'Consultation Curative'];
         }
 
+        $type = $data[0] ?? 'consultation';
+        $title = $data[1] ?? 'Consultation Curative';
+
+        // Si le service ou la prestation concerne le Laboratoire
+        if (str_contains($serviceLibelle, 'laboratoire') || str_contains($serviceLibelle, 'labo') || str_contains($serviceLibelle, 'analyse') || request('type') === 'laboratoire' || $type === 'laboratoire') {
+            $type = 'laboratoire';
+            $title = "Formulaire de demande d'examen - Laboratoire";
+        }
+
         return view('users.doctor.consultation.formulaire', [
-            'title' => $data[1] ?? 'Consultation Curative',
+            'title' => $title,
             'consultation' => $consultation,
-            'type' => $data[0] ?? 'consultation'
+            'type' => $type
         ]);
     }
 
@@ -619,6 +645,126 @@ class ConsultationController extends Controller
             'mode_sortie' => $modeSortie,
             'documents' => $docs,
         ]);
+    }
+
+    /**
+     * Enregistre la demande d'examen de laboratoire médicale (OMS / Qualité laboratoire)
+     */
+    public function storeLaboratoire(Request $request)
+    {
+        $request->validate([
+            'consultation_id' => 'required|exists:consultations,id',
+        ]);
+
+        $consultation = Consultation::with(['patient.user', 'hospital'])->findOrFail($request->consultation_id);
+        $patient = $consultation->patient ?? optional($consultation->admission)->patient;
+
+        // Récupération des examens cochés dans toutes les catégories
+        $selectedExams = (array) $request->input('examens', []);
+
+        // Examens de profil spécifiques s'il y en a
+        foreach ((array) $request->input('examens_profil', []) as $prof) {
+            if (!empty($prof)) $selectedExams[] = "Profil d'examen : " . $prof;
+        }
+
+        // Examens de biochimie
+        foreach ((array) $request->input('examens_biochimie', []) as $bio) {
+            if (!empty($bio)) $selectedExams[] = "Biochimie : " . $bio;
+        }
+
+        // Examens d'hématologie
+        foreach ((array) $request->input('examens_hematologie', []) as $hem) {
+            if (!empty($hem)) $selectedExams[] = "Hématologie : " . $hem;
+        }
+
+        // Examens de microbiologie
+        foreach ((array) $request->input('examens_microbiologie', []) as $mic) {
+            if (!empty($mic)) $selectedExams[] = "Microbiologie : " . $mic;
+        }
+
+        // Examens d'anapath
+        foreach ((array) $request->input('examens_anapath', []) as $ana) {
+            $site = $request->input('anapath_site') ? ' (Site: ' . $request->input('anapath_site') . ')' : '';
+            if (!empty($ana)) $selectedExams[] = "Anatomo-pathologie : " . $ana . $site;
+        }
+
+        // Cytologie cervicale
+        foreach ((array) $request->input('cytologie_type', []) as $cyto) {
+            $sites = !empty($request->input('cytologie_site')) ? ' [Sites: ' . implode(', ', (array)$request->input('cytologie_site')) . ']' : '';
+            $selectedExams[] = "Cytologie cervicale : " . $cyto . $sites;
+        }
+
+        // Examens supplémentaires textuels
+        if ($request->filled('examens_supplementaires')) {
+            $lines = preg_split('/[\r\n]+/', trim($request->examens_supplementaires));
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (!empty($line)) {
+                    $selectedExams[] = "Examen complémentaire : " . $line;
+                }
+            }
+        }
+
+        // Échantillon et condition
+        $echantillons = (array) $request->input('type_echantillon', []);
+        if ($request->filled('echantillon_autre')) {
+            $echantillons[] = $request->input('echantillon_autre');
+        }
+
+        // Si aucun examen coché, mettre un libellé par défaut
+        if (empty($selectedExams)) {
+            $selectedExams[] = "Bilan d'analyses de laboratoire complet";
+        }
+
+        // Dédoublonnage
+        $selectedExams = array_values(array_unique($selectedExams));
+
+        // Création ou mise à jour du Bulletin d'Examen
+        if (\App\Models\BulletinExamen::where('consultation_id', $consultation->id)->exists()) {
+            $bulletin = \App\Models\BulletinExamen::where('consultation_id', $consultation->id)->first();
+            $bulletin->examens()->delete();
+        } else {
+            $bulletin = \App\Models\BulletinExamen::create([
+                "code_bulletin" => codeBulletin(optional($patient)->code_patient, optional($patient)->id),
+                "consultation_id" => $consultation->id,
+            ]);
+        }
+
+        // Insertion des lignes d'examens
+        foreach ($selectedExams as $itemExam) {
+            \App\Models\Examen::create([
+                'code_examen' => codeExamen(optional($patient)->code_patient, optional($patient)->id),
+                'bulletin_examen_id' => $bulletin->id,
+                'nature_examen' => $itemExam,
+                'date_examen' => $request->input('date_prelevement', date('Y-m-d')),
+                'status' => 0,
+            ]);
+        }
+
+        // Clôture de la consultation
+        $consultation->status = 1;
+        if ($request->filled('autres_infos_cliniques')) {
+            $consultation->motif_consultation = $request->autres_infos_cliniques;
+        }
+        $consultation->save();
+
+        // Enregistrement dans le Registre
+        if (!\App\Models\Registre::where('consultation_id', $consultation->id)->exists()) {
+            \App\Models\Registre::create([
+                "code" => codeRegistre(optional($patient)->code_patient, optional($patient)->id),
+                "type_consultation" => "Laboratoire",
+                "consultation_id" => $consultation->id,
+                "issue_consultation" => "examen",
+                "issue_consultation_justification" => "Demande d'examens de laboratoire émise (" . count($selectedExams) . " analyses)",
+            ]);
+        }
+
+        // Clôture des rendez-vous associés
+        \App\Models\RendezVous::where('consultation_id', $consultation->id)->update([
+            'status' => 'complete',
+        ]);
+
+        return redirect()->route('doctor.consultation.today')->with('success', "Demande d'examen de laboratoire émise avec succès ! (Bulletin N° {$bulletin->code_bulletin} - " . count($selectedExams) . " analyses enregistrées).");
     }
 
 
