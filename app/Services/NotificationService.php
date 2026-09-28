@@ -95,18 +95,25 @@ class NotificationService
                 $query->where('id', $specificPatientId);
             } elseif ($target === 'android') {
                 $query->where(function($q) {
-                    $q->whereRaw("LOWER(COALESCE(device_type, 'android')) = 'android'")
-                      ->orWhereNull('device_type');
+                    $q->where(function($sub) {
+                        $sub->whereRaw("LOWER(COALESCE(device_type, 'android')) = 'android'")
+                            ->orWhereNull('device_type');
+                    })->whereRaw("LOWER(COALESCE(device_type, 'android')) NOT IN ('ios', 'iphone', 'ipad', 'apple')");
                 });
             } elseif ($target === 'ios') {
-                $query->whereRaw("LOWER(device_type) = 'ios'");
+                $query->where(function($q) {
+                    $q->whereRaw("LOWER(device_type) IN ('ios', 'iphone', 'ipad', 'apple')")
+                      ->orWhereRaw("LOWER(device_type) LIKE '%ios%'")
+                      ->orWhereRaw("LOWER(device_type) LIKE '%iphone%'");
+                });
             }
 
             $patients = $query->get();
 
             foreach ($patients as $patient) {
                 $fcmToken = $patient->fcm_token ?: optional($patient->user)->fcm_token;
-                $deviceType = strtolower($patient->device_type ?: (optional($patient->user)->device_type ?: 'android'));
+                $rawDev = strtolower($patient->device_type ?: (optional($patient->user)->device_type ?: 'android'));
+                $deviceType = (str_contains($rawDev, 'ios') || str_contains($rawDev, 'iphone') || str_contains($rawDev, 'ipad') || str_contains($rawDev, 'apple')) ? 'ios' : 'android';
                 $userId = optional($patient->user)->id ?? $patient->user_id;
                 $hasPushToken = !empty($fcmToken);
 
@@ -207,9 +214,10 @@ class NotificationService
                             ],
                         ];
 
-                        // Inclure APNs seulement si l'appareil est explicitement iOS
+                        // Inclure APNs si l'appareil est iOS / iPhone / Apple
                         $deviceType = strtolower($customData['device_type'] ?? '');
-                        if ($deviceType === 'ios') {
+                        $isIos = str_contains($deviceType, 'ios') || str_contains($deviceType, 'iphone') || str_contains($deviceType, 'ipad') || str_contains($deviceType, 'apple');
+                        if ($isIos) {
                             $messagePayload['apns'] = [
                                 'headers' => [
                                     'apns-priority' => '10',
@@ -227,10 +235,14 @@ class NotificationService
                             'message' => $messagePayload
                         ];
 
-                        $response = Http::withoutVerifying()->withHeaders([
-                            'Authorization' => 'Bearer ' . $accessToken,
-                            'Content-Type' => 'application/json',
-                        ])->post($url, $payload);
+                        $response = Http::withoutVerifying()
+                            ->timeout(15)
+                            ->connectTimeout(10)
+                            ->retry(2, 500)
+                            ->withHeaders([
+                                'Authorization' => 'Bearer ' . $accessToken,
+                                'Content-Type' => 'application/json',
+                            ])->post($url, $payload);
 
                         if ($response->successful()) {
                             Log::info("Push FCM v1 envoyé avec succès pour: {$title}");
@@ -258,20 +270,24 @@ class NotificationService
             // 2. Fallback sur l'ancienne clé serveur (FCM_SERVER_KEY) si configurée
             $fcmServerKey = env('FCM_SERVER_KEY');
             if (!empty($fcmServerKey)) {
-                $response = Http::withoutVerifying()->withHeaders([
-                    'Authorization' => 'key=' . $fcmServerKey,
-                    'Content-Type' => 'application/json',
-                ])->post('https://fcm.googleapis.com/fcm/send', [
-                    'to' => $fcmToken,
-                    'notification' => [
-                        'title' => $title,
-                        'body' => $body,
-                        'sound' => 'default',
-                        'badge' => 1,
-                    ],
-                    'data' => $customData,
-                    'priority' => 'high',
-                ]);
+                $response = Http::withoutVerifying()
+                    ->timeout(15)
+                    ->connectTimeout(10)
+                    ->retry(2, 500)
+                    ->withHeaders([
+                        'Authorization' => 'key=' . $fcmServerKey,
+                        'Content-Type' => 'application/json',
+                    ])->post('https://fcm.googleapis.com/fcm/send', [
+                        'to' => $fcmToken,
+                        'notification' => [
+                            'title' => $title,
+                            'body' => $body,
+                            'sound' => 'default',
+                            'badge' => 1,
+                        ],
+                        'data' => $customData,
+                        'priority' => 'high',
+                    ]);
 
                 return $response->successful();
             }
@@ -285,42 +301,51 @@ class NotificationService
     }
 
     /**
-     * Génère un Token OAuth2 Google via le fichier Service Account JSON
+     * Génère un Token OAuth2 Google via le fichier Service Account JSON (avec cache)
      */
     private static function getGoogleAccessToken(array $credentials): ?string
     {
+        $cacheKey = 'fcm_google_access_token_' . md5($credentials['client_email'] ?? 'default');
+
         try {
-            $now = time();
-            $header = json_encode(['alg' => 'RS256', 'typ' => 'JWT']);
-            $claimSet = json_encode([
-                'iss' => $credentials['client_email'],
-                'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
-                'aud' => 'https://oauth2.googleapis.com/token',
-                'exp' => $now + 3600,
-                'iat' => $now,
-            ]);
+            return \Illuminate\Support\Facades\Cache::remember($cacheKey, 3000, function () use ($credentials) {
+                $now = time();
+                $header = json_encode(['alg' => 'RS256', 'typ' => 'JWT']);
+                $claimSet = json_encode([
+                    'iss' => $credentials['client_email'],
+                    'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+                    'aud' => 'https://oauth2.googleapis.com/token',
+                    'exp' => $now + 3600,
+                    'iat' => $now,
+                ]);
 
-            $base64UrlHeader = self::base64UrlEncode($header);
-            $base64UrlClaimSet = self::base64UrlEncode($claimSet);
-            $signatureInput = $base64UrlHeader . '.' . $base64UrlClaimSet;
+                $base64UrlHeader = self::base64UrlEncode($header);
+                $base64UrlClaimSet = self::base64UrlEncode($claimSet);
+                $signatureInput = $base64UrlHeader . '.' . $base64UrlClaimSet;
 
-            $signature = '';
-            openssl_sign($signatureInput, $signature, $credentials['private_key'], 'SHA256');
-            $base64UrlSignature = self::base64UrlEncode($signature);
+                $signature = '';
+                openssl_sign($signatureInput, $signature, $credentials['private_key'], 'SHA256');
+                $base64UrlSignature = self::base64UrlEncode($signature);
 
-            $jwt = $signatureInput . '.' . $base64UrlSignature;
+                $jwt = $signatureInput . '.' . $base64UrlSignature;
 
-            $response = Http::withoutVerifying()->asForm()->post('https://oauth2.googleapis.com/token', [
-                'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-                'assertion' => $jwt,
-            ]);
+                $response = Http::withoutVerifying()
+                    ->timeout(15)
+                    ->connectTimeout(10)
+                    ->retry(2, 500)
+                    ->asForm()
+                    ->post('https://oauth2.googleapis.com/token', [
+                        'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                        'assertion' => $jwt,
+                    ]);
 
-            if ($response->successful()) {
-                return $response->json('access_token');
-            }
+                if ($response->successful()) {
+                    return $response->json('access_token');
+                }
 
-            Log::error("Erreur génération access_token Google: " . $response->body());
-            return null;
+                Log::error("Erreur génération access_token Google: " . $response->body());
+                return null;
+            });
         } catch (\Exception $e) {
             Log::error("Exception génération access_token Google: " . $e->getMessage());
             return null;

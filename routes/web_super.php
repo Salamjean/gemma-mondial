@@ -78,6 +78,7 @@ Route::middleware(['auth'])->group(function() {
                 Route::get('add', 'NotificationController@add')->name('add');
                 Route::get('show/{batch}', 'NotificationController@show')->name('show');
                 Route::post('send', 'NotificationController@send')->name('send');
+                Route::post('resend/{batch}', 'NotificationController@resend')->name('resend');
                 Route::delete('delete/{id}', 'NotificationController@destroy')->name('destroy');
             });
 

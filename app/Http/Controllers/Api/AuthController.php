@@ -305,7 +305,14 @@ class AuthController extends Controller
         // Sauvegarder le token FCM si fourni lors du login
         if ($request->filled('fcm_token') || $request->filled('device_token') || $request->filled('push_token') || $request->filled('token')) {
             $fcmToken = $request->fcm_token ?: ($request->device_token ?: ($request->push_token ?: $request->token));
-            $deviceType = $request->device_type ?: ($request->platform ?: 'mobile');
+            $rawDevice = strtolower(trim($request->device_type ?: ($request->platform ?: '')));
+            if (str_contains($rawDevice, 'ios') || str_contains($rawDevice, 'iphone') || str_contains($rawDevice, 'ipad') || str_contains($rawDevice, 'apple')) {
+                $deviceType = 'ios';
+            } elseif (str_contains($rawDevice, 'android')) {
+                $deviceType = 'android';
+            } else {
+                $deviceType = $rawDevice ?: 'android';
+            }
             try {
                 $user->fcm_token = $fcmToken;
                 $user->device_type = $deviceType;
@@ -314,7 +321,7 @@ class AuthController extends Controller
                 $patient->fcm_token = $fcmToken;
                 $patient->device_type = $deviceType;
                 $patient->save();
-                Log::info('FCM Token enregistré avec succès lors de la connexion', ['patient_id' => $patient->id]);
+                Log::info('FCM Token enregistré avec succès lors de la connexion', ['patient_id' => $patient->id, 'device_type' => $deviceType]);
             } catch (\Exception $ex) {
                 Log::warning('Erreur enregistrement FCM token dans confirmLogin: ' . $ex->getMessage());
             }

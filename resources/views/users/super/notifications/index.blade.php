@@ -207,10 +207,19 @@
                                         </div>
                                     </td>
                                     <td class="text-center">
-                                        <div class="d-flex justify-content-center gap-1">
+                                        <div class="d-flex justify-content-center align-items-center gap-1">
+                                            <!-- Bouton Relancer la notification push -->
+                                            <form action="{{ route('super.notifications.resend', (string)$batchKey) }}" method="POST" 
+                                                  onsubmit="return confirm('Voulez-vous vraiment relancer et renvoyer cette même notification push ?');" class="d-inline">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm btn-primary shadow-sm" title="Relancer cette notification push">
+                                                    Relancer
+                                                </button>
+                                            </form>
+
                                             <!-- Bouton Détails & Destinataires -->
                                             <a href="{{ $showUrl }}" class="btn btn-sm btn-info shadow-sm" title="Voir tous les destinataires sur une page dédiée">
-                                                Destinataires
+                                               Destinataires
                                             </a>
 
                                             <!-- Bouton Supprimer Campagne -->

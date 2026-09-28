@@ -28,13 +28,19 @@ class NotificationController extends Controller
         $androidDevices = Patient::whereNotNull('fcm_token')
             ->where('fcm_token', '!=', '')
             ->where(function($q) {
-                $q->whereRaw("LOWER(COALESCE(device_type, 'android')) = 'android'")
-                  ->orWhereNull('device_type');
+                $q->where(function($sub) {
+                    $sub->whereRaw("LOWER(COALESCE(device_type, 'android')) = 'android'")
+                        ->orWhereNull('device_type');
+                })->whereRaw("LOWER(COALESCE(device_type, 'android')) NOT IN ('ios', 'iphone', 'ipad', 'apple')");
             })->count();
 
         $iosDevices = Patient::whereNotNull('fcm_token')
             ->where('fcm_token', '!=', '')
-            ->whereRaw("LOWER(device_type) = 'ios'")
+            ->where(function($q) {
+                $q->whereRaw("LOWER(device_type) IN ('ios', 'iphone', 'ipad', 'apple')")
+                  ->orWhereRaw("LOWER(device_type) LIKE '%ios%'")
+                  ->orWhereRaw("LOWER(device_type) LIKE '%iphone%'");
+            })
             ->count();
 
         // Récupérer uniquement les diffusions groupées (Broadcast)
@@ -123,13 +129,19 @@ class NotificationController extends Controller
         $androidDevices = Patient::whereNotNull('fcm_token')
             ->where('fcm_token', '!=', '')
             ->where(function($q) {
-                $q->whereRaw("LOWER(COALESCE(device_type, 'android')) = 'android'")
-                  ->orWhereNull('device_type');
+                $q->where(function($sub) {
+                    $sub->whereRaw("LOWER(COALESCE(device_type, 'android')) = 'android'")
+                        ->orWhereNull('device_type');
+                })->whereRaw("LOWER(COALESCE(device_type, 'android')) NOT IN ('ios', 'iphone', 'ipad', 'apple')");
             })->count();
 
         $iosDevices = Patient::whereNotNull('fcm_token')
             ->where('fcm_token', '!=', '')
-            ->whereRaw("LOWER(device_type) = 'ios'")
+            ->where(function($q) {
+                $q->whereRaw("LOWER(device_type) IN ('ios', 'iphone', 'ipad', 'apple')")
+                  ->orWhereRaw("LOWER(device_type) LIKE '%ios%'")
+                  ->orWhereRaw("LOWER(device_type) LIKE '%iphone%'");
+            })
             ->count();
 
         $patients = Patient::with('user')->latest()->get();
@@ -282,6 +294,94 @@ class NotificationController extends Controller
             return redirect()->route('super.notifications.index')->with('success', $flashMessage);
         } else {
             $flashWarning = "La notification a été enregistrée In-App pour {$inAppCount} patient(s), mais aucun appareil mobile actif avec un jeton FCM valide n'a pu recevoir le push instantané.";
+            return redirect()->route('super.notifications.index')->with('warning', $flashWarning);
+        }
+    }
+
+    /**
+     * Relance la même notification Push à l'identique
+     */
+    public function resend($batchKey)
+    {
+        $batchKey = trim($batchKey);
+        $query = PatientNotification::with(['patient.user']);
+
+        if (str_starts_with($batchKey, 'BRD-')) {
+            $allRecipients = $query->where('data->batch_id', $batchKey)->get();
+        } else {
+            $allRecipients = $query->where('data->batch_id', $batchKey)->get();
+            if ($allRecipients->isEmpty() && is_numeric($batchKey)) {
+                $single = PatientNotification::with(['patient.user'])->find($batchKey);
+                if ($single) {
+                    $data = is_array($single->data) ? $single->data : (json_decode($single->data ?? '[]', true) ?: []);
+                    $batchId = $data['batch_id'] ?? null;
+                    if ($batchId) {
+                        $allRecipients = PatientNotification::with(['patient.user'])->where('data->batch_id', $batchId)->get();
+                    } else {
+                        $allRecipients = collect([$single]);
+                    }
+                }
+            }
+        }
+
+        if ($allRecipients->isEmpty()) {
+            return redirect()->route('super.notifications.index')->with('warning', "Notification introuvable pour relance.");
+        }
+
+        $first = $allRecipients->first();
+        $data = is_array($first->data) ? $first->data : (json_decode($first->data ?? '[]', true) ?: []);
+
+        $title = $first->title;
+        $message = $first->message;
+        $target = $data['target'] ?? 'all';
+        $category = $data['category'] ?? 'general';
+        $patientId = ($target === 'specific') ? ($data['patient_id'] ?? $first->patient_id) : null;
+
+        $extraData = [
+            'category' => $category,
+            'screen' => $data['screen'] ?? 'Notifications',
+            'sent_by_user_id' => Auth::id(),
+            'sent_by_name' => Auth::user() ? (Auth::user()->name . ' ' . Auth::user()->prenom) : 'Super Admin',
+            'is_resend_of' => $batchKey,
+        ];
+
+        // Lancement de la diffusion via NotificationService
+        $result = NotificationService::sendBroadcast($title, $message, $target, $patientId, $extraData);
+
+        $pushCount = $result['push_sent'] ?? 0;
+        $inAppCount = $result['in_app_created'] ?? 0;
+        $newBatchId = $result['batch_id'] ?? 'BRD-N/A';
+
+        // Journaliser dans l'audit de sécurité
+        AuditLogService::log(
+            'RELANCE_PUSH',
+            'NOTIFICATION',
+            "Relance de la notification Push : '{$title}' ({$pushCount} push envoyés, {$inAppCount} patients ciblés) - Nouveau Lot {$newBatchId}",
+            [
+                'original_batch' => $batchKey,
+                'new_batch_id' => $newBatchId,
+                'target' => $target,
+                'category' => $category,
+                'title' => $title,
+                'push_sent' => $pushCount,
+                'in_app_created' => $inAppCount,
+                'user_id' => Auth::id()
+            ]
+        );
+
+        $targetLabel = match($target) {
+            'all' => 'à tous les patients',
+            'android' => 'aux utilisateurs Android',
+            'ios' => 'aux utilisateurs iOS (Apple)',
+            'specific' => 'au patient sélectionné',
+            default => 'aux destinataires'
+        };
+
+        if ($pushCount > 0) {
+            $flashMessage = "Notification Push '{$title}' relancée avec succès {$targetLabel} ! ({$pushCount} push FCM direct(s), {$inAppCount} notification(s) In-App).";
+            return redirect()->route('super.notifications.index')->with('success', $flashMessage);
+        } else {
+            $flashWarning = "Notification '{$title}' relancée et enregistrée In-App pour {$inAppCount} patient(s), mais aucun push direct n'a pu être délivré (aucun jeton mobile actif trouvé).";
             return redirect()->route('super.notifications.index')->with('warning', $flashWarning);
         }
     }

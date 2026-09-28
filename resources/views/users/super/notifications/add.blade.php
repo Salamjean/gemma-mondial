@@ -82,7 +82,8 @@
                                                 $pName = 'Patient #' . ($p->code_patient ?? $p->id);
                                             }
                                             $tokenActive = !empty($p->fcm_token) || !empty(optional($p->user)->fcm_token);
-                                            $devType = strtoupper($p->device_type ?: (optional($p->user)->device_type ?: 'ANDROID'));
+                                            $rawDevUpper = strtoupper($p->device_type ?: (optional($p->user)->device_type ?: 'ANDROID'));
+                                            $devType = (in_array($rawDevUpper, ['IOS', 'IPHONE', 'IPAD', 'APPLE']) || str_contains($rawDevUpper, 'IOS') || str_contains($rawDevUpper, 'IPHONE')) ? 'iOS' : 'Android';
                                         @endphp
                                         <option value="{{ $p->id }}" {{ old('patient_id') == $p->id ? 'selected' : '' }}>
                                             {{ $p->code_patient ?? 'N/A' }} - {{ $pName }}

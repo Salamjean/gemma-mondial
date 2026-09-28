@@ -45,9 +45,17 @@ class DataController extends Controller
                 ?: ($request->input('device_token')
                 ?: $request->input('push_token')));
 
-            $deviceType = $request->input('device_type')
+            $rawDevice = strtolower(trim($request->input('device_type')
                 ?: ($request->input('platform')
-                ?: ($request->input('type') ?: 'android'));
+                ?: ($request->input('type') ?: ''))));
+
+            if (str_contains($rawDevice, 'ios') || str_contains($rawDevice, 'iphone') || str_contains($rawDevice, 'ipad') || str_contains($rawDevice, 'apple')) {
+                $deviceType = 'ios';
+            } elseif (str_contains($rawDevice, 'android')) {
+                $deviceType = 'android';
+            } else {
+                $deviceType = $rawDevice ?: 'android';
+            }
 
             $user = Auth::user();
             if (!$user) {
@@ -415,6 +423,10 @@ class DataController extends Controller
                     'r.consultation_id',
                     'r.created_at',
                     'r.updated_at',
+                    'h.id as hospital_id',
+                    'h.nom_direction_generale as hospital_name',
+                    'h.label as label',
+                    'h.label as hospital_label',
                     'u.name as doctor_name',
                     'u.prenom as doctor_prenom',
                     'u.email as doctor_email',
@@ -424,11 +436,16 @@ class DataController extends Controller
                     'd.type_doctor_id',
                     'd.service_hospital_id'
                 )
+                ->leftJoin('consultations as c', 'r.consultation_id', '=', 'c.id')
                 ->leftJoin('users as u', function ($join) {
                     $join->on('r.doctor_id', '=', 'u.id')
                         ->where('u.role_as', 'doctor');
                 })
                 ->leftJoin('doctors as d', 'u.id', '=', 'd.user_id')
+                ->leftJoin('hospitals as h', function ($join) {
+                    $join->on('c.hospital_id', '=', 'h.id')
+                        ->orOn('d.hospital_id', '=', 'h.id');
+                })
                 ->where('r.patient_id', $patientId)
                 ->get();
 
@@ -449,6 +466,7 @@ class DataController extends Controller
                     'c.updated_at',
                     'h.nom_direction_generale as hospital_name',
                     'h.label as label',
+                    'h.label as hospital_label',
                     'u.name as doctor_name',
                     'u.prenom as doctor_prenom',
                     'u.email as doctor_email',
@@ -471,10 +489,17 @@ class DataController extends Controller
 
             $formattedRdv = $rdvItems->map(function ($rdv) {
                 $details = [];
-                if (is_string($rdv->details)) {
-                    $details = json_decode($rdv->details, true) ?? [];
-                } elseif (is_array($rdv->details)) {
-                    $details = $rdv->details;
+                if (!empty($rdv->details)) {
+                    if (is_array($rdv->details)) {
+                        $details = $rdv->details;
+                    } elseif (is_string($rdv->details)) {
+                        $decoded = json_decode($rdv->details, true);
+                        if (is_array($decoded)) {
+                            $details = $decoded;
+                        } else {
+                            $details = ['raw' => $rdv->details];
+                        }
+                    }
                 }
 
                 $doctorFullName = 'Médecin non spécifié';
@@ -486,6 +511,8 @@ class DataController extends Controller
 
                 $specialite = $rdv->doctor_type ?? 'Médecin Généraliste';
                 $photo = $rdv->doctor_photo ? asset('assets/uploads/doctor/' . $rdv->doctor_photo) : null;
+                $hName = $rdv->hospital_name ?? ($details['hospital_name'] ?? null);
+                $hLabel = $rdv->label ?? ($rdv->hospital_label ?? ($details['label'] ?? ($details['hospital_label'] ?? $hName)));
 
                 return [
                     'id' => $rdv->id,
@@ -504,9 +531,17 @@ class DataController extends Controller
                     'doctor_telephone' => $rdv->doctor_telephone,
                     'doctor_type' => $rdv->doctor_type,
                     'service_hospital_id' => $rdv->service_hospital_id,
+                    'hospital_id' => $rdv->hospital_id ?? ($details['hospital_id'] ?? null),
+                    'hospital_name' => $hName,
+                    'hospital_label' => $hLabel,
+                    'label' => $hLabel,
                     'created_at' => date('Y-m-d H:i:s', strtotime($rdv->created_at)),
                     'updated_at' => date('Y-m-d H:i:s', strtotime($rdv->updated_at)),
-                    'details' => $details,
+                    'details' => array_merge($details, [
+                        'hospital_name' => $hName,
+                        'hospital_label' => $hLabel,
+                        'label' => $hLabel,
+                    ]),
                 ];
             });
 
@@ -516,13 +551,15 @@ class DataController extends Controller
                     $doctorFullName = 'Dr. ' . trim($c->doctor_name . ' ' . $c->doctor_prenom);
                 } elseif ($c->doctor_name) {
                     $doctorFullName = 'Dr. ' . $c->doctor_name;
-                } elseif ($c->hospital_name) {
-                    $doctorFullName = 'Médecin Généraliste (' . $c->hospital_name . ')';
+                } elseif ($c->hospital_name || $c->label) {
+                    $doctorFullName = 'Médecin Généraliste (' . ($c->label ?: $c->hospital_name) . ')';
                 }
 
                 $date = $c->desired_date ?: ($c->date_consultation ?: date('Y-m-d', strtotime($c->created_at)));
                 $heure = $c->desired_time ?: date('H:i', strtotime($c->created_at));
                 $motif = $c->motif_consultation ?: 'Téléconsultation en ligne';
+                $hName = $c->hospital_name;
+                $hLabel = $c->label ?? $c->hospital_name;
 
                 $status = 'pending';
                 if ($c->call_status === 'completed' || $c->status == 1) {
@@ -546,7 +583,7 @@ class DataController extends Controller
                     'date' => $date,
                     'heure' => $heure,
                     'motif' => $motif,
-                    'notes' => 'Hôpital: ' . ($c->hospital_name ?? 'Général') . ' | Statut: ' . $statusText,
+                    'notes' => 'Hôpital: ' . ($hLabel ?? 'Général') . ' | Statut: ' . $statusText,
                     'image' => null,
                     'status' => $status,
                     'doctor_id' => $c->doctor_id,
@@ -557,13 +594,18 @@ class DataController extends Controller
                     'doctor_telephone' => $c->doctor_telephone,
                     'doctor_type' => $c->doctor_type ?? 'Téléconsultation',
                     'service_hospital_id' => $c->service_hospital_id,
+                    'hospital_id' => $c->hospital_id,
+                    'hospital_name' => $hName,
+                    'hospital_label' => $hLabel,
+                    'label' => $hLabel,
                     'created_at' => date('Y-m-d H:i:s', strtotime($c->created_at)),
                     'updated_at' => date('Y-m-d H:i:s', strtotime($c->updated_at)),
                     'details' => [
                         'heure' => $heure,
                         'motif' => $motif,
-                        'hospital_name' => $c->hospital_name,
-                        'label' => $c->label,
+                        'hospital_name' => $hName,
+                        'hospital_label' => $hLabel,
+                        'label' => $hLabel,
                         'call_status' => $c->call_status,
                         'status_label' => $statusText,
                         'is_online' => true,

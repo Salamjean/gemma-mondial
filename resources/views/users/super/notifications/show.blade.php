@@ -43,14 +43,25 @@
                         @endswitch
                     </div>
 
-                    <div>
+                    <div class="d-flex align-items-center gap-2">
                         <span class="text-muted fs-12 me-10">Lot : <code>{{ $batchKey }}</code></span>
+                        
+                        <!-- Bouton Relancer -->
+                        <form action="{{ route('super.notifications.resend', $batchKey) }}" method="POST" 
+                              onsubmit="return confirm('Voulez-vous vraiment relancer et renvoyer cette même notification push ?');" class="d-inline">
+                            @csrf
+                            <button type="submit" class="btn btn-sm btn-primary shadow-sm">
+                                <i class="fa fa-rotate-right me-1"></i> Relancer la notification
+                            </button>
+                        </form>
+
+                        <!-- Bouton Supprimer -->
                         <form action="{{ route('super.notifications.destroy', $batchKey) }}" method="POST" 
                               onsubmit="return confirm('Confirmez-vous la suppression de cette campagne ?');" class="d-inline">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="btn btn-sm btn-danger shadow-sm">
-                                <i class="fa fa-trash me-1"></i> Supprimer la campagne
+                                <i class="fa fa-trash me-1"></i> Supprimer
                             </button>
                         </form>
                     </div>
@@ -146,7 +157,7 @@
                                         <span>{{ optional($p)->telephone ?: (optional($pUser)->contact ?: '-') }}</span>
                                     </td>
                                     <td class="text-center">
-                                        @if($devType === 'IOS')
+                                        @if(in_array($devType, ['IOS', 'IPHONE', 'IPAD', 'APPLE']) || str_contains($devType, 'IOS') || str_contains($devType, 'IPHONE'))
                                             <span class="badge bg-info"><i class="fa-brands fa-apple me-1"></i> iOS</span>
                                         @else
                                             <span class="badge bg-success"><i class="fa-brands fa-android me-1"></i> Android</span>
