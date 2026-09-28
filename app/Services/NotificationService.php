@@ -238,11 +238,19 @@ class NotificationService
                         }
 
                         $responseBody = $response->body();
-                        if (str_contains($responseBody, 'Invalid APNs credential')) {
+                        if (str_contains($responseBody, 'UNREGISTERED') || str_contains($responseBody, 'NotRegistered')) {
+                            Log::info("Token FCM expiré ou désinstallé (UNREGISTERED). Nettoyage du token en base pour éviter de futures erreurs.");
+                            try {
+                                Patient::where('fcm_token', $fcmToken)->update(['fcm_token' => null]);
+                                User::where('fcm_token', $fcmToken)->update(['fcm_token' => null]);
+                            } catch (\Throwable $e) {}
+                        } elseif (str_contains($responseBody, 'Invalid APNs credential')) {
                             Log::warning("FCM APNs Warning: La clé APNs Apple (.p8) n'est pas configurée dans la console Firebase pour iOS. (Titre: {$title})");
                         } else {
                             Log::warning("FCM v1 response error: " . $responseBody);
                         }
+
+                        return false;
                     }
                 }
             }
