@@ -40,6 +40,30 @@
             </a>
         </li>
     </ul>
+</li>
+<li class="treeview {{ request()->routeIs('super.notifications.*') ? 'active' : '' }}">
+    <a href="#">
+        <i class="fa fa-bell">
+            <span class="path1"></span><span class="path2"></span><span class="path3"></span>
+        </i>
+        <span>Notifications Push</span>
+        <span class="pull-right-container">
+            <i class="fa-solid fa-angle-right"></i>
+        </span>
+    </a>
+    <ul class="treeview-menu">
+        <li class="{{ request()->routeIs('super.notifications.index') ? 'active' : '' }}">
+            <a href="{{ route('super.notifications.index') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Liste des envois
+            </a>
+        </li>
+        <li class="{{ request()->routeIs('super.notifications.add') ? 'active' : '' }}">
+            <a href="{{ route('super.notifications.add') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Nouvelle diffusion
+            </a>
+        </li>
+    </ul>
+</li>
 <li class="treeview {{ request()->routeIs('super.ministere.*') ? 'active' : '' }}">
     <a href="#">
         <i class="fa fa-landmark">

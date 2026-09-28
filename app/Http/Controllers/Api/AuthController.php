@@ -302,6 +302,24 @@ class AuthController extends Controller
             ], 500);
         }
 
+        // Sauvegarder le token FCM si fourni lors du login
+        if ($request->filled('fcm_token') || $request->filled('device_token') || $request->filled('push_token') || $request->filled('token')) {
+            $fcmToken = $request->fcm_token ?: ($request->device_token ?: ($request->push_token ?: $request->token));
+            $deviceType = $request->device_type ?: ($request->platform ?: 'mobile');
+            try {
+                $user->fcm_token = $fcmToken;
+                $user->device_type = $deviceType;
+                $user->save();
+
+                $patient->fcm_token = $fcmToken;
+                $patient->device_type = $deviceType;
+                $patient->save();
+                Log::info('FCM Token enregistré avec succès lors de la connexion', ['patient_id' => $patient->id]);
+            } catch (\Exception $ex) {
+                Log::warning('Erreur enregistrement FCM token dans confirmLogin: ' . $ex->getMessage());
+            }
+        }
+
         // Créer le token
         try {
             $token = $user->createToken('patient_token')->plainTextToken;

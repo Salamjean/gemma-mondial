@@ -57,9 +57,11 @@ class NotificationService
             // 2. Envoi Push Notification FCM si token disponible
             $fcmToken = $patient->fcm_token ?: optional($patient->user)->fcm_token;
             if ($fcmToken) {
+                $deviceType = $patient->device_type ?: (optional($patient->user)->device_type ?: 'android');
                 self::sendFcmPush($fcmToken, $title, $message, array_merge($data, [
                     'notification_id' => $notification->id,
                     'type' => $type,
+                    'device_type' => $deviceType,
                 ]));
             }
 
@@ -67,6 +69,99 @@ class NotificationService
         } catch (\Exception $e) {
             Log::error("Erreur NotificationService::sendToPatient : " . $e->getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Diffuser une notification Push à tous les utilisateurs ou à une cible ciblée
+     *
+     * @param string $title
+     * @param string $message
+     * @param string $target ('all', 'android', 'ios', 'specific')
+     * @param int|null $specificPatientId
+     * @param array $extraData
+     * @return array
+     */
+    public static function sendBroadcast(string $title, string $message, string $target = 'all', ?int $specificPatientId = null, array $extraData = []): array
+    {
+        $batchId = 'BRD-' . date('YmdHis') . '-' . strtoupper(\Illuminate\Support\Str::random(4));
+        $pushSentCount = 0;
+        $inAppCreatedCount = 0;
+
+        try {
+            $query = Patient::with('user');
+
+            if ($target === 'specific' && $specificPatientId) {
+                $query->where('id', $specificPatientId);
+            } elseif ($target === 'android') {
+                $query->where(function($q) {
+                    $q->whereRaw("LOWER(COALESCE(device_type, 'android')) = 'android'")
+                      ->orWhereNull('device_type');
+                });
+            } elseif ($target === 'ios') {
+                $query->whereRaw("LOWER(device_type) = 'ios'");
+            }
+
+            $patients = $query->get();
+
+            foreach ($patients as $patient) {
+                $fcmToken = $patient->fcm_token ?: optional($patient->user)->fcm_token;
+                $deviceType = strtolower($patient->device_type ?: (optional($patient->user)->device_type ?: 'android'));
+                $userId = optional($patient->user)->id ?? $patient->user_id;
+                $hasPushToken = !empty($fcmToken);
+
+                $notificationData = array_merge($extraData, [
+                    'is_broadcast' => true,
+                    'batch_id' => $batchId,
+                    'target' => $target,
+                    'device_type' => $deviceType,
+                    'delivery_channel' => $hasPushToken ? 'push_fcm' : 'in_app',
+                    'has_push' => $hasPushToken,
+                    'sent_at' => now()->toIso8601String(),
+                ]);
+
+                // 1. Créer la notification In-App pour le patient
+                $notification = PatientNotification::create([
+                    'patient_id' => $patient->id,
+                    'user_id' => $userId,
+                    'type' => 'broadcast',
+                    'title' => $title,
+                    'message' => $message,
+                    'data' => $notificationData,
+                ]);
+
+                $inAppCreatedCount++;
+
+                // 2. Envoyer le push FCM si token disponible
+                if ($hasPushToken) {
+                    $pushSuccess = self::sendFcmPush($fcmToken, $title, $message, array_merge($notificationData, [
+                        'notification_id' => $notification->id,
+                        'type' => 'broadcast',
+                    ]));
+
+                    if ($pushSuccess) {
+                        $pushSentCount++;
+                    }
+                }
+            }
+
+            Log::info("NotificationService::sendBroadcast - Lot {$batchId}: {$inAppCreatedCount} in-app créées, {$pushSentCount} push envoyés");
+
+            return [
+                'batch_id' => $batchId,
+                'total_targets' => count($patients),
+                'in_app_created' => $inAppCreatedCount,
+                'push_sent' => $pushSentCount,
+            ];
+        } catch (\Exception $e) {
+            Log::error("Erreur NotificationService::sendBroadcast : " . $e->getMessage());
+            return [
+                'batch_id' => $batchId,
+                'total_targets' => 0,
+                'in_app_created' => $inAppCreatedCount,
+                'push_sent' => $pushSentCount,
+                'error' => $e->getMessage(),
+            ];
         }
     }
 
@@ -96,42 +191,58 @@ class NotificationService
                             $stringData[(string)$k] = is_scalar($v) ? (string)$v : json_encode($v);
                         }
 
-                        $payload = [
-                            'message' => [
-                                'token' => $fcmToken,
+                        $messagePayload = [
+                            'token' => $fcmToken,
+                            'notification' => [
+                                'title' => $title,
+                                'body' => $body,
+                            ],
+                            'data' => $stringData,
+                            'android' => [
+                                'priority' => 'high',
                                 'notification' => [
-                                    'title' => $title,
-                                    'body' => $body,
+                                    'sound' => 'default',
+                                    'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
                                 ],
-                                'data' => $stringData,
-                                'android' => [
-                                    'priority' => 'high',
-                                    'notification' => [
-                                        'sound' => 'default',
-                                        'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
-                                    ],
-                                ],
-                                'apns' => [
-                                    'payload' => [
-                                        'aps' => [
-                                            'sound' => 'default',
-                                            'badge' => 1,
-                                        ],
-                                    ],
-                                ],
-                            ]
+                            ],
                         ];
 
-                        $response = Http::withHeaders([
+                        // Inclure APNs seulement si l'appareil est explicitement iOS
+                        $deviceType = strtolower($customData['device_type'] ?? '');
+                        if ($deviceType === 'ios') {
+                            $messagePayload['apns'] = [
+                                'headers' => [
+                                    'apns-priority' => '10',
+                                ],
+                                'payload' => [
+                                    'aps' => [
+                                        'sound' => 'default',
+                                        'badge' => 1,
+                                    ],
+                                ],
+                            ];
+                        }
+
+                        $payload = [
+                            'message' => $messagePayload
+                        ];
+
+                        $response = Http::withoutVerifying()->withHeaders([
                             'Authorization' => 'Bearer ' . $accessToken,
                             'Content-Type' => 'application/json',
                         ])->post($url, $payload);
 
                         if ($response->successful()) {
+                            Log::info("Push FCM v1 envoyé avec succès pour: {$title}");
                             return true;
                         }
 
-                        Log::warning("FCM v1 response error: " . $response->body());
+                        $responseBody = $response->body();
+                        if (str_contains($responseBody, 'Invalid APNs credential')) {
+                            Log::warning("FCM APNs Warning: La clé APNs Apple (.p8) n'est pas configurée dans la console Firebase pour iOS. (Titre: {$title})");
+                        } else {
+                            Log::warning("FCM v1 response error: " . $responseBody);
+                        }
                     }
                 }
             }
@@ -139,7 +250,7 @@ class NotificationService
             // 2. Fallback sur l'ancienne clé serveur (FCM_SERVER_KEY) si configurée
             $fcmServerKey = env('FCM_SERVER_KEY');
             if (!empty($fcmServerKey)) {
-                $response = Http::withHeaders([
+                $response = Http::withoutVerifying()->withHeaders([
                     'Authorization' => 'key=' . $fcmServerKey,
                     'Content-Type' => 'application/json',
                 ])->post('https://fcm.googleapis.com/fcm/send', [
@@ -157,7 +268,7 @@ class NotificationService
                 return $response->successful();
             }
 
-            Log::info("Push FCM skipped (aucun fichier FIREBASE_CREDENTIALS ni FCM_SERVER_KEY trouvé). Titre: {$title}");
+            Log::info("Push FCM skipped (aucun fichier FIREBASE_CREDENTIALS ni FCM_SERVER_KEY valide trouvé). Titre: {$title}");
             return false;
         } catch (\Exception $e) {
             Log::warning("Erreur lors de l'envoi push FCM: " . $e->getMessage());
@@ -191,7 +302,7 @@ class NotificationService
 
             $jwt = $signatureInput . '.' . $base64UrlSignature;
 
-            $response = Http::asForm()->post('https://oauth2.googleapis.com/token', [
+            $response = Http::withoutVerifying()->asForm()->post('https://oauth2.googleapis.com/token', [
                 'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
                 'assertion' => $jwt,
             ]);
