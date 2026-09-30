@@ -66,17 +66,28 @@ class AuthController extends Controller
             ], 403);
         }
 
-        // Générer un code OTP aléatoire de 6 chiffres
-        $otpCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        // Vérifier si c'est le compte patient de test statique
+        $isTestAccount = ($patient->code_patient === 'DM-TEST-12345' || $patient->telephone === '0102030405');
 
-        // Définir la date d'expiration (10 minutes)
-        $otpExpiresAt = now()->addMinutes(10);
+        // Générer un code OTP aléatoire de 6 chiffres (ou fixe 123456 si compte de test)
+        $otpCode = $isTestAccount ? '123456' : str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        // Définir la date d'expiration (10 minutes, ou 5 ans pour le compte de test)
+        $otpExpiresAt = $isTestAccount ? now()->addYears(5) : now()->addMinutes(10);
 
         // Sauvegarder l'OTP dans la table patient
         $patient->update([
             'otp_code' => $otpCode,
             'otp_expires_at' => $otpExpiresAt
         ]);
+
+        if ($isTestAccount) {
+            Log::info('Connexion compte test patient DM-TEST-12345 avec OTP fixe 123456');
+            return response([
+                'message' => 'Code OTP de test : 123456',
+                'code' => $request->code
+            ], 200);
+        }
 
         // Envoyer l'OTP par email
         try {
@@ -273,19 +284,27 @@ class AuthController extends Controller
 
         Log::info('OTP validé avec succès');
 
-        // Effacer l'OTP après utilisation
-        try {
+        // Effacer l'OTP après utilisation (sauf pour le compte de test statique)
+        if ($patient->code_patient === 'DM-TEST-12345' || $patient->telephone === '0102030405') {
             $patient->update([
-                'otp_code' => null,
-                'otp_expires_at' => null
+                'otp_code' => '123456',
+                'otp_expires_at' => now()->addYears(5)
             ]);
-            Log::info('OTP effacé de la base de données');
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de l\'effacement OTP:', [
-                'patient_id' => $patient->id,
-                'erreur' => $e->getMessage()
-            ]);
-            // Continuer malgré l'erreur
+            Log::info('Compte test : OTP 123456 maintenu actif');
+        } else {
+            try {
+                $patient->update([
+                    'otp_code' => null,
+                    'otp_expires_at' => null
+                ]);
+                Log::info('OTP effacé de la base de données');
+            } catch (\Exception $e) {
+                Log::error('Erreur lors de l\'effacement OTP:', [
+                    'patient_id' => $patient->id,
+                    'erreur' => $e->getMessage()
+                ]);
+                // Continuer malgré l'erreur
+            }
         }
 
         // Authentifier l'utilisateur
