@@ -552,8 +552,32 @@ class ConsultationController extends Controller
 
     public function detail($id)
     {
-        $consultation = Consultation::findOrFail($id);
-        return view('users.infirmier.consultation.detail', compact('consultation'));
+        $consultation = Consultation::with([
+            'patient.user',
+            'patient.residenceActuelle',
+            'patient.currentResidence',
+            'patient.habitualResidence',
+            'patient.birthPlace',
+            'doctor.user',
+            'doctor.serviceHospital.service',
+            'infirmier.user',
+            'hospital',
+            'prestationHospital.prestationService',
+            'admission.prestationHospital.prestationService',
+            'registre',
+            'bulletinExamen.examens',
+            'ordonnances.prescriptions.drug',
+            'ordonnances.prescriptions.drugHospital.drug',
+            'arret',
+            'hospitalisation',
+            'observation'
+        ])->findOrFail($id);
+
+        $ordonnance = \App\Models\Ordonnance::with(['prescriptions.drug', 'prescriptions.drugHospital.drug'])
+            ->where('consultation_id', $consultation->id)
+            ->first();
+
+        return view('users.infirmier.consultation.detail', compact('consultation', 'ordonnance'));
     }
 
     public function patientCard(Request $request, $id)

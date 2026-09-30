@@ -21,10 +21,16 @@ Route::middleware(['auth'])->group(function() {
 
             // Registres nationaux
             Route::get('/naissances', 'MinistereDashboardController@naissances')->name('naissances');
+            Route::get('/naissances/export-pdf', 'MinistereDashboardController@exportNaissancesPdf')->name('naissances.export_pdf');
             Route::get('/deces', 'MinistereDashboardController@deces')->name('deces');
+            Route::get('/deces/export-pdf', 'MinistereDashboardController@exportDecesPdf')->name('deces.export_pdf');
 
             // Hôpitaux et centres déclarants
             Route::get('/hopitaux', 'MinistereDashboardController@hospitals')->name('hopitaux');
+
+            // Profil utilisateur & Paramètres
+            Route::get('/profil', 'MinistereDashboardController@profile')->name('profile');
+            Route::post('/profil/update', 'MinistereDashboardController@updateProfile')->name('profile.update');
 
         });
     });

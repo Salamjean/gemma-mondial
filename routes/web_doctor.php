@@ -54,6 +54,10 @@ Route::middleware(['auth'])->group(function () {
                     Route::post('laboratoire', 'ConsultationController@storeLaboratoire')->name('laboratoire');
                 });
 
+                // Post-laboratoire & Export PDF
+                Route::get('laboratoire/recap/{id}', 'ConsultationController@laboratoireRecap')->name('laboratoire.recap');
+                Route::get('laboratoire/pdf/{id}', 'ConsultationController@laboratoirePdf')->name('laboratoire.pdf');
+
                 //formulaire issue consultation
                 Route::get('formulaire_issue/{title}/{issue}/{id}', 'ConsultationController@formulaireIssue')->name('formulaire.issue');
                 //issue consultation

@@ -7,9 +7,15 @@ use App\Models\Declaration;
 use App\Models\DeclarationDeces;
 use App\Models\DeclarationNaissance;
 use App\Models\Hospital;
+use App\Models\Ministere;
+use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class MinistereDashboardController extends Controller
 {
@@ -54,6 +60,7 @@ class MinistereDashboardController extends Controller
         $totalBirthsAll = DeclarationNaissance::count();
         $totalDeathsAll = DeclarationDeces::count();
         $maternalDeathsYear = (clone $deathQuery)->where('deces_maternel', 1)->count();
+        $maternalRate = $totalBirthsYear > 0 ? round(($maternalDeathsYear / $totalBirthsYear) * 1000, 2) : 0;
         $activeHospitalsCount = Hospital::where('status', 0)->where('delete', 0)->count();
 
         // 1. Évolution Mensuelle (Janvier à Décembre pour l'année sélectionnée)
@@ -194,6 +201,7 @@ class MinistereDashboardController extends Controller
             'totalBirthsAll',
             'totalDeathsAll',
             'maternalDeathsYear',
+            'maternalRate',
             'activeHospitalsCount',
             'monthsLabels',
             'birthsMonthly',
@@ -527,30 +535,32 @@ class MinistereDashboardController extends Controller
             $hospDeaths[] = $topHospitalsDeaths->firstWhere('hospital_id', $hId)->total ?? 0;
         }
 
-        // Listes récentes
-        $recentBirths = DeclarationNaissance::with(['declaration.hospital', 'enfant.user'])
+        // Listes récentes (anonymisées : uniquement nom de l'hôpital ou événement)
+        $recentBirths = DeclarationNaissance::with(['declaration.hospital'])
             ->orderByDesc('created_at')
             ->limit(6)
             ->get()
             ->map(function($b) {
+                $hospitalName = $b->declaration->hospital->label ?? ($b->declaration->hospital->nom_direction_generale ?? null);
                 return [
-                    'nom' => ($b->enfant->user->name ?? 'Enfant') . ' ' . ($b->enfant->user->prenom ?? ''),
+                    'hopital' => $hospitalName,
+                    'titre' => $hospitalName ? $hospitalName : 'Nouvelle naissance',
                     'numero' => $b->numero_declaration ?: ($b->reference ?: '#'.$b->id),
-                    'hopital' => $b->declaration->hospital->label ?? ($b->declaration->hospital->nom_direction_generale ?? 'Hôpital'),
                     'genre' => $b->genre,
                     'date' => ($b->date ? \Carbon\Carbon::parse($b->date)->format('d/m/Y') : ($b->created_at ? $b->created_at->format('d/m/Y') : '-')) . ($b->heure ? ' à '.$b->heure : '')
                 ];
             });
 
-        $recentDeaths = DeclarationDeces::with(['declaration.hospital', 'declaration.patient.user'])
+        $recentDeaths = DeclarationDeces::with(['declaration.hospital'])
             ->orderByDesc('created_at')
             ->limit(6)
             ->get()
             ->map(function($d) {
+                $hospitalName = $d->declaration->hospital->label ?? ($d->declaration->hospital->nom_direction_generale ?? null);
                 return [
-                    'nom' => $d->person == 'enfant' ? 'Nouveau-né' : (($d->declaration->patient->user->name ?? 'Patient') . ' ' . ($d->declaration->patient->user->prenom ?? '')),
+                    'hopital' => $hospitalName,
+                    'titre' => $hospitalName ? $hospitalName : 'Nouveau décès',
                     'numero' => $d->numero_declaration ?: ($d->reference ?: '#'.$d->id),
-                    'hopital' => $d->declaration->hospital->label ?? ($d->declaration->hospital->nom_direction_generale ?? 'Hôpital'),
                     'deces_maternel' => (bool)$d->deces_maternel,
                     'cause' => $d->cause_initiale ?: ($d->cause_directe ?: 'Cause non précisée'),
                     'date' => ($d->date ? \Carbon\Carbon::parse($d->date)->format('d/m/Y') : ($d->created_at ? $d->created_at->format('d/m/Y') : '-')) . ($d->heure ? ' à '.$d->heure : '')
@@ -624,6 +634,61 @@ class MinistereDashboardController extends Controller
         return view('users.ministere.naissances', compact('declarations', 'hospitals', 'title'));
     }
 
+    public function exportNaissancesPdf(Request $request)
+    {
+        $query = DeclarationNaissance::with(['declaration.hospital', 'declaration.doctor.user', 'enfant.user']);
+
+        if ($request->filled('search')) {
+            $s = trim($request->search);
+            $query->where(function ($q) use ($s) {
+                $q->where('numero_declaration', 'like', "%{$s}%")
+                  ->orWhere('reference', 'like', "%{$s}%")
+                  ->orWhere('lieu', 'like', "%{$s}%")
+                  ->orWhereHas('enfant.user', function ($u) use ($s) {
+                      $u->where('name', 'like', "%{$s}%")->orWhere('prenom', 'like', "%{$s}%");
+                  })
+                  ->orWhereHas('declaration.hospital', function ($h) use ($s) {
+                      $h->where('label', 'like', "%{$s}%")->orWhere('nom_direction_generale', 'like', "%{$s}%");
+                  });
+            });
+        }
+
+        if ($request->filled('hospital_id')) {
+            $query->whereHas('declaration', function ($q) use ($request) {
+                $q->where('hospital_id', $request->hospital_id);
+            });
+        }
+
+        if ($request->filled('genre')) {
+            $query->where('genre', $request->genre);
+        }
+
+        if ($request->filled('year')) {
+            $query->whereHas('declaration', function ($q) use ($request) {
+                $q->whereYear('created_at', $request->year);
+            });
+        }
+
+        $declarations = $query->orderByDesc('created_at')->limit(500)->get();
+        $totalCount = $declarations->count();
+        $dateExport = Carbon::now()->isoFormat('D MMMM YYYY à HH:mm');
+
+        $hospitalSelected = null;
+        if ($request->filled('hospital_id')) {
+            $hospitalSelected = Hospital::find($request->hospital_id);
+        }
+
+        $pdf = Pdf::loadView('users.ministere.pdf.naissances_pdf', compact('declarations', 'totalCount', 'dateExport', 'hospitalSelected', 'request'));
+        $pdf->setPaper('A4', 'landscape');
+        $pdf->render();
+
+        $filename = 'registre_national_naissances_' . date('Y_m_d_His') . '.pdf';
+
+        return response($pdf->output())
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename="' . $filename . '"');
+    }
+
     public function deces(Request $request)
     {
         $query = DeclarationDeces::with(['declaration.hospital', 'declaration.doctor.user', 'declaration.patient.user']);
@@ -668,6 +733,63 @@ class MinistereDashboardController extends Controller
         return view('users.ministere.deces', compact('declarations', 'hospitals', 'title'));
     }
 
+    public function exportDecesPdf(Request $request)
+    {
+        $query = DeclarationDeces::with(['declaration.hospital', 'declaration.doctor.user', 'declaration.patient.user']);
+
+        if ($request->filled('search')) {
+            $s = trim($request->search);
+            $query->where(function ($q) use ($s) {
+                $q->where('numero_declaration', 'like', "%{$s}%")
+                  ->orWhere('reference', 'like', "%{$s}%")
+                  ->orWhere('cause_initiale', 'like', "%{$s}%")
+                  ->orWhere('cause_directe', 'like', "%{$s}%")
+                  ->orWhere('lieu', 'like', "%{$s}%")
+                  ->orWhereHas('declaration.patient.user', function ($u) use ($s) {
+                      $u->where('name', 'like', "%{$s}%")->orWhere('prenom', 'like', "%{$s}%");
+                  })
+                  ->orWhereHas('declaration.hospital', function ($h) use ($s) {
+                      $h->where('label', 'like', "%{$s}%")->orWhere('nom_direction_generale', 'like', "%{$s}%");
+                  });
+            });
+        }
+
+        if ($request->filled('hospital_id')) {
+            $query->whereHas('declaration', function ($q) use ($request) {
+                $q->where('hospital_id', $request->hospital_id);
+            });
+        }
+
+        if ($request->filled('deces_maternel')) {
+            $query->where('deces_maternel', $request->deces_maternel);
+        }
+
+        if ($request->filled('year')) {
+            $query->whereHas('declaration', function ($q) use ($request) {
+                $q->whereYear('created_at', $request->year);
+            });
+        }
+
+        $declarations = $query->orderByDesc('created_at')->limit(500)->get();
+        $totalCount = $declarations->count();
+        $dateExport = Carbon::now()->isoFormat('D MMMM YYYY à HH:mm');
+
+        $hospitalSelected = null;
+        if ($request->filled('hospital_id')) {
+            $hospitalSelected = Hospital::find($request->hospital_id);
+        }
+
+        $pdf = Pdf::loadView('users.ministere.pdf.deces_pdf', compact('declarations', 'totalCount', 'dateExport', 'hospitalSelected', 'request'));
+        $pdf->setPaper('A4', 'landscape');
+        $pdf->render();
+
+        $filename = 'registre_national_deces_' . date('Y_m_d_His') . '.pdf';
+
+        return response($pdf->output())
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename="' . $filename . '"');
+    }
+
     public function hospitals()
     {
         $hospitals = Hospital::with(['localiteH.department.region'])
@@ -682,5 +804,62 @@ class MinistereDashboardController extends Controller
 
         $title = "Cartographie et Statistiques des Hôpitaux Déclarants";
         return view('users.ministere.hospitals', compact('hospitals', 'title'));
+    }
+
+    public function profile()
+    {
+        $user = Auth::user();
+        $ministere = Ministere::firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'reference' => 'MIN-' . strtoupper(substr(uniqid(), -6)),
+                'nom_direction' => 'Direction Générale de la Santé Publique',
+                'fonction' => 'Responsable des Statistiques Sanitaires',
+            ]
+        );
+        $title = "Profil | Ministère de la Santé";
+
+        return view('users.ministere.profile', compact('title', 'user', 'ministere'));
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = User::findOrFail(Auth::id());
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'prenom' => 'nullable|string|max:255',
+            'nom_direction' => 'nullable|string|max:255',
+            'fonction' => 'nullable|string|max:255',
+            'contact' => 'nullable|string|max:30',
+            'password' => 'nullable|string|min:6|confirmed',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+        ], [
+            'name.required' => 'Le nom est obligatoire.',
+            'password.min' => 'Le mot de passe doit contenir au moins 6 caractères.',
+            'password.confirmed' => 'La confirmation du mot de passe ne correspond pas.',
+            'image.image' => 'Le fichier doit être une image valide.',
+            'image.max' => 'L\'image ne doit pas dépasser 2 Mo.',
+        ]);
+
+        $user->name = $request->name;
+        $user->prenom = $request->prenom;
+
+        if ($request->filled('password')) {
+            $user->password = Hash::make($request->password);
+        }
+        $user->save();
+
+        $ministere = Ministere::firstOrCreate(['user_id' => $user->id]);
+        $ministere->nom_direction = $request->nom_direction;
+        $ministere->fonction = $request->fonction;
+        $ministere->contact = $request->contact;
+
+        if ($request->hasFile('image')) {
+            $ministere->img_url = uploadImage($request->file('image'), 'ministere');
+        }
+        $ministere->save();
+
+        return redirect()->route('ministere.profile')->with('success', "Votre profil Ministère a été mis à jour avec succès.");
     }
 }

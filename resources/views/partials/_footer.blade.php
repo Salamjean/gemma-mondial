@@ -25,7 +25,7 @@
         });
     </script>
 @endif
-@if ($errors->any())
+@if (isset($errors) && $errors->any())
     <script>
         Swal.fire({
             text: "{{ $errors->first() }}",

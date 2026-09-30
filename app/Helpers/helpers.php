@@ -184,6 +184,7 @@ function roleFr($role_as)
         'accountant' => 'Comptable',
         'infirmier' => 'Infirmier(e)',
         'pharmacy' => 'Pharmacien',
+        'ministere' => 'Ministère de la Santé',
 
         default => 'none',
     };

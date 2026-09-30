@@ -9,8 +9,11 @@
                     <h3 class="box-title fw-bold text-dark"><i class="fa fa-cross text-danger me-2"></i> {{ $title }}</h3>
                     <p class="text-muted mb-0 small">Registre officiel et surveillance des causes de mortalité hospitalière</p>
                 </div>
-                <div>
-                    <span class="badge bg-danger fs-14 px-3 py-2">Total : {{ $declarations->total() }} décès déclaré(s)</span>
+                <div class="d-flex align-items-center gap-2">
+                    <a href="{{ route('ministere.deces.export_pdf', request()->all()) }}" target="_blank" class="btn btn-danger btn-sm shadow-xs rounded-pill px-3">
+                        <i class="fa fa-file-pdf me-1"></i> Exporter la liste en PDF
+                    </a>
+                    <span class="badge bg-danger fs-14 px-3 py-2 rounded-pill">Total : {{ $declarations->total() }}</span>
                 </div>
             </div>
 

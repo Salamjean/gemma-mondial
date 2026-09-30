@@ -43,6 +43,10 @@
                 </a>
             @endif
 
+            <button type="button" onclick="exportDashboardChartsPDF()" class="btn btn-sm btn-danger shadow-sm fw-bold">
+                <i class="fa fa-file-pdf me-1"></i> Exporter Graphiques PDF
+            </button>
+
             <a href="{{ route('ministere.live') }}" target="_blank" class="btn btn-sm btn-dark shadow-sm fw-bold" title="Ouvrir le mode plein écran pour projecteur ou grand écran TV (24/7)">
                 <i class="fa fa-tv text-warning me-1"></i> Mode Projection Écran (24/7)
             </a>
@@ -205,124 +209,6 @@
             <div class="box-body">
                 <div style="height: 280px; position: relative;">
                     <canvas id="hospitalsActivityChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- LIGNE 3 : Registres Récents -->
-<div class="row">
-    <!-- Dernières Naissances -->
-    <div class="col-xl-6 col-12">
-        <div class="box shadow-sm mb-4">
-            <div class="box-header with-border d-flex justify-content-between align-items-center">
-                <h4 class="box-title fw-bold text-dark">
-                    <i class="fa fa-baby text-primary me-2"></i> Dernières Déclarations de Naissance
-                </h4>
-                <a href="{{ route('ministere.naissances') }}" class="btn btn-sm btn-primary">Voir le registre complet</a>
-            </div>
-            <div class="box-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover table-striped align-middle text-center mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="text-center">Enfant / Réf</th>
-                                <th class="text-center">Établissement</th>
-                                <th class="text-center">Genre</th>
-                                <th class="text-center">Date & Heure</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recentBirthsTbody">
-                            @forelse($recentBirths as $b)
-                                <tr>
-                                    <td class="text-center">
-                                        <div class="fw-bold text-dark">{{ $b->enfant->user->name ?? 'Enfant' }} {{ $b->enfant->user->prenom ?? '' }}</div>
-                                        <small class="text-muted">N°: {{ $b->numero_declaration ?: ($b->reference ?: '#'.$b->id) }}</small>
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="text-dark">{{ $b->declaration->hospital->label ?? ($b->declaration->hospital->nom_direction_generale ?? 'Hôpital') }}</span>
-                                    </td>
-                                    <td class="text-center">
-                                        @if(in_array(strtolower($b->genre), ['m', 'masculin']))
-                                            <span class="badge bg-primary-subtle text-primary">Garçon</span>
-                                        @elseif(in_array(strtolower($b->genre), ['f', 'feminin', 'féminin']))
-                                            <span class="badge bg-danger-subtle text-danger">Fille</span>
-                                        @else
-                                            <span class="badge bg-secondary">{{ $b->genre ?: '-' }}</span>
-                                        @endif
-                                    </td>
-                                    <td class="text-center">
-                                        <small class="text-muted">{{ $b->date ? \Carbon\Carbon::parse($b->date)->format('d/m/Y') : ($b->created_at ? $b->created_at->format('d/m/Y') : '-') }} {{ $b->heure ? 'à '.$b->heure : '' }}</small>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="4" class="text-center py-3 text-muted">Aucune naissance enregistrée récemment.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Derniers Décès -->
-    <div class="col-xl-6 col-12">
-        <div class="box shadow-sm mb-4">
-            <div class="box-header with-border d-flex justify-content-between align-items-center">
-                <h4 class="box-title fw-bold text-dark">
-                    <i class="fa fa-cross text-danger me-2"></i> Dernières Déclarations de Décès
-                </h4>
-                <a href="{{ route('ministere.deces') }}" class="btn btn-sm btn-danger">Voir le registre complet</a>
-            </div>
-            <div class="box-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover table-striped align-middle text-center mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="text-center">Défunt / Réf</th>
-                                <th class="text-center">Établissement</th>
-                                <th class="text-center">Type / Cause</th>
-                                <th class="text-center">Date du décès</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recentDeathsTbody">
-                            @forelse($recentDeaths as $d)
-                                <tr>
-                                    <td class="text-center">
-                                        <div class="fw-bold text-dark">
-                                            @if($d->person == 'enfant')
-                                                Nouveau-né
-                                            @else
-                                                {{ $d->declaration->patient->user->name ?? 'Patient' }} {{ $d->declaration->patient->user->prenom ?? '' }}
-                                            @endif
-                                        </div>
-                                        <small class="text-muted">N°: {{ $d->numero_declaration ?: ($d->reference ?: '#'.$d->id) }}</small>
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="text-dark">{{ $d->declaration->hospital->label ?? ($d->declaration->hospital->nom_direction_generale ?? 'Hôpital') }}</span>
-                                    </td>
-                                    <td class="text-center">
-                                        @if($d->deces_maternel)
-                                            <span class="badge bg-warning text-dark"><i class="fa fa-female me-1"></i> Maternel</span>
-                                        @endif
-                                        <div class="text-truncate d-inline-block" style="max-width: 180px;" title="{{ $d->cause_initiale ?: $d->cause_directe }}">
-                                            <small class="text-muted">{{ $d->cause_initiale ?: ($d->cause_directe ?: 'Cause non précisée') }}</small>
-                                        </div>
-                                    </td>
-                                    <td class="text-center">
-                                        <small class="text-muted">{{ $d->date ? \Carbon\Carbon::parse($d->date)->format('d/m/Y') : ($d->created_at ? $d->created_at->format('d/m/Y') : '-') }} {{ $d->heure ? 'à '.$d->heure : '' }}</small>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="4" class="text-center py-3 text-muted">Aucun décès enregistré récemment.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
                 </div>
             </div>
         </div>
@@ -590,74 +476,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 chartHosp.data.datasets[1].data = data.hospDeathsData;
                 chartHosp.update();
             }
-
-            // 6. Mise à jour du Tableau des Naissances Récentes
-            const birthsTbody = document.getElementById('recentBirthsTbody');
-            if (birthsTbody && data.recentBirths) {
-                if (data.recentBirths.length === 0) {
-                    birthsTbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted">Aucune naissance enregistrée récemment.</td></tr>';
-                } else {
-                    let bHtml = '';
-                    data.recentBirths.forEach(b => {
-                        let genreBadge = '<span class="badge bg-secondary">-</span>';
-                        if (b.genre && ['m', 'masculin'].includes(b.genre.toLowerCase())) {
-                            genreBadge = '<span class="badge bg-primary-subtle text-primary">Garçon</span>';
-                        } else if (b.genre && ['f', 'feminin', 'féminin'].includes(b.genre.toLowerCase())) {
-                            genreBadge = '<span class="badge bg-danger-subtle text-danger">Fille</span>';
-                        }
-                        bHtml += `
-                            <tr>
-                                <td class="text-center">
-                                    <div class="fw-bold text-dark">${b.nom}</div>
-                                    <small class="text-muted">N°: ${b.numero}</small>
-                                </td>
-                                <td class="text-center">
-                                    <span class="text-dark">${b.hopital}</span>
-                                </td>
-                                <td class="text-center">${genreBadge}</td>
-                                <td class="text-center">
-                                    <small class="text-muted">${b.date}</small>
-                                </td>
-                            </tr>
-                        `;
-                    });
-                    birthsTbody.innerHTML = bHtml;
-                }
-            }
-
-            // 7. Mise à jour du Tableau des Décès Récents
-            const deathsTbody = document.getElementById('recentDeathsTbody');
-            if (deathsTbody && data.recentDeaths) {
-                if (data.recentDeaths.length === 0) {
-                    deathsTbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted">Aucun décès enregistré récemment.</td></tr>';
-                } else {
-                    let dHtml = '';
-                    data.recentDeaths.forEach(d => {
-                        let matBadge = d.deces_maternel ? '<span class="badge bg-warning text-dark me-1"><i class="fa fa-female me-1"></i> Maternel</span>' : '';
-                        dHtml += `
-                            <tr>
-                                <td class="text-center">
-                                    <div class="fw-bold text-dark">${d.nom}</div>
-                                    <small class="text-muted">N°: ${d.numero}</small>
-                                </td>
-                                <td class="text-center">
-                                    <span class="text-dark">${d.hopital}</span>
-                                </td>
-                                <td class="text-center">
-                                    ${matBadge}
-                                    <div class="text-truncate d-inline-block" style="max-width: 180px;" title="${d.cause}">
-                                        <small class="text-muted">${d.cause}</small>
-                                    </div>
-                                </td>
-                                <td class="text-center">
-                                    <small class="text-muted">${d.date}</small>
-                                </td>
-                            </tr>
-                        `;
-                    });
-                    deathsTbody.innerHTML = dHtml;
-                }
-            }
         })
         .catch(err => {
             console.warn('Erreur lors de l\'actualisation automatique :', err);
@@ -666,6 +484,252 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Intervalle de 30 secondes (30 000 ms)
     setInterval(refreshDashboardData, 30000);
+
+    // --- FONCTION D'EXPORTATION EN PDF DES GRAPHIQUES ---
+    window.exportDashboardChartsPDF = function () {
+        const year = document.getElementById('selectYear') ? document.getElementById('selectYear').value : '{{ $year }}';
+        const hospitalSelect = document.getElementById('selectHospital');
+        const hospitalText = hospitalSelect && hospitalSelect.selectedIndex >= 0 ? hospitalSelect.options[hospitalSelect.selectedIndex].text : 'Tous les établissements';
+
+        // Capturer les graphiques sous forme d'images Base64
+        const imgMonthly = chartMonthly.toBase64Image('image/png', 1.0);
+        const imgGender = chartGender.toBase64Image('image/png', 1.0);
+        const imgAge = chartAge.toBase64Image('image/png', 1.0);
+        const imgHosp = chartHosp.toBase64Image('image/png', 1.0);
+
+        // Capturer les KPIs actuels
+        const kpiBirths = document.getElementById('kpiBirthsYear') ? document.getElementById('kpiBirthsYear').textContent.trim() : '{{ $totalBirthsYear }}';
+        const kpiDeaths = document.getElementById('kpiDeathsYear') ? document.getElementById('kpiDeathsYear').textContent.trim() : '{{ $totalDeathsYear }}';
+        const kpiMaternal = document.getElementById('kpiMaternalYear') ? document.getElementById('kpiMaternalYear').textContent.trim() : '{{ $maternalDeathsYear }}';
+        const kpiMaternalRate = document.getElementById('kpiMaternalRate') ? document.getElementById('kpiMaternalRate').textContent.trim() : '{{ $maternalRate }} ‰';
+        const kpiHospitals = document.getElementById('kpiHospitalsCount') ? document.getElementById('kpiHospitalsCount').textContent.trim() : '{{ $activeHospitalsCount }}';
+
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            alert('Veuillez autoriser les fenêtres pop-up pour générer le PDF.');
+            return;
+        }
+
+        const dateNow = new Date().toLocaleString('fr-FR', {
+            day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html lang="fr">
+            <head>
+                <meta charset="UTF-8">
+                <title>Rapport Statistique Graphique ${year} - Ministère de la Santé</title>
+                <style>
+                    @page {
+                        size: A4 portrait;
+                        margin: 10mm;
+                    }
+                    body {
+                        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                        color: #1e293b;
+                        background: #fff;
+                        margin: 0;
+                        padding: 0;
+                        font-size: 11px;
+                        line-height: 1.3;
+                    }
+                    .header-box {
+                        border-bottom: 2px solid #0d5c3a;
+                        padding-bottom: 8px;
+                        margin-bottom: 12px;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    }
+                    .header-left {
+                        font-size: 9px;
+                        text-transform: uppercase;
+                        font-weight: bold;
+                        color: #334155;
+                    }
+                    .header-title {
+                        text-align: center;
+                    }
+                    .header-title h1 {
+                        margin: 0;
+                        font-size: 15px;
+                        color: #0d5c3a;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                    }
+                    .header-title h2 {
+                        margin: 2px 0 0 0;
+                        font-size: 11px;
+                        color: #16a34a;
+                        font-weight: normal;
+                    }
+                    .meta-banner {
+                        background: #f8fafc;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 6px;
+                        padding: 6px 12px;
+                        margin-bottom: 12px;
+                        display: flex;
+                        justify-content: space-between;
+                        font-size: 10px;
+                    }
+                    .kpi-grid {
+                        display: grid;
+                        grid-template-columns: repeat(5, 1fr);
+                        gap: 8px;
+                        margin-bottom: 14px;
+                    }
+                    .kpi-card {
+                        background: #f8fafc;
+                        border: 1px solid #cbd5e1;
+                        border-radius: 6px;
+                        padding: 6px 8px;
+                        text-align: center;
+                    }
+                    .kpi-card .value {
+                        font-size: 15px;
+                        font-weight: bold;
+                        color: #0f172a;
+                    }
+                    .kpi-card .label {
+                        font-size: 8.5px;
+                        color: #64748b;
+                        text-transform: uppercase;
+                        margin-top: 2px;
+                    }
+                    .charts-grid {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 12px;
+                    }
+                    .chart-card {
+                        background: #fff;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 6px;
+                        padding: 8px;
+                        text-align: center;
+                    }
+                    .chart-card.full-width {
+                        grid-column: span 2;
+                    }
+                    .chart-card h3 {
+                        margin: 0 0 6px 0;
+                        font-size: 11px;
+                        color: #0d5c3a;
+                        font-weight: bold;
+                        text-align: left;
+                        border-bottom: 1px solid #f1f5f9;
+                        padding-bottom: 4px;
+                    }
+                    .chart-card img {
+                        width: 100%;
+                        max-height: 200px;
+                        object-fit: contain;
+                    }
+                    .footer {
+                        margin-top: 14px;
+                        border-top: 1px solid #cbd5e1;
+                        padding-top: 6px;
+                        display: flex;
+                        justify-content: space-between;
+                        font-size: 8px;
+                        color: #64748b;
+                    }
+                    @media print {
+                        body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+                        .no-print { display: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header-box">
+                    <div class="header-left">
+                        <div>RÉPUBLIQUE DE CÔTE D'IVOIRE</div>
+                        <div style="font-size: 7.5px; color: #64748b; font-weight: normal;">Union - Discipline - Travail</div>
+                        <div style="color: #0d5c3a; font-size: 8px; margin-top: 2px;">MINISTÈRE DE LA SANTÉ</div>
+                    </div>
+                    <div class="header-title">
+                        <h1>Rapport Statistique Graphique</h1>
+                        <h2>Surveillance Démographique et Sanitaire (${year})</h2>
+                    </div>
+                    <div style="text-align: right; font-size: 8.5px; color: #475569;">
+                        <div><strong>Édition :</strong> ${dateNow}</div>
+                        <div style="color: #0d5c3a; font-weight: bold;">Document Officiel</div>
+                    </div>
+                </div>
+
+                <div class="meta-banner">
+                    <div><strong>Année analysée :</strong> ${year}</div>
+                    <div><strong>Périmètre :</strong> ${hospitalText}</div>
+                    <div><strong>Statut :</strong> Données nationales certifiées</div>
+                </div>
+
+                <!-- Indicateurs clés -->
+                <div class="kpi-grid">
+                    <div class="kpi-card" style="border-top: 3px solid #1e88e5;">
+                        <div class="value" style="color: #1e88e5;">${kpiBirths}</div>
+                        <div class="label">Naissances (${year})</div>
+                    </div>
+                    <div class="kpi-card" style="border-top: 3px solid #ef5350;">
+                        <div class="value" style="color: #ef5350;">${kpiDeaths}</div>
+                        <div class="label">Décès (${year})</div>
+                    </div>
+                    <div class="kpi-card" style="border-top: 3px solid #f59e0b;">
+                        <div class="value" style="color: #b45309;">${kpiMaternal}</div>
+                        <div class="label">Décès Maternels</div>
+                    </div>
+                    <div class="kpi-card" style="border-top: 3px solid #8b5cf6;">
+                        <div class="value" style="color: #6d28d9;">${kpiMaternalRate}</div>
+                        <div class="label">Taux Mortalité Mat.</div>
+                    </div>
+                    <div class="kpi-card" style="border-top: 3px solid #10b981;">
+                        <div class="value" style="color: #059669;">${kpiHospitals}</div>
+                        <div class="label">Centres Déclarants</div>
+                    </div>
+                </div>
+
+                <!-- Graphiques -->
+                <div class="charts-grid">
+                    <!-- Graphe 1 : Évolution Mensuelle -->
+                    <div class="chart-card full-width">
+                        <h3>1. Évolution Mensuelle Comparative (Naissances vs Décès ${year})</h3>
+                        <img src="${imgMonthly}" alt="Évolution Mensuelle" style="max-height: 180px;">
+                    </div>
+
+                    <!-- Graphe 2 : Répartition par Genre -->
+                    <div class="chart-card">
+                        <h3>2. Répartition par Genre (Naissances)</h3>
+                        <img src="${imgGender}" alt="Répartition Genre" style="max-height: 160px;">
+                    </div>
+
+                    <!-- Graphe 3 : Mortalité par Tranche d'Âge -->
+                    <div class="chart-card">
+                        <h3>3. Mortalité par Tranche d'Âge</h3>
+                        <img src="${imgAge}" alt="Mortalité Âge" style="max-height: 160px;">
+                    </div>
+
+                    <!-- Graphe 4 : Activité Déclarative Établissements -->
+                    <div class="chart-card full-width">
+                        <h3>4. Activité Déclarative par Établissement de Santé (${year})</h3>
+                        <img src="${imgHosp}" alt="Activité Établissements" style="max-height: 170px;">
+                    </div>
+                </div>
+
+                <div class="footer">
+                    <div>Plateforme Nationale Gemma Santé - Direction Générale de la Santé Publique</div>
+                    <div>Généré le ${dateNow} - Page 1/1</div>
+                </div>
+            </body>
+            </html>
+        `);
+
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(function () {
+            printWindow.print();
+        }, 500);
+    };
 });
 </script>
 @endsection

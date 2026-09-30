@@ -47,8 +47,16 @@ class ConsultationRepository
     public function history()
     {
         $doctorId = auth()->user()->doctor->id;
-        return Consultation::orderByDESC("updated_at")
+        return Consultation::orderByDESC("id")
             ->where('doctor_id', $doctorId)
+            ->where(function ($q) {
+                $q->where('status', 1)
+                  ->orWhere('date_consultation', '<', date('Y-m-d'))
+                  ->orWhereNotNull('call_channel')
+                  ->orWhereHas('registre')
+                  ->orWhereHas('ordonnances')
+                  ->orWhereHas('bulletinExamen');
+            })
             ->withCount(['ordonnances', 'arret', "examen", "declaration", "registre"])
             ->with(["ordonnances", "arret", "examen", "declaration", "registre", "patient.user", "prestationHospital.prestationService"])
             ->get();

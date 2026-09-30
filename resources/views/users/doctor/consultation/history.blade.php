@@ -45,15 +45,18 @@
                                     || $hasHospitalisation;
                             @endphp
                             <tr>
-                                <td>
+                                @php
+                                    $dateSort = $item->registre ? $item->registre->updated_at : ($item->updated_at ?? $item->created_at);
+                                    $timestamp = $dateSort ? \Carbon\Carbon::parse($dateSort)->timestamp : $item->id;
+                                @endphp
+                                <td data-order="{{ $timestamp }}">
                                     @if ($item->registre)
                                         {{ \Carbon\Carbon::parse($item->registre->updated_at)->format('d/m/Y') }} -
                                         {{ heureFr($item->registre->updated_at) }}
                                     @else
-                                        {{ \Carbon\Carbon::parse($item->updated_at)->format('d/m/Y') }} -
-                                        {{ heureFr($item->updated_at) }}
+                                        {{ \Carbon\Carbon::parse($item->updated_at ?? $item->created_at)->format('d/m/Y') }} -
+                                        {{ heureFr($item->updated_at ?? $item->created_at) }}
                                     @endif
-
                                 </td>
                                 <td><b>{{ optional($item->patient)->code_patient ?? 'N/A' }}</b></td>
 
@@ -148,6 +151,19 @@
 @push('js')
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
+        $(document).ready(function() {
+            if ($.fn.DataTable.isDataTable('#example')) {
+                $('#example').DataTable().destroy();
+            }
+            $('#example').DataTable({
+                dom: 'Bfrtip',
+                buttons: ['csv', 'excel', 'print'],
+                order: [[0, 'desc']],
+                pageLength: 25,
+                responsive: true
+            });
+        });
+
         function openCardModal(url) {
             Swal.fire({
                 html: '<div id="swal-card-container" style="min-height: 600px; overflow: hidden;"></div>',

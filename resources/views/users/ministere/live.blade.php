@@ -588,23 +588,23 @@
 
 <body>
 
-    <!-- OVERLAY D'ANIMATION : CERCLE DU BÉBÉ + NOM EN NOIR -->
+    <!-- OVERLAY D'ANIMATION : CERCLE DU BÉBÉ (HÔPITAL OU ÉVÉNEMENT) -->
     <div id="birthCelebrationOverlay" class="celebration-overlay">
         <div class="celebration-circle-container">
             <div class="birth-circle-sunburst"></div>
             <img src="{{ asset('assets/live/baby_birth_live.jpg') }}" alt="Naissance"
                 class="celebration-img-circle birth-circle-glow">
-            <div class="celebration-circle-name" id="celebrationBirthName">Bienvenue au Nouveau-né</div>
+            <div class="celebration-circle-name" id="celebrationBirthName">Nouvelle naissance</div>
         </div>
     </div>
 
-    <!-- OVERLAY D'ANIMATION : CERCLE DE LA COLOMBE + NOM EN NOIR -->
+    <!-- OVERLAY D'ANIMATION : CERCLE DE LA COLOMBE (HÔPITAL OU ÉVÉNEMENT) -->
     <div id="deathCelebrationOverlay" class="celebration-overlay">
         <div class="celebration-circle-container">
             <div class="death-circle-halo"></div>
             <img src="{{ asset('assets/live/dove_death_live.jpg') }}" alt="Décès"
                 class="celebration-img-circle death-circle-glow">
-            <div class="celebration-circle-name" id="celebrationDeathName">Hommage & Déclaration</div>
+            <div class="celebration-circle-name" id="celebrationDeathName">Nouveau décès</div>
         </div>
     </div>
 
@@ -866,20 +866,31 @@
         <div class="overflow-hidden w-100 position-relative">
             <div class="ticker-content" id="liveTickerContent">
                 @foreach($recentBirths as $b)
+                    @php
+                        $hospBirth = $b->declaration->hospital->label ?? ($b->declaration->hospital->nom_direction_generale ?? null);
+                    @endphp
                     <span class="ticker-item">
                         <span class="ticker-item-badge bg-primary text-white">NAISSANCE</span>
-                        <span>{{ $b->enfant->user->name ?? 'Enfant' }} {{ $b->enfant->user->prenom ?? '' }}
+                        <span>
+                            <strong>{{ $hospBirth ?: 'Nouvelle naissance' }}</strong>
                             ({{ $b->genre == 'M' || strtolower($b->genre) == 'masculin' ? 'Garçon' : 'Fille' }}) &bull;
                             {{ $b->date ? \Carbon\Carbon::parse($b->date)->format('d/m/Y') : '' }} &bull; Réf:
-                            {{ $b->numero_declaration ?: ($b->reference ?: '#' . $b->id) }}</span>
+                            {{ $b->numero_declaration ?: ($b->reference ?: '#' . $b->id) }}
+                        </span>
                     </span>
                 @endforeach
                 @foreach($recentDeaths as $d)
+                    @php
+                        $hospDeath = $d->declaration->hospital->label ?? ($d->declaration->hospital->nom_direction_generale ?? null);
+                        $matText = $d->deces_maternel ? ' [Décès Maternel]' : '';
+                    @endphp
                     <span class="ticker-item">
                         <span class="ticker-item-badge bg-danger text-white">DÉCÈS</span>
-                        <span>{{ $d->person == 'enfant' ? 'Nouveau-né' : (($d->declaration->patient->user->name ?? 'Patient') . ' ' . ($d->declaration->patient->user->prenom ?? '')) }}
-                            &bull; Cause: {{ $d->cause_initiale ?: ($d->cause_directe ?: 'Non précisée') }} &bull;
-                            {{ $d->date ? \Carbon\Carbon::parse($d->date)->format('d/m/Y') : '' }}</span>
+                        <span>
+                            <strong>{{ $hospDeath ?: 'Nouveau décès' }}</strong>{{ $matText }} &bull;
+                            Cause: {{ $d->cause_initiale ?: ($d->cause_directe ?: 'Non précisée') }} &bull;
+                            {{ $d->date ? \Carbon\Carbon::parse($d->date)->format('d/m/Y') : '' }}
+                        </span>
                     </span>
                 @endforeach
             </div>
@@ -1124,14 +1135,14 @@
 
                 const nameElem = document.getElementById('celebrationBirthName');
                 if (nameElem) {
-                    nameElem.textContent = data.nom || 'Bienvenue au Nouveau-né';
+                    nameElem.textContent = data.hopital ? ('Nouvelle naissance - ' + data.hopital) : (data.titre || 'Nouvelle naissance');
                 }
 
                 overlay.classList.remove('exiting');
                 overlay.classList.add('active');
                 isAnimating = true;
 
-                // Reste 6.5 secondes puis s'envole vers le haut
+                // Reste 6.5 secondes puis s'envole vers le bas
                 setTimeout(() => {
                     overlay.classList.add('exiting');
                     setTimeout(() => {
@@ -1148,7 +1159,7 @@
 
                 const nameElem = document.getElementById('celebrationDeathName');
                 if (nameElem) {
-                    nameElem.textContent = data.nom || 'Hommage & Déclaration';
+                    nameElem.textContent = data.hopital ? ('Nouveau décès - ' + data.hopital) : (data.titre || 'Nouveau décès');
                 }
 
                 overlay.classList.remove('exiting');
@@ -1186,7 +1197,8 @@
             // Boutons de test manuels pour l'administrateur
             document.getElementById('btnTestBirth').addEventListener('click', function () {
                 triggerCelebration('birth', {
-                    nom: 'Enfant KOUASSI Amani',
+                    hopital: 'Hôpital Général',
+                    titre: 'Nouvelle naissance - Hôpital Général',
                     genre: 'masculin',
                     date: 'Aujourd\'hui à ' + new Date().toLocaleTimeString('fr-FR')
                 });
@@ -1194,7 +1206,8 @@
 
             document.getElementById('btnTestDeath').addEventListener('click', function () {
                 triggerCelebration('death', {
-                    nom: 'Hommage à KONE Mamadou',
+                    hopital: 'CHU de Cocody',
+                    titre: 'Nouveau décès - CHU de Cocody',
                     cause: 'Arrêt cardio-respiratoire',
                     date: 'Aujourd\'hui à ' + new Date().toLocaleTimeString('fr-FR')
                 });
@@ -1228,7 +1241,8 @@
                         // Si une nouvelle naissance est détectée en direct
                         if (!isInitialLoad && currentBirths > lastKnownTotalBirths) {
                             const latestBirth = (data.recentBirths && data.recentBirths.length > 0) ? data.recentBirths[0] : {
-                                nom: 'Nouveau-né enregistré',
+                                hopital: null,
+                                titre: 'Nouvelle naissance',
                                 genre: 'M',
                                 date: 'À l\'instant'
                             };
@@ -1238,7 +1252,8 @@
                         // Si un nouveau décès est détecté en direct
                         if (!isInitialLoad && currentDeaths > lastKnownTotalDeaths) {
                             const latestDeath = (data.recentDeaths && data.recentDeaths.length > 0) ? data.recentDeaths[0] : {
-                                nom: 'Déclaration enregistrée',
+                                hopital: null,
+                                titre: 'Nouveau décès',
                                 cause: 'Cause médicale',
                                 date: 'À l\'instant'
                             };
@@ -1295,16 +1310,17 @@
                         chartQuarter.data.datasets[1].data = updatedQuarters.qDeaths;
                         chartQuarter.update();
 
-                        // Ticker Content
+                        // Ticker Content Anonymisé
                         if (data.recentBirths || data.recentDeaths) {
                             let tickerHtml = '';
                             if (data.recentBirths) {
                                 data.recentBirths.forEach(b => {
                                     let gText = b.genre && ['m', 'masculin'].includes(b.genre.toLowerCase()) ? 'Garçon' : 'Fille';
+                                    let labelHosp = b.hopital ? b.hopital : 'Nouvelle naissance';
                                     tickerHtml += `
                                 <span class="ticker-item">
                                     <span class="ticker-item-badge bg-primary text-white">NAISSANCE</span>
-                                    <span>${b.nom} (${gText}) &bull; ${b.date} &bull; Réf: ${b.numero}</span>
+                                    <span><strong>${labelHosp}</strong> (${gText}) &bull; ${b.date} &bull; Réf: ${b.numero}</span>
                                 </span>
                             `;
                                 });
@@ -1312,10 +1328,11 @@
                             if (data.recentDeaths) {
                                 data.recentDeaths.forEach(d => {
                                     let mat = d.deces_maternel ? ' [Décès Maternel]' : '';
+                                    let labelHosp = d.hopital ? d.hopital : 'Nouveau décès';
                                     tickerHtml += `
                                 <span class="ticker-item">
                                     <span class="ticker-item-badge bg-danger text-white">DÉCÈS</span>
-                                    <span>${d.nom}${mat} &bull; Cause: ${d.cause} &bull; ${d.date}</span>
+                                    <span><strong>${labelHosp}</strong>${mat} &bull; Cause: ${d.cause} &bull; ${d.date}</span>
                                 </span>
                             `;
                                 });
@@ -1325,7 +1342,7 @@
                             }
                         }
 
-                        syncText.textContent = `Sync : ${data.updated_at}`;
+                        syncText.textContent = `Sync : ${data.updated_at || 'En direct'}`;
                     })
                     .catch(err => {
                         console.warn('Tentative de reconnexion au serveur...', err);

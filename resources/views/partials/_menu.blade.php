@@ -86,6 +86,14 @@
                             <img src="{{ asset('assets/uploads/cashier.png') }}" class="rounded-0 me-10"
                                 alt="User Image">
                         @endif
+                    @elseif(Illuminate\Support\Facades\Auth::user()->role_as == 'ministere')
+                        @if (optional(Illuminate\Support\Facades\Auth::user()->ministere)->img_url != null)
+                            <img src="{{ asset('assets/uploads/ministere/' . optional(Illuminate\Support\Facades\Auth::user()->ministere)->img_url) }}"
+                                class="rounded-0 me-10" alt="User Image" style="object-fit: cover; width: 45px; height: 45px; border-radius: 6px;">
+                        @else
+                            <img src="{{ asset('assets/uploads/republique.png') }}" class="rounded-0 me-10"
+                                alt="User Image" style="object-fit: contain; width: 45px; height: 45px;">
+                        @endif
                     @endif
                     <div>
                         @if (Illuminate\Support\Facades\Auth::user()->role_as != 'hospital')
@@ -103,7 +111,7 @@
                                 @elseif (Illuminate\Support\Facades\Auth::user()->doctor->typeAgent->libelle == 'Infirmier')
                                     Infirmier
                                 @endif
-                            @else
+                            @elseif (Illuminate\Support\Facades\Auth::user()->role_as != 'ministere')
                                 {{ roleFr(Illuminate\Support\Facades\Auth::user()->role_as) }}
                             @endif
                         </p>
@@ -134,6 +142,9 @@
                         @elseif(Illuminate\Support\Facades\Auth::user()->role_as == 'infirmier')
                             <a class="dropdown-item" href="{{ route('infirmier.profile') }}"><i class="ti-user"></i>
                                 Profile</a>
+                        @elseif(Illuminate\Support\Facades\Auth::user()->role_as == 'ministere')
+                            <a class="dropdown-item" href="{{ route('ministere.profile') }}"><i class="ti-user"></i>
+                                Mon Profil</a>
                         @endif
                         <div class="dropdown-divider"></div>
                         <a class="dropdown-item" href="{{ route('logout') }}"

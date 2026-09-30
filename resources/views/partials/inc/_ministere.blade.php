@@ -33,6 +33,15 @@
     </a>
 </li>
 
+<li class="{{ request()->routeIs('ministere.profile') ? 'active' : '' }}">
+    <a href="{{ route('ministere.profile') }}">
+        <i class="fa fa-user-gear">
+            <span class="path1"></span><span class="path2"></span>
+        </i>
+        <span>Mon Profil</span>
+    </a>
+</li>
+
 <li>
     <a href="{{ route('ministere.live') }}" target="_blank" class="text-warning">
         <i class="fa fa-tv text-warning">

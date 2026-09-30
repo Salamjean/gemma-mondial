@@ -16,6 +16,41 @@
     $hospitalName = optional($hospital)->label ?: (optional($hospital)->nom_direction_generale ?: 'Hôpital GEMMA');
     $hospitalAddress = optional($hospital)->adresse ?: (optional(optional($hospital)->localiteCommune)->name ?? 'Abidjan');
     $doctorPhone = optional($doctorUser)->contact ?: (optional($hospital)->telephone ?? '');
+
+    $hospitalId = optional($hospital)->id ?? Auth::user()->hospital_id ?? optional(Auth::user()->doctor)->hospital_id ?? 1;
+    $servicesList = $servicesHospital ?? \App\Models\ServiceHospital::where('hospital_id', $hospitalId)
+        ->whereHas('service')
+        ->with('service')
+        ->where('status', 0)
+        ->get();
+    $doctorsList = $doctorsHospital ?? \App\Models\Doctor::where('hospital_id', $hospitalId)
+        ->with(['user', 'serviceHospital.service', 'typeDoctor'])
+        ->get();
+    $infirmiersList = $infirmiersHospital ?? \App\Models\Infirmier::where('hospital_id', $hospitalId)
+        ->with(['user', 'serviceHospital.service'])
+        ->get();
+
+    $infirmiersArray = [];
+    foreach ($infirmiersList as $inf) {
+        $infirmiersArray[] = [
+            'id' => $inf->id,
+            'name' => trim((optional($inf->user)->name ?? '') . ' ' . (optional($inf->user)->prenom ?? '')),
+            'service_hospital_id' => $inf->service_hospital_id,
+            'service_libelle' => optional(optional($inf->serviceHospital)->service)->libelle ?? 'Soins Infirmiers'
+        ];
+    }
+    $infirmiersJson = json_encode($infirmiersArray);
+
+    $doctorsArray = [];
+    foreach ($doctorsList as $doc) {
+        $doctorsArray[] = [
+            'id' => $doc->id,
+            'name' => 'Dr. ' . trim((optional($doc->user)->name ?? '') . ' ' . (optional($doc->user)->prenom ?? '')),
+            'service_hospital_id' => $doc->service_hospital_id,
+            'service_libelle' => optional(optional($doc->serviceHospital)->service)->libelle ?? optional($doc->typeDoctor)->libelle ?? 'Médecine'
+        ];
+    }
+    $doctorsJson = json_encode($doctorsArray);
 @endphp
 
 <!-- CONTENEUR GENERAL AVEC EXACTEMENT 2% DE MARGE A GAUCHE ET A DROITE -->
@@ -446,6 +481,208 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- SECTION 6 : ISSUE DE CONSULTATION & AFFECTATION DU PATIENT -->
+            <div class="labo-box mb-4 labo-issue-box">
+                <div class="labo-box-title d-flex justify-content-between align-items-center">
+                    <span><i class="fa-solid fa-arrows-split-up-and-left me-1 text-primary"></i> Issue de Consultation &amp; Affectation du Patient</span>
+                    <span class="badge bg-primary text-white fs-11"><i class="fa-solid fa-route me-1"></i> Orientation de sortie</span>
+                </div>
+                <div class="labo-box-body">
+                    <p class="fs-12 text-muted mb-3">
+                        Veuillez préciser la suite de la prise en charge pour ce patient après l'émission des examens de laboratoire :
+                    </p>
+
+                    <!-- Tuiles de choix d'issue -->
+                    <div class="labo-issue-grid mb-3">
+                        <!-- Option 1 : Sortie normale -->
+                        <label class="labo-issue-card active" id="card-issue-sortie" onclick="switchLaboIssue('sortie')">
+                            <input type="radio" name="mode_sortie" id="radio-issue-sortie" value="sortie" checked class="d-none">
+                            <div class="issue-card-icon text-success">
+                                <i class="fa-solid fa-house-chimney-medical"></i>
+                            </div>
+                            <div class="issue-card-content">
+                                <div class="issue-card-title text-success">Sortie Domicile</div>
+                                <div class="issue-card-desc">Examen prescrit, sortie normale autorisée</div>
+                            </div>
+                            <div class="issue-card-check text-success">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
+                        </label>
+
+                        <!-- Option 2 : Affecter à une Infirmière -->
+                        <label class="labo-issue-card" id="card-issue-infirmier" onclick="switchLaboIssue('affecter-infirmier')">
+                            <input type="radio" name="mode_sortie" id="radio-issue-infirmier" value="affecter-infirmier" class="d-none">
+                            <div class="issue-card-icon text-info">
+                                <i class="fa-solid fa-user-nurse"></i>
+                            </div>
+                            <div class="issue-card-content">
+                                <div class="issue-card-title text-info">Affecter à une Infirmière</div>
+                                <div class="issue-card-desc">Prélèvements, injections, soins infirmiers</div>
+                            </div>
+                            <div class="issue-card-check text-info">
+                                <i class="fa-regular fa-circle"></i>
+                            </div>
+                        </label>
+
+                        <!-- Option 3 : Affecter à un Médecin -->
+                        <label class="labo-issue-card" id="card-issue-medecin" onclick="switchLaboIssue('affecter-medecin')">
+                            <input type="radio" name="mode_sortie" id="radio-issue-medecin" value="affecter-medecin" class="d-none">
+                            <div class="issue-card-icon text-primary">
+                                <i class="fa-solid fa-user-doctor"></i>
+                            </div>
+                            <div class="issue-card-content">
+                                <div class="issue-card-title text-primary">Affecter à un Médecin</div>
+                                <div class="issue-card-desc">Médecin traitant, spécialiste ou confrère</div>
+                            </div>
+                            <div class="issue-card-check text-primary">
+                                <i class="fa-regular fa-circle"></i>
+                            </div>
+                        </label>
+
+                        <!-- Option 4 : Hospitalisation / Observation -->
+                        <label class="labo-issue-card" id="card-issue-hospitalisation" onclick="switchLaboIssue('hospitalisation')">
+                            <input type="radio" name="mode_sortie" id="radio-issue-hospitalisation" value="hospitalisation" class="d-none">
+                            <div class="issue-card-icon text-warning">
+                                <i class="fa-solid fa-bed-pulse"></i>
+                            </div>
+                            <div class="issue-card-content">
+                                <div class="issue-card-title text-warning">Hospitalisation / Obs.</div>
+                                <div class="issue-card-desc">Mise en observation ou hospitalisation</div>
+                            </div>
+                            <div class="issue-card-check text-warning">
+                                <i class="fa-regular fa-circle"></i>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- SOUS-PANNEAU 1 : SORTIE SIMPLE (MESSAGE CONFIRMATION) -->
+                    <div id="subpanel-sortie" class="labo-subpanel p-3 bg-light rounded border border-success-subtle">
+                        <div class="d-flex align-items-center gap-2 text-success">
+                            <i class="fa-solid fa-circle-check fs-18"></i>
+                            <span class="fw-bold fs-13">Clôture et sortie normale</span>
+                        </div>
+                        <div class="text-muted fs-12 mt-1">
+                            Le patient repart avec son bon de demande d'examen. La consultation de laboratoire sera marquée comme effectuée et enregistrée dans le registre médical.
+                        </div>
+                    </div>
+
+                    <!-- SOUS-PANNEAU 2 : AFFECTATION INFIRMIERE -->
+                    <div id="subpanel-affecter-infirmier" class="labo-subpanel p-3 bg-light rounded border border-info-subtle" style="display: none;">
+                        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-info-subtle">
+                            <div class="d-flex align-items-center gap-2 text-info">
+                                <i class="fa-solid fa-user-nurse fs-18"></i>
+                                <span class="fw-bold fs-14">Affectation à l'infirmerie (Sélection par service)</span>
+                            </div>
+                            <span class="badge bg-info-subtle text-info border border-info-subtle fs-11">Étape 1 : Service &rarr; Étape 2 : Infirmier(ère) &rarr; Instructions</span>
+                        </div>
+                        <div class="row g-3 align-items-end">
+                            <div class="col-lg-4 col-md-4 col-12">
+                                <label class="form-label fs-12 fw-bold text-dark">
+                                    <span class="badge bg-info text-white me-1">1</span> Service / Unité de soins <span class="text-danger">*</span>
+                                </label>
+                                <select id="select_service_infirmier" class="form-select form-select-sm labo-select-custom" onchange="filterInfirmiersByService(this.value)">
+                                    <option value="" selected>-- 1. Choisir le service --</option>
+                                    @foreach($servicesList as $serv)
+                                        <option value="{{ $serv->id }}">{{ optional($serv->service)->libelle ?? ('Service #' . $serv->id) }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-lg-4 col-md-4 col-12">
+                                <label class="form-label fs-12 fw-bold text-dark">
+                                    <span class="badge bg-info text-white me-1">2</span> Infirmier(ère) du service <span class="text-danger">*</span>
+                                </label>
+                                <select name="affectation_infirmier_id" id="select_affectation_infirmier" class="form-select form-select-sm labo-select-custom" disabled>
+                                    <option value="" disabled selected>-- 2. Choisir l'infirmier(ère) --</option>
+                                </select>
+                            </div>
+                            <div class="col-lg-4 col-md-4 col-12">
+                                <label class="form-label fs-12 fw-bold text-dark">
+                                    <span class="badge bg-info text-white me-1">3</span> Instructions de soins / Prélèvement
+                                </label>
+                                <input type="text" name="instructions_infirmier" id="input_instructions_infirmier" class="form-control form-control-sm" placeholder="Ex: Prélèvement sanguin urgent...">
+                            </div>
+                            <div class="col-12 mt-2">
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <span class="fs-11 text-muted fw-bold">Modèles rapides :</span>
+                                    <button type="button" class="btn btn-xs btn-outline-info rounded-pill fs-11 py-0 px-2" onclick="setInfirmierInstruction('Prélèvement sanguin et acheminement au laboratoire')">Prélèvement sanguin</button>
+                                    <button type="button" class="btn btn-xs btn-outline-info rounded-pill fs-11 py-0 px-2" onclick="setInfirmierInstruction('Prélèvement cytologique / écouvillon')">Prélèvement cytologique</button>
+                                    <button type="button" class="btn btn-xs btn-outline-info rounded-pill fs-11 py-0 px-2" onclick="setInfirmierInstruction('Administration traitement injectable et surveillance')">Injection / Traitement</button>
+                                    <button type="button" class="btn btn-xs btn-outline-info rounded-pill fs-11 py-0 px-2" onclick="setInfirmierInstruction('Prise des constantes et surveillance')">Surveillance constantes</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SOUS-PANNEAU 3 : AFFECTATION MEDECIN -->
+                    <div id="subpanel-affecter-medecin" class="labo-subpanel p-3 bg-light rounded border border-primary-subtle" style="display: none;">
+                        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-primary-subtle">
+                            <div class="d-flex align-items-center gap-2 text-primary">
+                                <i class="fa-solid fa-user-doctor fs-18"></i>
+                                <span class="fw-bold fs-14">Affectation / Référence au médecin (Sélection par spécialité)</span>
+                            </div>
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-11">Étape 1 : Spécialité &rarr; Étape 2 : Médecin &rarr; Note</span>
+                        </div>
+                        <div class="row g-3 align-items-end">
+                            <div class="col-lg-4 col-md-4 col-12">
+                                <label class="form-label fs-12 fw-bold text-dark">
+                                    <span class="badge bg-primary text-white me-1">1</span> Spécialité / Service médical <span class="text-danger">*</span>
+                                </label>
+                                <select id="select_service_doctor" class="form-select form-select-sm labo-select-custom" onchange="filterDoctorsByService(this.value)">
+                                    <option value="" selected>-- 1. Choisir la spécialité --</option>
+                                    @foreach($servicesList as $serv)
+                                        <option value="{{ $serv->id }}">{{ optional($serv->service)->libelle ?? ('Service #' . $serv->id) }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-lg-4 col-md-4 col-12">
+                                <label class="form-label fs-12 fw-bold text-dark">
+                                    <span class="badge bg-primary text-white me-1">2</span> Médecin du service <span class="text-danger">*</span>
+                                </label>
+                                <select name="affectation_doctor_id" id="select_affectation_doctor" class="form-select form-select-sm labo-select-custom" disabled>
+                                    <option value="" disabled selected>-- 2. Choisir le médecin --</option>
+                                </select>
+                            </div>
+                            <div class="col-lg-4 col-md-4 col-12">
+                                <label class="form-label fs-12 fw-bold text-dark">
+                                    <span class="badge bg-primary text-white me-1">3</span> Note de transmission / Motif d'avis
+                                </label>
+                                <input type="text" name="note_transmission_medecin" id="input_note_medecin" class="form-control form-control-sm" placeholder="Ex: Retour vers médecin traitant...">
+                            </div>
+                            <div class="col-12 mt-2">
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <span class="fs-11 text-muted fw-bold">Modèles rapides :</span>
+                                    <button type="button" class="btn btn-xs btn-outline-primary rounded-pill fs-11 py-0 px-2" onclick="setMedecinNote('Retour consultation médecin traitant')">Retour médecin traitant</button>
+                                    <button type="button" class="btn btn-xs btn-outline-primary rounded-pill fs-11 py-0 px-2" onclick="setMedecinNote('Avis spécialisé post-résultats analyses')">Avis spécialisé</button>
+                                    <button type="button" class="btn btn-xs btn-outline-primary rounded-pill fs-11 py-0 px-2" onclick="setMedecinNote('Interprétation des résultats et adaptation thérapeutique')">Interprétation résultats</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SOUS-PANNEAU 4 : HOSPITALISATION / OBSERVATION -->
+                    <div id="subpanel-hospitalisation" class="labo-subpanel p-3 bg-light rounded border border-warning-subtle" style="display: none;">
+                        <div class="d-flex align-items-center gap-2 text-warning-emphasis mb-3">
+                            <i class="fa-solid fa-bed-pulse fs-18 text-warning"></i>
+                            <span class="fw-bold fs-14">Orientation vers l'hospitalisation ou mise en observation</span>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <label class="form-label fs-12 fw-bold text-dark">Type de séjour</label>
+                                <div class="d-flex align-items-center gap-4 pt-1">
+                                    <label class="labo-item mb-0"><input type="radio" name="hospitalisation_sub_type" value="observation" checked onchange="updateHospMode(this.value)"><span>Mise en observation (M.O)</span></label>
+                                    <label class="labo-item mb-0"><input type="radio" name="hospitalisation_sub_type" value="hospitalisation" onchange="updateHospMode(this.value)"><span>Hospitalisation</span></label>
+                                </div>
+                            </div>
+                            <div class="col-md-7">
+                                <label class="form-label fs-12 fw-bold text-dark">Motif / Justification clinique</label>
+                                <input type="text" name="motif_hospitalisation" class="form-control form-control-sm" placeholder="Ex: Altération état général en attente bilans urgents...">
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -950,9 +1187,271 @@
             display: none !important;
         }
     }
+
+    /* Styles Issue de consultation & Affectation */
+    .labo-issue-box {
+        border: 2px solid #0284c7 !important;
+        background: #ffffff;
+    }
+    .labo-issue-box .labo-box-title {
+        background: #f0f9ff;
+        border-bottom: 2px solid #0284c7;
+    }
+    .labo-issue-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+    }
+    @media (max-width: 991px) {
+        .labo-issue-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    @media (max-width: 576px) {
+        .labo-issue-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    .labo-issue-card {
+        border: 1.5px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 12px 14px;
+        background: #ffffff;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.2s ease-in-out;
+        position: relative;
+        user-select: none;
+    }
+    .labo-issue-card:hover {
+        border-color: #0284c7;
+        box-shadow: 0 3px 10px rgba(2, 132, 199, 0.12);
+        transform: translateY(-1px);
+    }
+    .labo-issue-card.active {
+        border-color: #0284c7;
+        background: #f0f9ff;
+        box-shadow: 0 3px 12px rgba(2, 132, 199, 0.18);
+    }
+    .labo-issue-card.active .issue-card-check i {
+        font-weight: 900;
+    }
+    .issue-card-icon {
+        font-size: 24px;
+        flex-shrink: 0;
+    }
+    .issue-card-content {
+        flex-grow: 1;
+        min-width: 0;
+    }
+    .issue-card-title {
+        font-size: 13.5px;
+        font-weight: 700;
+        margin-bottom: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .issue-card-desc {
+        font-size: 11px;
+        color: #64748b;
+        line-height: 1.2;
+    }
+    .issue-card-check {
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+    .labo-subpanel {
+        animation: fadeInSubpanel 0.25s ease-out;
+    }
+    @keyframes fadeInSubpanel {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .labo-select-custom {
+        border: 1.5px solid #94a3b8;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #0f172a;
+        background-color: #ffffff;
+    }
+    .labo-select-custom:focus {
+        border-color: #0284c7;
+        box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+    }
 </style>
 
 <script>
+    // Données du personnel médical sérialisées pour filtrage instantané
+    const infirmiersData = {!! $infirmiersJson !!};
+    const doctorsData = {!! $doctorsJson !!};
+
+    // Filtrage des infirmiers selon le service sélectionné
+    function filterInfirmiersByService(serviceHospitalId) {
+        const select = document.getElementById('select_affectation_infirmier');
+        if (!select) return;
+        
+        select.innerHTML = '';
+        
+        if (!serviceHospitalId) {
+            select.disabled = true;
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.disabled = true;
+            opt.selected = true;
+            opt.textContent = "-- Sélectionnez d'abord un service à gauche --";
+            select.appendChild(opt);
+            return;
+        }
+        
+        const filtered = infirmiersData.filter(i => String(i.service_hospital_id) === String(serviceHospitalId));
+        
+        if (filtered.length === 0) {
+            select.disabled = true;
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.disabled = true;
+            opt.selected = true;
+            opt.textContent = "Aucun(e) infirmier(ère) rattaché(e) à ce service";
+            select.appendChild(opt);
+        } else {
+            select.disabled = false;
+            const optDefault = document.createElement('option');
+            optDefault.value = '';
+            optDefault.disabled = true;
+            optDefault.selected = true;
+            optDefault.textContent = `-- Choisir un(e) infirmier(ère) (${filtered.length} disponible${filtered.length > 1 ? 's' : ''}) --`;
+            select.appendChild(optDefault);
+            
+            filtered.forEach(inf => {
+                const opt = document.createElement('option');
+                opt.value = inf.id;
+                opt.textContent = `${inf.name} (${inf.service_libelle})`;
+                select.appendChild(opt);
+            });
+        }
+    }
+
+    // Filtrage des médecins selon la spécialité / service sélectionné
+    function filterDoctorsByService(serviceHospitalId) {
+        const select = document.getElementById('select_affectation_doctor');
+        if (!select) return;
+        
+        select.innerHTML = '';
+        
+        if (!serviceHospitalId) {
+            select.disabled = true;
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.disabled = true;
+            opt.selected = true;
+            opt.textContent = "-- Sélectionnez d'abord un service à gauche --";
+            select.appendChild(opt);
+            return;
+        }
+        
+        const filtered = doctorsData.filter(d => String(d.service_hospital_id) === String(serviceHospitalId));
+        
+        if (filtered.length === 0) {
+            select.disabled = true;
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.disabled = true;
+            opt.selected = true;
+            opt.textContent = "Aucun médecin rattaché à ce service";
+            select.appendChild(opt);
+        } else {
+            select.disabled = false;
+            const optDefault = document.createElement('option');
+            optDefault.value = '';
+            optDefault.disabled = true;
+            optDefault.selected = true;
+            optDefault.textContent = `-- Choisir un médecin (${filtered.length} disponible${filtered.length > 1 ? 's' : ''}) --`;
+            select.appendChild(optDefault);
+            
+            filtered.forEach(doc => {
+                const opt = document.createElement('option');
+                opt.value = doc.id;
+                opt.textContent = `${doc.name} — ${doc.service_libelle}`;
+                select.appendChild(opt);
+            });
+        }
+    }
+
+    // Gestion du basculement d'issue de sortie
+    function switchLaboIssue(mode) {
+        // Mettre à jour les classes actives sur les cartes
+        document.querySelectorAll('.labo-issue-card').forEach(card => {
+            card.classList.remove('active');
+            const checkIcon = card.querySelector('.issue-card-check i');
+            if (checkIcon) {
+                checkIcon.className = 'fa-regular fa-circle';
+            }
+        });
+
+        const activeCard = document.getElementById('card-issue-' + (mode === 'affecter-infirmier' ? 'infirmier' : (mode === 'affecter-medecin' ? 'medecin' : mode)));
+        if (activeCard) {
+            activeCard.classList.add('active');
+            const checkIcon = activeCard.querySelector('.issue-card-check i');
+            if (checkIcon) {
+                checkIcon.className = 'fa-solid fa-circle-check';
+            }
+        }
+
+        // Mettre à jour le radio input
+        const radio = document.getElementById('radio-issue-' + (mode === 'affecter-infirmier' ? 'infirmier' : (mode === 'affecter-medecin' ? 'medecin' : mode)));
+        if (radio) {
+            radio.checked = true;
+        }
+
+        // Masquer tous les sous-panneaux
+        document.querySelectorAll('.labo-subpanel').forEach(panel => {
+            panel.style.display = 'none';
+        });
+
+        // Afficher le sous-panneau correspondant
+        const targetPanel = document.getElementById('subpanel-' + mode);
+        if (targetPanel) {
+            targetPanel.style.display = 'block';
+        }
+
+        // Gérer les attributs required
+        const selectInfirmier = document.getElementById('select_affectation_infirmier');
+        const selectDoctor = document.getElementById('select_affectation_doctor');
+
+        if (selectInfirmier) selectInfirmier.required = (mode === 'affecter-infirmier');
+        if (selectDoctor) selectDoctor.required = (mode === 'affecter-medecin');
+    }
+
+    // Remplissage rapide des instructions infirmières
+    function setInfirmierInstruction(text) {
+        const input = document.getElementById('input_instructions_infirmier');
+        if (input) {
+            input.value = text;
+            input.focus();
+        }
+    }
+
+    // Remplissage rapide des notes médecin
+    function setMedecinNote(text) {
+        const input = document.getElementById('input_note_medecin');
+        if (input) {
+            input.value = text;
+            input.focus();
+        }
+    }
+
+    // Mise à jour du mode hospitalisation / observation
+    function updateHospMode(val) {
+        const radio = document.getElementById('radio-issue-hospitalisation');
+        if (radio) {
+            radio.value = val;
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         // Compteur d'examens
         const checkboxes = document.querySelectorAll('.exam-ch-input');
@@ -971,6 +1470,47 @@
         });
 
         updateExamCount();
+
+        // Validation du formulaire avant soumission
+        const formLabo = document.getElementById('form-laboratoire');
+        if (formLabo) {
+            formLabo.addEventListener('submit', function(e) {
+                const checkedRadio = document.querySelector('input[name="mode_sortie"]:checked');
+                const mode = checkedRadio ? checkedRadio.value : 'sortie';
+
+                if (mode === 'affecter-infirmier') {
+                    const sServ = document.getElementById('select_service_infirmier');
+                    const sel = document.getElementById('select_affectation_infirmier');
+                    if (!sServ || !sServ.value) {
+                        e.preventDefault();
+                        alert("Veuillez d'abord sélectionner un service pour l'affectation à l'infirmerie.");
+                        if (sServ) sServ.focus();
+                        return false;
+                    }
+                    if (!sel || !sel.value) {
+                        e.preventDefault();
+                        alert("Veuillez sélectionner un(e) infirmier(ère) cible.");
+                        if (sel) sel.focus();
+                        return false;
+                    }
+                } else if (mode === 'affecter-medecin') {
+                    const sServ = document.getElementById('select_service_doctor');
+                    const sel = document.getElementById('select_affectation_doctor');
+                    if (!sServ || !sServ.value) {
+                        e.preventDefault();
+                        alert("Veuillez d'abord sélectionner une spécialité / service médical.");
+                        if (sServ) sServ.focus();
+                        return false;
+                    }
+                    if (!sel || !sel.value) {
+                        e.preventDefault();
+                        alert("Veuillez sélectionner un médecin confrère cible.");
+                        if (sel) sel.focus();
+                        return false;
+                    }
+                }
+            });
+        }
 
         // Relance de l'appel patient en salle d'attente
         const recallBtn = document.querySelector('.btn-recall-in-consultation');
@@ -1026,3 +1566,4 @@
         }
     });
 </script>
+

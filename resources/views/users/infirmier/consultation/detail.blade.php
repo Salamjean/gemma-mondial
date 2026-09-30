@@ -1,180 +1,564 @@
 @extends('layouts.dashboard', ['title' => 'Détail de la consultation'])
+
 @section('content')
-    <div class="box">
-        <div class="content-header mb-20">
-            <div class="d-flex align-items-center">
-                <div class="me-auto">
-                    <div class="d-inline-block align-items-center">
-                        <nav>
-                            <ol class="breadcrumb">
-                                <li class="breadcrumb-item"><a href="#"><i class="fa fa-user"></i></a></li>
-                                <li class="breadcrumb-item active" aria-current="page">
-                                    <h4 class="page-title"><span class="fw-bold" style="color: blue;">{{ $consultation->patient->code_patient }}</span>
-                                    <span class="fw-bold"> | {{ $consultation->patient->user->name }} {{ $consultation->patient->user->prenom }}</span>
-                                    </h4>
-                                </li>
-                            </ol>
-                        </nav>
-                    </div>
-                </div>
+@php
+    $patient = $consultation->patient ?? optional($consultation->admission)->patient;
+    $patientUser = optional($patient)->user;
+    $doctor = $consultation->doctor;
+    $doctorUser = optional($doctor)->user;
+    $infirmier = $consultation->infirmier;
+    $infirmierUser = optional($infirmier)->user;
+    
+    $hospital = $consultation->hospital 
+        ?? optional(Auth::user())->hospital 
+        ?? optional($doctor)->hospital;
+    $hospitalName = optional($hospital)->name ?? 'Établissement Hospitalier';
+    
+    $bulletin = $consultation->bulletinExamen ?? $consultation->examen;
+    $registre = $consultation->registre;
+    $arret = $consultation->arret ?? \App\Models\ArretTravail::where('consultation_id', $consultation->id)->first();
+
+    $patientFullName = trim((optional($patientUser)->name ?? '') . ' ' . (optional($patientUser)->prenom ?? '')) ?: 'Patient';
+    $patientCode = optional($patient)->code_patient ?? ('#' . $consultation->id);
+    
+    $practitionerName = '';
+    if ($infirmierUser && !empty(trim($infirmierUser->name ?? ''))) {
+        $practitionerName = trim(($infirmierUser->name ?? '') . ' ' . ($infirmierUser->prenom ?? '')) . ' (Infirmier)';
+    } elseif ($doctorUser && !empty(trim($doctorUser->name ?? ''))) {
+        $practitionerName = 'Dr. ' . trim(($doctorUser->name ?? '') . ' ' . ($doctorUser->prenom ?? ''));
+    } else {
+        $practitionerName = 'Personnel soignant';
+    }
+
+    $prestationService = optional($consultation->prestationHospital)->prestationService 
+        ?? optional(optional($consultation->admission)->prestationHospital)->prestationService;
+    $typeVisite = optional($prestationService)->libelle 
+        ?? optional(optional(optional($doctor)->serviceHospital)->service)->libelle 
+        ?? 'Soins / Consultation Infirmière';
+
+    $issue = optional($registre)->issue_consultation ?? ($consultation->status == 1 ? 'sortie' : 'En attente');
+    $justif = optional($registre)->issue_consultation_justification 
+        ?: ($consultation->observation_infirmiere ?: ($consultation->observation_soins ?: 'Aucune consigne particulière enregistrée.'));
+
+    // Calcul de l'âge
+    $patientAge = '';
+    if (!empty(optional($patient)->birth_date)) {
+        try {
+            $bDate = \Carbon\Carbon::parse($patient->birth_date);
+            $patientAge = $bDate->age . ' ans';
+        } catch (\Throwable $e) {
+            $patientAge = $patient->birth_date;
+        }
+    }
+
+    $residenceActuelle = optional(optional($patient)->residenceActuelle)->name 
+        ?? optional(optional($patient)->currentResidence)->name 
+        ?? (optional($patient)->address ?: (optional($patient)->adresse ?: 'Non renseignée'));
+
+    $residenceHabituelle = optional(optional($patient)->habitualResidence)->name;
+    
+    $lieuNaissance = optional(optional($patient)->birthPlace)->name 
+        ?: (optional($patient)->lieu_naissance ?: 'Non renseigné');
+
+    $hasVitals = !empty($consultation->tension_arterielle) || !empty($consultation->temperature) 
+        || !empty($consultation->poids) || !empty($consultation->pouls) 
+        || !empty($consultation->saturation_oxygene) || !empty($consultation->taille)
+        || !empty(optional($patient)->temperature) || !empty(optional($patient)->poids);
+
+    $tempVal = $consultation->temperature ?: optional($patient)->temperature;
+    $poidsVal = $consultation->poids ?: optional($patient)->poids;
+    $tailleVal = $consultation->taille ?: optional($patient)->taille;
+@endphp
+
+<!-- EN-TETE DE PAGE -->
+<div class="content-header mb-3">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <h4 class="page-title text-dark fw-bold mb-0">
+                    Détails Consultation : <span class="text-primary">{{ $consultation->code_consultation ?? ('#' . $consultation->id) }}</span>
+                </h4>
+                @if($consultation->status == 1)
+                    <span class="badge bg-success-subtle text-success border border-success-subtle fw-bold fs-12 px-2 py-1">
+                        <i class="fa-solid fa-check-circle me-1"></i> Clôturée / Effectuée
+                    </span>
+                @else
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle fw-bold fs-12 px-2 py-1">
+                        <i class="fa-solid fa-clock me-1"></i> En attente
+                    </span>
+                @endif
+
+                @if(!empty($consultation->is_urgence) && $consultation->is_urgence == 1)
+                    <span class="badge bg-danger text-white fw-bold fs-12 px-2 py-1">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> Urgence
+                    </span>
+                @endif
             </div>
+            <div class="text-muted fs-13 mt-1">
+                Dossier Patient : <strong>{{ $patientCode }}</strong> &bull; <strong>{{ $patientFullName }}</strong>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <a href="{{ route('infirmier.consultation.today') }}" class="btn btn-outline-secondary btn-sm px-3 fw-semibold">
+                <i class="fa-solid fa-arrow-left me-1"></i> Retour à la liste
+            </a>
+            @if(optional($patient)->id)
+                <a href="{{ route('infirmier.consultation.patient.card', $patient->id) }}" class="btn btn-outline-primary btn-sm px-3 fw-semibold">
+                    <i class="fa-solid fa-folder-open me-1"></i> Dossier Médical
+                </a>
+            @endif
         </div>
     </div>
-    <!-- Main content -->
-    <section class="content">
-        <div class="row">
-            <div class="col-lg-4 col-xlg-3 col-md-5">
-                <div class="box">
-                    <div class="profile-image mb-10" style="text-align: center">
-                        @if ($consultation->patient->gender == 'masculin')
-                            <img src="{{ asset('assets/images/avatar/6.png') }}" class="box-shadowed rounded-circle"
-                                alt="Photo de profil" />
-                        @elseif($consultation->patient->gender == 'feminin')
-                            <img src="{{ asset('assets/images/avatar/2.png') }}" class="box-shadowed rounded-circle"
-                                alt="Photo de profil" />
-                        @else
-                            <img src="{{ asset('assets/uploads/patient/$item->img_url') }}"
-                                class="box-shadowed rounded-circle" alt="Photo de profil" />
+</div>
+
+<!-- CONTENU PRINCIPAL -->
+<section class="content px-0">
+    <div class="row g-3">
+        
+        <!-- COLONNE GAUCHE : PROFIL PATIENT -->
+        <div class="col-lg-4 col-md-5 col-12">
+            
+            <div class="box shadow-none border mb-3">
+                <div class="box-body p-4 text-center border-bottom bg-light-subtle">
+                    @if(!empty(optional($patient)->img_url) && file_exists(public_path('assets/uploads/patient/' . $patient->img_url)))
+                        <img src="{{ asset('assets/uploads/patient/' . $patient->img_url) }}" class="rounded-circle mx-auto mb-3 border" style="width: 80px; height: 80px; object-fit: cover;" alt="{{ $patientFullName }}">
+                    @else
+                        <div class="avatar avatar-xxl bg-primary-subtle text-primary rounded-circle mx-auto mb-3 fw-bold fs-24 d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                            {{ strtoupper(substr($patientFullName, 0, 2)) }}
+                        </div>
+                    @endif
+                    <h5 class="fw-bold text-dark mb-1">{{ $patientFullName }}</h5>
+                    <div class="badge bg-light text-primary border font-monospace fs-12 mb-2">{{ $patientCode }}</div>
+                    <div>
+                        <span class="badge bg-secondary-subtle text-secondary fs-11 text-capitalize">
+                            {{ optional($patient)->gender ?? 'Genre non précisé' }}
+                        </span>
+                        @if($patientAge)
+                            <span class="badge bg-secondary-subtle text-secondary fs-11 ms-1">
+                                {{ $patientAge }}
+                            </span>
+                        @endif
+                        @if(!empty(optional($patient)->group_sanguin))
+                            <span class="badge bg-danger-subtle text-danger fs-11 ms-1 fw-bold">
+                                {{ $patient->group_sanguin }}
+                            </span>
                         @endif
                     </div>
-                    <div class="box-body">
-                        <div class="row text-center mt-10">
-                            <div class="col-md-6 border-end">
-                                <strong>Nom & prénom(s)</strong>
-                                <p>{{ $consultation->patient->user->name }} {{ $consultation->patient->user->prenom }}</p>
-                            </div>
-                            <div class="col-md-6"><strong>Profession</strong>
-                                <p>{{ $consultation->patient->profession }}</p>
-                            </div>
+                </div>
+                
+                <div class="box-body p-3 fs-13">
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted"><i class="fa-solid fa-briefcase text-secondary me-1"></i> Profession :</span>
+                        <strong class="text-dark">{{ optional($patient)->profession ?: 'Non renseigné' }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted"><i class="fa-solid fa-phone text-secondary me-1"></i> Téléphone :</span>
+                        <strong class="text-dark">{{ optional($patient)->telephone ?: (optional($patientUser)->contact ?? (optional($patient)->contact2 ?: 'Non renseigné')) }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted"><i class="fa-solid fa-envelope text-secondary me-1"></i> Email :</span>
+                        <strong class="text-dark text-break">{{ optional($patientUser)->email ?: 'Non renseigné' }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted"><i class="fa-solid fa-cake-candles text-secondary me-1"></i> Date Naissance :</span>
+                        <strong class="text-dark">
+                            @if(!empty(optional($patient)->birth_date))
+                                {{ date('d/m/Y', strtotime($patient->birth_date)) }}
+                            @else
+                                Non renseigné
+                            @endif
+                        </strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted"><i class="fa-solid fa-map-pin text-secondary me-1"></i> Lieu Naissance :</span>
+                        <strong class="text-dark">{{ $lieuNaissance }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted"><i class="fa-solid fa-house text-secondary me-1"></i> Résidence Actuelle :</span>
+                        <strong class="text-dark text-end">{{ $residenceActuelle }}</strong>
+                    </div>
+                    @if($residenceHabituelle && $residenceHabituelle !== $residenceActuelle)
+                        <div class="d-flex justify-content-between py-2 border-bottom">
+                            <span class="text-muted"><i class="fa-solid fa-location-dot text-secondary me-1"></i> Résidence Habituelle :</span>
+                            <strong class="text-dark text-end">{{ $residenceHabituelle }}</strong>
                         </div>
-                        <hr>
-                        <div class="row text-center mt-10">
-                            <div class="col-md-6 border-end"><strong>Email</strong>
-                                <p>{{ $consultation->patient->user->email }}</p>
-                            </div>
-                            <div class="col-md-6"><strong>Téléphone</strong>
-                                <p>{{ $consultation->patient->telephone }}</p>
-                            </div>
+                    @endif
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted"><i class="fa-solid fa-id-card text-secondary me-1"></i> Pièce d'identité :</span>
+                        <strong class="text-dark text-end">
+                            {{ optional($patient)->type_piece ?: 'CNI' }} {{ optional($patient)->numero_identite ? '(' . $patient->numero_identite . ')' : '' }}
+                        </strong>
+                    </div>
+                    @if(!empty(optional($patient)->num_cmu) || !empty(optional($patient)->no_assurance))
+                        <div class="d-flex justify-content-between py-2">
+                            <span class="text-muted"><i class="fa-solid fa-shield-halved text-secondary me-1"></i> Assurance / CMU :</span>
+                            <strong class="text-dark text-end">
+                                {{ optional($patient)->num_cmu ?: optional($patient)->no_assurance }}
+                            </strong>
                         </div>
-                        <hr>
-                        <div class="row text-center mt-10">
-                            <div class="col-md-12"><strong>Residence actuelle</strong>
-                                <p>{{ $consultation->patient->currentResidence->name }}
-                                    <br> {{ $consultation->patient->habitualResidence->name }}
-                                </p>
-                            </div>
-                        </div>
-                        <hr>
-                        <div class="row text-center mt-10">
-                            <div class="col-md-6 border-end"><strong>Date de naissance</strong>
-                                <p>{{ $consultation->patient->birth_date }}</p>
-                            </div>
-                            <div class="col-md-6"><strong>Lieu de naissance</strong>
-                                <p>{{ $consultation->patient->birthPlace->name }}</p>
-                            </div>
-                        </div>
-                        <hr>
-                        <div class="row text-center mt-10">
-                            <div class="col-md-12"><strong>Pièce d'identité</strong>
-                                <p style="text-transform: uppercase"><span
-                                        class="fw-400">{{ $consultation->patient->type_piece }}</span>
-                                    <br> {{ $consultation->patient->numero_identite }}
-                                </p>
-                            </div>
-                        </div>
-                        <hr>
-                        <br>
+                    @endif
+                </div>
+            </div>
 
+            <!-- CARTE ÉTABLISSEMENT -->
+            <div class="box shadow-none border mb-3">
+                <div class="box-header bg-light py-2 px-3">
+                    <h6 class="box-title fs-13 fw-bold text-dark mb-0">
+                        <i class="fa-solid fa-hospital text-primary me-2"></i> Établissement &amp; Soignant
+                    </h6>
+                </div>
+                <div class="box-body p-3 fs-13">
+                    <div class="fw-bold text-primary mb-1">{{ $hospitalName }}</div>
+                    <div class="text-muted fs-12 mb-2">{{ optional($hospital)->adresse ?: 'Structure sanitaire conventionnée' }}</div>
+                    <div class="d-flex justify-content-between py-1 border-top">
+                        <span class="text-muted">Agent de Santé :</span>
+                        <strong class="text-dark">{{ $practitionerName }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-top">
+                        <span class="text-muted">Service :</span>
+                        <strong class="text-dark">{{ $typeVisite }}</strong>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-8 col-xlg-9 col-md-7">
-                <div class="box">
-                    <div class="box-body">
-                        <div class="row">
-                            <div class="col-md-3 col-xs-6 border-end"> <strong>Code consultation</strong>
-                                <br>
-                                <p class="text-muted">{{ $consultation->code_consultation }}</p>
-                            </div>
-                            <div class="col-md-3 col-xs-6 border-end"> <strong>Date consultation</strong>
-                                <br>
-                                <p class="text-muted">{{ DateFr($consultation->date_consultation) }}</p>
-                            </div>
-                            <div class="col-md-3 col-xs-6 border-end"> <strong>Type de visite</strong>
-                                <br>
-                                <p class="text-muted">{{ optional(optional($consultation->prestationHospital)->prestationService)->libelle ?? ($consultation->prestationHospital->serviceHospital->service->libelle ?? 'Consultation') }}</p>
 
-                            </div>
-                            <div class="col-md-3 col-xs-6"> <strong>Issue consultation</strong>
-                                <br>
-                                <p class="text-muted">{{ $consultation->issue_consultation }}</p>
-                            </div>
-                        </div>
-                        <hr>
-                        <div class="col-md-12 col-xs-12"> <strong>Observation</strong>
-                            <br>
-                            <p class="mt-30">{{ $consultation->observation }}</p>
-                        </div>
-
-                        <!---Liste des ordonnances prescrites -->
-                        <h4 class="box-title fw-500 py-20 border-bottom d-block">Ordonnance prescrite @if (App\Models\Ordonnance::where('consultation_id', $consultation->id)->exists())
-                                : <span
-                                    class="fw-bold">{{ App\Models\Ordonnance::where('consultation_id', $consultation->id)->first()->reference }}</span>
-                            @endif
-                        </h4>
-                        @if (App\Models\Ordonnance::where('consultation_id', $consultation->id)->exists())
-                            @foreach (App\Models\Ordonnance::where('consultation_id', $consultation->id)->first()->prescriptions as $item)
-                                <div class="d-flex no-block fa fa-check-circle text-success">
-                                    <h6 class="ms-10 text-dark">{{ $item->medicament }}</h6>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                                    <h6 class="ms-10 text-dark fw-600">( {{ $item->frequence }} )</h6>
-                                </div>
-                            @endforeach
-                        @else
-                            <div class="d-flex no-block fa fa-check-circle text-danger">
-                                <h6 class="ms-10 text-danger">Pas d'ordonnance prescrite !</h6>
+            <!-- ALLERGIES -->
+            @if(!empty(optional($patient)->allergie_medicamenteuse) || !empty(optional($patient)->type_allergie_medicamenteuse) || !empty(optional($patient)->antecedent_churgical) || !empty(optional($patient)->type_antecedent_medical))
+                <div class="box shadow-none border mb-3">
+                    <div class="box-header bg-light py-2 px-3">
+                        <h6 class="box-title fs-13 fw-bold text-danger mb-0">
+                            <i class="fa-solid fa-triangle-exclamation text-danger me-2"></i> Allergies &amp; Antécédents
+                        </h6>
+                    </div>
+                    <div class="box-body p-3 fs-13">
+                        @if(!empty(optional($patient)->allergie_medicamenteuse) || !empty(optional($patient)->type_allergie_medicamenteuse))
+                            <div class="mb-2">
+                                <span class="text-danger fw-bold"><i class="fa-solid fa-circle-exclamation me-1"></i> Allergies :</span>
+                                <div class="text-dark">{{ optional($patient)->type_allergie_medicamenteuse ?: $patient->allergie_medicamenteuse }}</div>
                             </div>
                         @endif
-                        <!---Liste des examens prescris -->
-                        <h4 class="box-title my-20 fw-500 py-20 border-bottom d-block">Examen(s) prescrit(s) @if (App\Models\BulletinExamen::where('consultation_id', $consultation->id)->exists())
-                                : <span
-                                    class="fw-bold">{{ App\Models\BulletinExamen::where('consultation_id', $consultation->id)->first()->code_bulletin }}</span>
-                            @endif
-                        </h4>
-                        @if (App\Models\BulletinExamen::where('consultation_id', $consultation->id)->exists())
-                            @foreach (App\Models\BulletinExamen::where('consultation_id', $consultation->id)->first()->examens as $item)
-                                <div class="d-flex no-block fa fa-check-circle text-success">
-                                    <h6 class="ms-10 text-dark">{{ $item->nature_examen }}</h6>
-                                </div>
-                            @endforeach
-                        @else
-                            <div class="d-flex no-block fa fa-check-circle text-danger">
-                                <h6 class="ms-10 text-danger">Liste d'examens vide !</h6>
+                        @if(!empty(optional($patient)->antecedent_churgical) || !empty(optional($patient)->type_antecedent_medical))
+                            <div>
+                                <span class="text-muted fw-bold"><i class="fa-solid fa-file-waveform me-1"></i> Antécédents :</span>
+                                <div class="text-dark">{{ optional($patient)->type_antecedent_medical ?: $patient->antecedent_churgical }}</div>
                             </div>
                         @endif
-                        <!---arret de travail déclaré -->
-                        <h4 class="box-title my-20 fw-500 py-20 border-bottom d-block">Arret de travail</h4>
-                        @if (App\Models\ArretTravail::where('consultation_id', $consultation->id)->exists())
-                            @foreach (App\Models\ArretTravail::where('consultation_id', $consultation->id)->get() as $item)
-                                <div class="d-flex no-block text-success">
-                                    Code: <span class="ms-10 text-dark fw-bold">{{ $item->code }}</span>&nbsp;&nbsp;|
-                                    Date début: <span
-                                        class="ms-10 text-white badge badge-primary">{{ formatDate($item->date_debut) }}</span>&nbsp;&nbsp;|
-                                    Date fin: <span
-                                        class="ms-10 text-white badge badge-danger">{{ formatDate($item->date_fin) }}</span>&nbsp;&nbsp;|
-                                    Nombre de jour: <span
-                                        class="ms-10 text-white badge badge-info">{{ $item->nb_jour }}</span>&nbsp;&nbsp;|
-                                </div>
-                            @endforeach
-                        @else
-                            <div class="d-flex no-block fa fa-check-circle text-danger">
-                                <h6 class="ms-10 text-danger">Pas d'arret de travail déclaré !</h6>
-                            </div>
-                        @endif
-
                     </div>
                 </div>
-            </div>
+            @endif
+
         </div>
-    </section>
-    <!-- /.content -->
+
+        <!-- COLONNE DROITE : DETAILS CLINIQUES -->
+        <div class="col-lg-8 col-md-7 col-12">
+            
+            <!-- 4 METRIQUES -->
+            <div class="row g-2 mb-3">
+                <div class="col-sm-6 col-xl-3">
+                    <div class="p-3 bg-white rounded border">
+                        <div class="text-muted fs-11 text-uppercase fw-bold">Code Consultation</div>
+                        <div class="fw-bold text-primary fs-14 text-truncate">{{ $consultation->code_consultation ?? ('#' . $consultation->id) }}</div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <div class="p-3 bg-white rounded border">
+                        <div class="text-muted fs-11 text-uppercase fw-bold">Date de Visite</div>
+                        <div class="fw-bold text-dark fs-14 text-truncate">
+                            {{ date('d/m/Y', strtotime($consultation->date_consultation ?? $consultation->created_at)) }}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <div class="p-3 bg-white rounded border">
+                        <div class="text-muted fs-11 text-uppercase fw-bold">Type de Visite</div>
+                        <div class="fw-bold text-dark fs-14 text-truncate">{{ $typeVisite }}</div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <div class="p-3 bg-white rounded border">
+                        <div class="text-muted fs-11 text-uppercase fw-bold">Soignant</div>
+                        <div class="fw-bold text-dark fs-14 text-truncate">{{ $practitionerName }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONSTANTES VITALES -->
+            @if($hasVitals)
+                <div class="box shadow-none border mb-3">
+                    <div class="box-header bg-light py-2 px-3">
+                        <h6 class="box-title fs-13 fw-bold text-dark mb-0">
+                            <i class="fa-solid fa-heart-pulse text-danger me-2"></i> Constantes &amp; Paramètres Vitaux
+                        </h6>
+                    </div>
+                    <div class="box-body p-3 fs-13">
+                        <div class="row g-2 text-center">
+                            @if(!empty($consultation->tension_arterielle))
+                                <div class="col-6 col-sm-4 col-md-3">
+                                    <div class="p-2 bg-light rounded border">
+                                        <div class="text-muted fs-11">Tension Artérielle</div>
+                                        <strong class="text-dark fs-14">{{ $consultation->tension_arterielle }} <span class="fs-11 fw-normal text-muted">mmHg</span></strong>
+                                    </div>
+                                </div>
+                            @endif
+                            @if(!empty($tempVal))
+                                <div class="col-6 col-sm-4 col-md-3">
+                                    <div class="p-2 bg-light rounded border">
+                                        <div class="text-muted fs-11">Température</div>
+                                        <strong class="text-dark fs-14">{{ $tempVal }} <span class="fs-11 fw-normal text-muted">°C</span></strong>
+                                    </div>
+                                </div>
+                            @endif
+                            @if(!empty($poidsVal))
+                                <div class="col-6 col-sm-4 col-md-3">
+                                    <div class="p-2 bg-light rounded border">
+                                        <div class="text-muted fs-11">Poids</div>
+                                        <strong class="text-dark fs-14">{{ $poidsVal }} <span class="fs-11 fw-normal text-muted">kg</span></strong>
+                                    </div>
+                                </div>
+                            @endif
+                            @if(!empty($tailleVal))
+                                <div class="col-6 col-sm-4 col-md-3">
+                                    <div class="p-2 bg-light rounded border">
+                                        <div class="text-muted fs-11">Taille</div>
+                                        <strong class="text-dark fs-14">{{ $tailleVal }} <span class="fs-11 fw-normal text-muted">cm</span></strong>
+                                    </div>
+                                </div>
+                            @endif
+                            @if(!empty($consultation->pouls))
+                                <div class="col-6 col-sm-4 col-md-3">
+                                    <div class="p-2 bg-light rounded border">
+                                        <div class="text-muted fs-11">Pouls / Fréquence</div>
+                                        <strong class="text-dark fs-14">{{ $consultation->pouls }} <span class="fs-11 fw-normal text-muted">bpm</span></strong>
+                                    </div>
+                                </div>
+                            @endif
+                            @if(!empty($consultation->saturation_oxygene))
+                                <div class="col-6 col-sm-4 col-md-3">
+                                    <div class="p-2 bg-light rounded border">
+                                        <div class="text-muted fs-11">Saturation O₂</div>
+                                        <strong class="text-dark fs-14">{{ $consultation->saturation_oxygene }} <span class="fs-11 fw-normal text-muted">%</span></strong>
+                                    </div>
+                                </div>
+                            @endif
+                            @if(!empty($consultation->imc))
+                                <div class="col-6 col-sm-4 col-md-3">
+                                    <div class="p-2 bg-light rounded border">
+                                        <div class="text-muted fs-11">I.M.C</div>
+                                        <strong class="text-dark fs-14">{{ $consultation->imc }}</strong>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            <!-- ISSUE DE CONSULTATION -->
+            <div class="box shadow-none border mb-3">
+                <div class="box-header bg-light d-flex justify-content-between align-items-center py-2 px-3">
+                    <h6 class="box-title fs-14 fw-bold text-dark mb-0">
+                        <i class="fa-solid fa-arrows-split-up-and-left text-primary me-2"></i> Issue de Consultation &amp; Orientation
+                    </h6>
+                    @if($issue === 'refere-interne' || str_contains($justif, 'infirmier') || str_contains($justif, 'orienté') || str_contains($justif, 'référé'))
+                        <span class="badge bg-info-subtle text-info border border-info-subtle fs-11">Affectation / Référé</span>
+                    @elseif($issue === 'hospitalisation')
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle fs-11">Hospitalisation</span>
+                    @elseif($issue === 'observation')
+                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle fs-11">Mise en observation</span>
+                    @else
+                        <span class="badge bg-success-subtle text-success border border-success-subtle fs-11">Sortie Domicile</span>
+                    @endif
+                </div>
+                <div class="box-body p-3 fs-13">
+                    <div class="p-3 bg-light rounded border">
+                        <div class="mb-2">
+                            <span class="text-muted fw-bold">Mode d'issue :</span> 
+                            <strong>
+                                @if($issue === 'refere-interne' || str_contains($justif, 'infirmier') || str_contains($justif, 'orienté') || str_contains($justif, 'référé'))
+                                    Réaffectation / Référé interne
+                                @elseif($issue === 'hospitalisation')
+                                    Hospitalisation requise
+                                @elseif($issue === 'observation')
+                                    Mise en observation (M.O)
+                                @elseif($issue === 'sortie')
+                                    Sortie autorisée vers le domicile
+                                @else
+                                    {{ ucfirst($issue) }}
+                                @endif
+                            </strong>
+                        </div>
+                        <div>
+                            <span class="text-muted fw-bold">Consignes &amp; Soins :</span> 
+                            <span class="text-secondary">{{ $justif }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- OBSERVATIONS & MOTIF -->
+            <div class="box shadow-none border mb-3">
+                <div class="box-header bg-light py-2 px-3">
+                    <h6 class="box-title fs-14 fw-bold text-dark mb-0">
+                        <i class="fa-solid fa-notes-medical text-primary me-2"></i> Motif &amp; Observations
+                    </h6>
+                </div>
+                <div class="box-body p-3 fs-13">
+                    @if(!empty($consultation->motif_consultation))
+                        <div class="mb-3">
+                            <span class="text-muted fw-bold d-block mb-1">Motif :</span>
+                            <div class="p-2 bg-light rounded border text-secondary">
+                                {{ $consultation->motif_consultation }}
+                            </div>
+                        </div>
+                    @endif
+
+                    @if(!empty(optional($consultation->observation)->observations))
+                        <div>
+                            <span class="text-muted fw-bold d-block mb-1">Observations :</span>
+                            <div class="p-2 bg-light rounded border text-secondary">
+                                {{ $consultation->observation->observations }}
+                            </div>
+                        </div>
+                    @elseif(empty($consultation->motif_consultation))
+                        <div class="p-2 bg-light rounded border text-muted">
+                            Aucune observation particulière saisie.
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- ORDONNANCES -->
+            <div class="box shadow-none border mb-3">
+                <div class="box-header bg-light d-flex justify-content-between align-items-center py-2 px-3">
+                    <h6 class="box-title fs-14 fw-bold text-dark mb-0">
+                        <i class="fa-solid fa-pills text-primary me-2"></i> Ordonnance &amp; Prescriptions Médicamenteuses
+                    </h6>
+                    @if($ordonnance)
+                        <span class="badge bg-light text-primary border font-monospace fs-11">{{ $ordonnance->reference ?? ('ORD-' . $ordonnance->id) }}</span>
+                    @endif
+                </div>
+                <div class="box-body p-0">
+                    @if($ordonnance && optional($ordonnance->prescriptions)->count() > 0)
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped align-middle mb-0 fs-13">
+                                <thead class="bg-light text-muted fs-11 text-uppercase">
+                                    <tr>
+                                        <th class="ps-3" style="width: 40px;">#</th>
+                                        <th>Médicament</th>
+                                        <th>Dosage</th>
+                                        <th>Quantité</th>
+                                        <th>Posologie / Conseils</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($ordonnance->prescriptions as $idx => $med)
+                                        @php
+                                            $drugName = optional($med->drug)->name 
+                                                ?? optional(optional($med->drugHospital)->drug)->name 
+                                                ?? ($med->medicament ?: 'Médicament');
+                                        @endphp
+                                        <tr>
+                                            <td class="ps-3 fw-bold text-muted">{{ $idx + 1 }}</td>
+                                            <td><strong>{{ $drugName }}</strong></td>
+                                            <td class="text-secondary">{{ $med->dosage ?: '-' }}</td>
+                                            <td class="text-secondary">{{ $med->quantity ?: 1 }}</td>
+                                            <td class="text-secondary">
+                                                {{ $med->posologie ?: ($med->instructions ?: ($med->frequence ?: 'Selon prescription')) }}
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="p-3 text-center text-muted fs-13">
+                            <i class="fa-solid fa-ban text-secondary me-1"></i> Aucune ordonnance médicamenteuse associée.
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- EXAMENS -->
+            <div class="box shadow-none border mb-3">
+                <div class="box-header bg-light d-flex justify-content-between align-items-center py-2 px-3">
+                    <h6 class="box-title fs-14 fw-bold text-dark mb-0">
+                        <i class="fa-solid fa-flask-vial text-primary me-2"></i> Examens &amp; Analyses de Laboratoire
+                    </h6>
+                    @if($bulletin)
+                        <span class="badge bg-light text-primary border font-monospace fs-11">{{ $bulletin->code_bulletin ?? ('BLAB-' . $bulletin->id) }}</span>
+                    @endif
+                </div>
+                <div class="box-body p-0">
+                    @if($bulletin && optional($bulletin->examens)->count() > 0)
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped align-middle mb-0 fs-13">
+                                <thead class="bg-light text-muted fs-11 text-uppercase">
+                                    <tr>
+                                        <th class="ps-3" style="width: 40px;">#</th>
+                                        <th>Code</th>
+                                        <th>Nature de l'Analyse</th>
+                                        <th class="text-center pe-3">Statut</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($bulletin->examens as $idx => $ex)
+                                        <tr>
+                                            <td class="ps-3 fw-bold text-muted">{{ $idx + 1 }}</td>
+                                            <td>
+                                                <span class="badge bg-light text-dark border font-monospace">{{ $ex->code_examen ?? ('EX-' . $ex->id) }}</span>
+                                            </td>
+                                            <td><strong>{{ $ex->nature_examen }}</strong></td>
+                                            <td class="text-center pe-3">
+                                                <span class="badge bg-secondary-subtle text-secondary fs-11">
+                                                    {{ $ex->status == 1 ? 'Terminé' : 'En attente' }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="p-3 text-center text-muted fs-13">
+                            <i class="fa-solid fa-ban text-secondary me-1"></i> Aucun examen de laboratoire émis.
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- ARRET DE TRAVAIL -->
+            @if($arret)
+                <div class="box shadow-none border mb-3">
+                    <div class="box-header bg-light d-flex justify-content-between align-items-center py-2 px-3">
+                        <h6 class="box-title fs-14 fw-bold text-dark mb-0">
+                            <i class="fa-solid fa-user-clock text-primary me-2"></i> Arrêt de Travail
+                        </h6>
+                    </div>
+                    <div class="box-body p-3 fs-13">
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <div class="p-2 bg-light rounded border">
+                                    <span class="text-muted fs-11 d-block">Code Référence</span>
+                                    <strong>{{ $arret->code }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-2 bg-light rounded border">
+                                    <span class="text-muted fs-11 d-block">Période</span>
+                                    <strong>Du {{ date('d/m/Y', strtotime($arret->date_debut)) }} au {{ date('d/m/Y', strtotime($arret->date_fin)) }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-2 bg-light rounded border">
+                                    <span class="text-muted fs-11 d-block">Durée</span>
+                                    <strong>{{ $arret->nb_jour }} jour(s)</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+        </div>
+    </div>
+</section>
 @endsection

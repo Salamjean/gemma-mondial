@@ -15,7 +15,9 @@ use App\Models\RegistreConsultationCurative;
 use App\Repositories\Doctor\ConsultationRepository;
 use App\Repositories\Doctor\IssueRepository;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ConsultationController extends Controller
 {
@@ -98,10 +100,26 @@ class ConsultationController extends Controller
             $title = "Formulaire de demande d'examen - Laboratoire";
         }
 
+        $hospitalId = Auth::user()->doctor->hospital_id ?? optional($consultation->hospital)->id ?? Auth::user()->hospital_id;
+        $servicesHospital = \App\Models\ServiceHospital::where('hospital_id', $hospitalId)
+            ->whereHas('service')
+            ->with('service')
+            ->where('status', 0)
+            ->get();
+        $doctorsHospital = \App\Models\Doctor::where('hospital_id', $hospitalId)
+            ->with(['user', 'serviceHospital.service', 'typeDoctor'])
+            ->get();
+        $infirmiersHospital = \App\Models\Infirmier::where('hospital_id', $hospitalId)
+            ->with(['user', 'serviceHospital.service'])
+            ->get();
+
         return view('users.doctor.consultation.formulaire', [
             'title' => $title,
             'consultation' => $consultation,
-            'type' => $type
+            'type' => $type,
+            'servicesHospital' => $servicesHospital,
+            'doctorsHospital' => $doctorsHospital,
+            'infirmiersHospital' => $infirmiersHospital,
         ]);
     }
 
@@ -741,30 +759,150 @@ class ConsultationController extends Controller
             ]);
         }
 
-        // Clôture de la consultation
+        // Clôture de la consultation courante
         $consultation->status = 1;
         if ($request->filled('autres_infos_cliniques')) {
             $consultation->motif_consultation = $request->autres_infos_cliniques;
         }
         $consultation->save();
 
-        // Enregistrement dans le Registre
-        if (!\App\Models\Registre::where('consultation_id', $consultation->id)->exists()) {
-            \App\Models\Registre::create([
-                "code" => codeRegistre(optional($patient)->code_patient, optional($patient)->id),
-                "type_consultation" => "Laboratoire",
-                "consultation_id" => $consultation->id,
-                "issue_consultation" => "examen",
-                "issue_consultation_justification" => "Demande d'examens de laboratoire émise (" . count($selectedExams) . " analyses)",
-            ]);
+        // Gestion de l'issue de consultation et de l'affectation
+        $modeSortie = $request->input('mode_sortie', 'sortie');
+        $justification = $request->input('issue_consultation_justification');
+        if (empty($justification)) {
+            $justification = "Demande d'examens de laboratoire émise (" . count($selectedExams) . " analyses)";
         }
+
+        $messageDetail = "Demande d'examen de laboratoire émise avec succès ! (Bulletin N° {$bulletin->code_bulletin} - " . count($selectedExams) . " analyses enregistrées)";
+
+        // 1. Affectation à une Infirmière
+        if ($modeSortie === 'affecter-infirmier' && $request->filled('affectation_infirmier_id')) {
+            $infirmierId = $request->input('affectation_infirmier_id');
+            $instructions = $request->input('instructions_infirmier', 'Soins / Prélèvements suite examen de laboratoire');
+            
+            $nbConsult = \App\Models\Consultation::where('patient_id', optional($patient)->id)->count();
+            $newConsult = new \App\Models\Consultation();
+            $newConsult->date_consultation = date('Y-m-d');
+            $newConsult->code_consultation = 'CONSULT' . substr(optional($patient)->code_patient, 2) . ($nbConsult + 1);
+            $newConsult->admission_id = $consultation->admission_id;
+            $newConsult->hospital_id = $consultation->hospital_id ?? optional(Auth::user()->doctor)->hospital_id;
+            $newConsult->patient_id = optional($patient)->id;
+            $newConsult->infirmier_id = $infirmierId;
+            $newConsult->doctor_id = $consultation->doctor_id;
+            $newConsult->prestation_hospital_id = $consultation->prestation_hospital_id;
+            $newConsult->motif_consultation = "Orientation post-laboratoire : " . $instructions;
+            $newConsult->montant = 0;
+            $newConsult->status = 0;
+            $newConsult->status_inf = 0; // En attente prise en charge infirmière
+            $newConsult->save();
+
+            if ($consultation->admission_id) {
+                $careReq = new \App\Models\CareRequested();
+                $careReq->type = $instructions;
+                $careReq->admission_id = $consultation->admission_id;
+                $careReq->status = 'pending';
+                $careReq->save();
+            }
+
+            $infirmierObj = \App\Models\Infirmier::with('user')->find($infirmierId);
+            $infName = $infirmierObj ? trim((optional($infirmierObj->user)->name ?? '') . ' ' . (optional($infirmierObj->user)->prenom ?? '')) : 'l\'infirmier(ère)';
+            $justification = "Patient orienté vers l'infirmerie ({$infName}) : {$instructions}";
+            $messageDetail .= " — Patient affecté à {$infName} pour soins/prélèvement.";
+
+        // 2. Affectation à un Médecin
+        } elseif ($modeSortie === 'affecter-medecin' && $request->filled('affectation_doctor_id')) {
+            $targetDoctorId = $request->input('affectation_doctor_id');
+            $noteMedecin = $request->input('note_transmission_medecin', 'Avis / Prise en charge suite examen de laboratoire');
+
+            $nbConsult = \App\Models\Consultation::where('patient_id', optional($patient)->id)->count();
+            $newConsult = new \App\Models\Consultation();
+            $newConsult->date_consultation = date('Y-m-d');
+            $newConsult->code_consultation = 'CONSULT' . substr(optional($patient)->code_patient, 2) . ($nbConsult + 1);
+            $newConsult->admission_id = $consultation->admission_id;
+            $newConsult->hospital_id = $consultation->hospital_id ?? optional(Auth::user()->doctor)->hospital_id;
+            $newConsult->patient_id = optional($patient)->id;
+            $newConsult->doctor_id = $targetDoctorId;
+            $newConsult->prestation_hospital_id = $consultation->prestation_hospital_id;
+            $newConsult->motif_consultation = "Avis / Référé post-laboratoire : " . $noteMedecin;
+            $newConsult->montant = 0;
+            $newConsult->status = 0;
+            $newConsult->status_inf = 1; // Prêt pour le médecin
+            $newConsult->save();
+
+            $docObj = \App\Models\Doctor::with('user')->find($targetDoctorId);
+            $docName = $docObj ? ('Dr. ' . trim((optional($docObj->user)->name ?? '') . ' ' . (optional($docObj->user)->prenom ?? ''))) : 'au médecin sélectionné';
+            $justification = "Patient référé au {$docName} : {$noteMedecin}";
+            $messageDetail .= " — Patient réorienté vers {$docName}.";
+
+        // 3. Hospitalisation / Observation
+        } elseif ($modeSortie === 'hospitalisation' || $modeSortie === 'observation') {
+            $justification = ($modeSortie === 'hospitalisation' ? 'Hospitalisation requise' : 'Mise en observation requise') . ($request->filled('motif_hospitalisation') ? ' : ' . $request->motif_hospitalisation : '');
+            $messageDetail .= " — Mode d'issue : " . ($modeSortie === 'hospitalisation' ? 'Hospitalisation' : 'Mise en observation') . ".";
+        }
+
+        // Enregistrement / mise à jour dans le Registre
+        $registre = \App\Models\Registre::firstOrNew(['consultation_id' => $consultation->id]);
+        if (!$registre->exists) {
+            $registre->code = codeRegistre(optional($patient)->code_patient, optional($patient)->id);
+            $registre->type_consultation = "Laboratoire";
+            $registre->consultation_id = $consultation->id;
+        }
+        $registre->issue_consultation = ($modeSortie === 'affecter-infirmier' || $modeSortie === 'affecter-medecin') ? 'refere-interne' : $modeSortie;
+        $registre->issue_consultation_justification = $justification;
+        $registre->save();
 
         // Clôture des rendez-vous associés
         \App\Models\RendezVous::where('consultation_id', $consultation->id)->update([
             'status' => 'complete',
         ]);
 
-        return redirect()->route('doctor.consultation.today')->with('success', "Demande d'examen de laboratoire émise avec succès ! (Bulletin N° {$bulletin->code_bulletin} - " . count($selectedExams) . " analyses enregistrées).");
+        return redirect()->route('doctor.consultation.laboratoire.recap', ['id' => $consultation->id])->with('success', $messageDetail);
+    }
+
+    /**
+     * Page récapitulative post-consultation Laboratoire avec téléchargement PDF
+     */
+    public function laboratoireRecap($id)
+    {
+        $consultation = Consultation::with([
+            'patient.user',
+            'patient.residenceActuelle',
+            'hospital',
+            'doctor.user',
+            'doctor.serviceHospital.service',
+            'bulletinExamen.examens',
+            'registre'
+        ])->findOrFail($id);
+
+        return view('users.doctor.consultation.formulaire.consultation.laboratoire_recap', compact('consultation'));
+    }
+
+    /**
+     * Export / Téléchargement PDF de la demande et récapitulatif de laboratoire
+     */
+    public function laboratoirePdf($id)
+    {
+        $consultation = Consultation::with([
+            'patient.user',
+            'patient.residenceActuelle',
+            'hospital',
+            'doctor.user',
+            'doctor.serviceHospital.service',
+            'bulletinExamen.examens',
+            'registre'
+        ])->findOrFail($id);
+
+        $pdf = Pdf::loadView('users.doctor.consultation.formulaire.consultation.pdf.laboratoire_pdf', compact('consultation'));
+        $pdf->setPaper('A4', 'portrait')->render();
+
+        $bulletinCode = optional($consultation->bulletinExamen)->code_bulletin ?? ('BLAB-' . $consultation->id);
+        $filename = "demande_laboratoire_{$bulletinCode}_" . date('Ymd_His') . ".pdf";
+
+        $response = new Response();
+        $response->setContent($pdf->output())->header('Content-Type', 'application/pdf');
+        $response->header('Content-Disposition', "inline; filename=\"{$filename}\"");
+
+        return $response;
     }
 
 
@@ -1021,15 +1159,36 @@ class ConsultationController extends Controller
 
     public function detailconsulation($id)
     {
-        $consultation = Consultation::findOrFail($id);
-        $ordonnance = Ordonnance::where('consultation_id', $consultation->id)->first();
-        return view('users.doctor.consultation.detail', compact('consultation', 'ordonnance'));
+        return $this->detail($id);
     }
 
     public function detail($id)
     {
-        $consultation = Consultation::findOrFail($id);
-        $ordonnance = Ordonnance::where('consultation_id', $consultation->id)->first();
+        $consultation = Consultation::with([
+            'patient.user',
+            'patient.residenceActuelle',
+            'patient.currentResidence',
+            'patient.habitualResidence',
+            'patient.birthPlace',
+            'doctor.user',
+            'doctor.serviceHospital.service',
+            'infirmier.user',
+            'hospital',
+            'prestationHospital.prestationService',
+            'admission.prestationHospital.prestationService',
+            'registre',
+            'bulletinExamen.examens',
+            'ordonnances.prescriptions.drug',
+            'ordonnances.prescriptions.drugHospital.drug',
+            'arret',
+            'hospitalisation',
+            'observation'
+        ])->findOrFail($id);
+
+        $ordonnance = Ordonnance::with(['prescriptions.drug', 'prescriptions.drugHospital.drug'])
+            ->where('consultation_id', $consultation->id)
+            ->first();
+
         return view('users.doctor.consultation.detail', compact('consultation', 'ordonnance'));
     }
     public function infoPatient($id)

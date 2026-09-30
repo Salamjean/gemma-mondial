@@ -122,7 +122,16 @@ class DoctorController extends Controller
             ->whereHas('service')
             ->with('service')
             ->where('status', 0)
-            ->get();
+            ->get()
+            ->sortBy(function ($item) {
+                $libelle = strtolower(optional($item->service)->libelle ?? '');
+                if (str_contains($libelle, 'soins') || str_contains($libelle, 'infirmier')) {
+                    return 0;
+                }
+                return 1;
+            })
+            ->values();
+
         return response()->json($services);
     }
 }

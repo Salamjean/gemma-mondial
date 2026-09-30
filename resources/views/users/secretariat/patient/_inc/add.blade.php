@@ -559,17 +559,28 @@
                 data: formData,
                 success: function (response) {
                     $btn.prop('disabled', false).html('<i class="ti-save-alt"></i> Enregistrer');
-                    Swal.fire({
-                        text: response.success,
-                        icon: "success",
-                        button: "ok",
-                        confirmButtonColor: '#3085d6',
-                        cancelButtonColor: '#F7B662',
-                        showCancelButton: true,
-                        cancelButtonText: "<a class='text-white' href='{{ route('secretariat.patient.list') }}'><i class='fa fa-eye'></i>&nbsp;Voir la liste</a>",
-                        confirmButtonText: "<a class='text-white' href='{{ route('dashboard') }}'><i class='ti-save-alt'></i>&nbsp;Tableau de bord</a>",
-                        reverseButtons: true,
-                    });
+                    @if(auth()->check() && auth()->user()->role_as === 'cashier')
+                        Swal.fire({
+                            text: response.success || "Patient enregistré et affecté avec succès !",
+                            icon: "success",
+                            confirmButtonText: "OK",
+                            confirmButtonColor: '#3085d6'
+                        }).then(function () {
+                            window.location.href = "{{ route('dashboard') }}";
+                        });
+                    @else
+                        Swal.fire({
+                            text: response.success,
+                            icon: "success",
+                            button: "ok",
+                            confirmButtonColor: '#3085d6',
+                            cancelButtonColor: '#F7B662',
+                            showCancelButton: true,
+                            cancelButtonText: "<a class='text-white' href='{{ route('secretariat.patient.list') }}'><i class='fa fa-eye'></i>&nbsp;Voir la liste</a>",
+                            confirmButtonText: "<a class='text-white' href='{{ route('dashboard') }}'><i class='ti-save-alt'></i>&nbsp;Tableau de bord</a>",
+                            reverseButtons: true,
+                        });
+                    @endif
                     $('#formAdd')[0].reset();
                 },
                 error: function (xhr) {

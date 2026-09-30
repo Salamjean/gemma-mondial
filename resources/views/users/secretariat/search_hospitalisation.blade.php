@@ -592,13 +592,24 @@
                         data: formData,
                         success: function (response) {
                             $btn.html('<i class="fa-solid fa-check-circle me-2"></i> Validé !');
-                            Swal.fire({
-                                text: response.success || "Patient mis à jour et affecté avec succès !",
-                                icon: "success",
-                                confirmButtonColor: '#005AEC'
-                            }).then(function () {
-                                location.reload();
-                            });
+                            @if(auth()->check() && auth()->user()->role_as === 'cashier')
+                                Swal.fire({
+                                    text: response.success || "Patient affecté avec succès !",
+                                    icon: "success",
+                                    confirmButtonText: "OK",
+                                    confirmButtonColor: '#005AEC'
+                                }).then(function () {
+                                    window.location.href = "{{ route('dashboard') }}";
+                                });
+                            @else
+                                Swal.fire({
+                                    text: response.success || "Patient mis à jour et affecté avec succès !",
+                                    icon: "success",
+                                    confirmButtonColor: '#005AEC'
+                                }).then(function () {
+                                    location.reload();
+                                });
+                            @endif
                         },
                         error: function (xhr) {
                             $btn.prop('disabled', false).removeClass('opacity-75').html(originalHtml);

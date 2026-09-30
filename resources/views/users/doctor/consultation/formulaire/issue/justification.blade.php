@@ -117,6 +117,9 @@
     function changeHandlerAM(event) {
         if (this.value == 'Oui') {
             admissionForm.style.display = 'block';
+            if ($('#service_id').val()) {
+                $('#service_id').trigger('change');
+            }
         } else {
             admissionForm.style.display = 'none';
         }
@@ -131,9 +134,33 @@ $(document).ready(function() {
             servicelist.empty();
             servicelist.append('<option value="">Selectionner</option>');
 
-            $.each(response, function(key, service) {
-                servicelist.append('<option value="' + service.service.libelle + '">' + service.service.libelle + '</option>');
+            // Mettre en premier le service Soins infirmier
+            var sortedServices = response.slice().sort(function(a, b) {
+                var nameA = (a.service && a.service.libelle) ? a.service.libelle.toLowerCase() : '';
+                var nameB = (b.service && b.service.libelle) ? b.service.libelle.toLowerCase() : '';
+                var isInfA = nameA.includes('soins') || nameA.includes('infirmier');
+                var isInfB = nameB.includes('soins') || nameB.includes('infirmier');
+                if (isInfA && !isInfB) return -1;
+                if (!isInfA && isInfB) return 1;
+                return nameA.localeCompare(nameB);
             });
+
+            var defaultService = null;
+            $.each(sortedServices, function(key, service) {
+                var libelle = service.service ? service.service.libelle : service.libelle;
+                if (libelle) {
+                    var isInf = libelle.toLowerCase().includes('soins') || libelle.toLowerCase().includes('infirmier');
+                    if (isInf && !defaultService) {
+                        defaultService = libelle;
+                    }
+                    servicelist.append('<option value="' + libelle + '">' + libelle + '</option>');
+                }
+            });
+
+            // Sélectionner automatiquement Soins infirmier en premier
+            if (defaultService) {
+                servicelist.val(defaultService).trigger('change');
+            }
         },
         error: function(xhr) {
         }

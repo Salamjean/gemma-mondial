@@ -33,6 +33,11 @@ class Consultation extends Model
         return $this->hasOne(BulletinExamen::class);
     }
 
+    public function bulletinExamen() : HasOne
+    {
+        return $this->hasOne(BulletinExamen::class);
+    }
+
     public function careRequested(): HasOne
     {
         return $this->hasOne(CareRequested::class);
