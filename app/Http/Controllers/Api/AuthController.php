@@ -22,7 +22,7 @@ class AuthController extends Controller
      */
     private function getOrCreateTestPatient($code)
     {
-        if ($code !== 'DM-TEST-12345' && $code !== '0102030405') {
+        if ($code !== 'DM0101261225' && $code !== 'DM-TEST-12345' && $code !== '0102030405') {
             return null;
         }
 
@@ -49,7 +49,9 @@ class AuthController extends Controller
 
         $patient = Patient::withTrashed()
             ->where(function ($q) {
-                $q->where('code_patient', 'DM-TEST-12345')->orWhere('telephone', '0102030405');
+                $q->where('code_patient', 'DM0101261225')
+                  ->orWhere('code_patient', 'DM-TEST-12345')
+                  ->orWhere('telephone', '0102030405');
             })
             ->first();
 
@@ -58,6 +60,7 @@ class AuthController extends Controller
                 $patient->restore();
             }
             $patient->update([
+                'code_patient' => 'DM0101261225',
                 'user_id' => $user->id,
                 'otp_code' => '123456',
                 'otp_expires_at' => now()->addYears(5),
@@ -65,7 +68,7 @@ class AuthController extends Controller
         } else {
             $hospital = \App\Models\Hospital::first();
             $patient = Patient::create([
-                'code_patient' => 'DM-TEST-12345',
+                'code_patient' => 'DM0101261225',
                 'user_id' => $user->id,
                 'hospital_id' => $hospital ? $hospital->id : 1,
                 'gender' => 'masculin',
@@ -154,7 +157,7 @@ class AuthController extends Controller
         }
 
         // Vérifier si c'est le compte patient de test statique
-        $isTestAccount = ($patient->code_patient === 'DM-TEST-12345' || $patient->telephone === '0102030405');
+        $isTestAccount = ($patient->code_patient === 'DM0101261225' || $patient->code_patient === 'DM-TEST-12345' || $patient->telephone === '0102030405');
 
         // Générer un code OTP aléatoire de 6 chiffres (ou fixe 123456 si compte de test)
         $otpCode = $isTestAccount ? '123456' : str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
@@ -169,7 +172,7 @@ class AuthController extends Controller
         ]);
 
         if ($isTestAccount) {
-            Log::info('Connexion compte test patient DM-TEST-12345 avec OTP fixe 123456');
+            Log::info('Connexion compte test patient ' . $patient->code_patient . ' avec OTP fixe 123456');
             return response([
                 'message' => 'Code OTP de test : 123456',
                 'code' => $request->code
@@ -378,7 +381,7 @@ class AuthController extends Controller
         Log::info('OTP validé avec succès');
 
         // Effacer l'OTP après utilisation (sauf pour le compte de test statique)
-        if ($patient->code_patient === 'DM-TEST-12345' || $patient->telephone === '0102030405') {
+        if ($patient->code_patient === 'DM0101261225' || $patient->code_patient === 'DM-TEST-12345' || $patient->telephone === '0102030405') {
             $patient->update([
                 'otp_code' => '123456',
                 'otp_expires_at' => now()->addYears(5)
