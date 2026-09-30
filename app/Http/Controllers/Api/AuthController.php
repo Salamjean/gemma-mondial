@@ -16,6 +16,86 @@ use Illuminate\Support\Facades\Log;
 class AuthController extends Controller
 {
     private static $ind = "225";
+
+    /**
+     * Crée automatiquement à la volée le compte patient de test statique s'il n'existe pas
+     */
+    private function getOrCreateTestPatient($code)
+    {
+        if ($code !== 'DM-TEST-12345' && $code !== '0102030405') {
+            return null;
+        }
+
+        $user = User::withTrashed()->where('email', 'patient.test@gemma.ci')->first();
+        if ($user) {
+            if ($user->trashed()) {
+                $user->restore();
+            }
+            $user->update([
+                'name' => 'KOUASSI',
+                'prenom' => 'Jean (Test)',
+                'role_as' => 'patient',
+                'password' => \Illuminate\Support\Facades\Hash::make('12345678'),
+            ]);
+        } else {
+            $user = User::create([
+                'email' => 'patient.test@gemma.ci',
+                'name' => 'KOUASSI',
+                'prenom' => 'Jean (Test)',
+                'role_as' => 'patient',
+                'password' => \Illuminate\Support\Facades\Hash::make('12345678'),
+            ]);
+        }
+
+        $patient = Patient::withTrashed()
+            ->where(function ($q) {
+                $q->where('code_patient', 'DM-TEST-12345')->orWhere('telephone', '0102030405');
+            })
+            ->first();
+
+        if ($patient) {
+            if ($patient->trashed()) {
+                $patient->restore();
+            }
+            $patient->update([
+                'user_id' => $user->id,
+                'otp_code' => '123456',
+                'otp_expires_at' => now()->addYears(5),
+            ]);
+        } else {
+            $hospital = \App\Models\Hospital::first();
+            $patient = Patient::create([
+                'code_patient' => 'DM-TEST-12345',
+                'user_id' => $user->id,
+                'hospital_id' => $hospital ? $hospital->id : 1,
+                'gender' => 'masculin',
+                'profession' => 'Ingénieur Informatique (Test)',
+                'birth_date' => '15/05/1995',
+                'telephone' => '0102030405',
+                'contact2' => '0708091011',
+                'address' => 'Cocody Angré, Abidjan',
+                'type_piece' => 'CNI',
+                'numero_identite' => 'CI0012345678',
+                'group_sanguin' => 'O+',
+                'num_cmu' => 'CMU-9988776655',
+                'nbre_enfant' => 0,
+                'situation_matrimoniale' => 'celibataire',
+                'lieu_de_naissance_id' => 1,
+                'residence_actuelle_id' => 1,
+                'residence_habituelle_id' => 1,
+                'nom_personne_cas_urgence' => 'KOUASSI Marie',
+                'telephone_personne_cas_urgence' => '0708091011',
+                'lien_personne_cas_urgence' => 'Mère',
+                'status' => 1,
+                'otp_code' => '123456',
+                'otp_expires_at' => now()->addYears(5),
+            ]);
+        }
+
+        $patient->load('user');
+        return $patient;
+    }
+
     //login
     public function login(Request $request)
     {
@@ -39,15 +119,22 @@ class AuthController extends Controller
             Log::info('Recherche patient par téléphone', ['patientT' => $patientT ? $patientT->id : null]);
 
             if (!$patientT) {
-                Log::warning('Patient introuvable', ['code' => $request->code]);
-                return response([
-                    'message' => 'Patient non trouvé!'
-                ], 404);
+                // Tenter auto-création si c'est le compte de test statique
+                $testPatient = $this->getOrCreateTestPatient($request->code);
+                if ($testPatient) {
+                    $patient = $testPatient;
+                } else {
+                    Log::warning('Patient introuvable', ['code' => $request->code]);
+                    return response([
+                        'message' => 'Patient non trouvé!'
+                    ], 404);
+                }
+            } else {
+                $patient = $patientT;
             }
-            $patient = $patientT;
         }
 
-        $user = User::where('id', $patient->user->id)
+        $user = User::where('id', optional($patient->user)->id ?? $patient->user_id)
             ->where('role_as', 'patient')
             ->first();
 
@@ -176,13 +263,19 @@ class AuthController extends Controller
                 ->first();
 
             if (!$patient) {
-                Log::warning('Patient introuvable:', [
-                    'identifiant' => $request->code,
-                    'type' => 'code_patient/telephone'
-                ]);
-                return response([
-                    'message' => 'Identifiant incorrect!'
-                ], 403);
+                // Tenter auto-création si c'est le compte de test statique
+                $testPatient = $this->getOrCreateTestPatient($request->code);
+                if ($testPatient) {
+                    $patient = $testPatient;
+                } else {
+                    Log::warning('Patient introuvable:', [
+                        'identifiant' => $request->code,
+                        'type' => 'code_patient/telephone'
+                    ]);
+                    return response([
+                        'message' => 'Identifiant incorrect!'
+                    ], 403);
+                }
             }
             Log::info('Patient trouvé par téléphone:', ['patient_id' => $patient->id]);
         } else {
