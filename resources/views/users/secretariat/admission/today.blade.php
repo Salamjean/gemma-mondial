@@ -14,7 +14,7 @@
             <br /><br />
             <div class="box-body">
                 <div class="table-responsive">
-                    <table id="example1" class="table table-striped table-hover display nowrap margin-top-10 w-p100">
+                    <table id="admissionTodayTable" class="table table-striped table-hover display nowrap margin-top-10 w-p100">
                         <thead>
                             <tr>
                                 <th class="bb-2">N° Dossier médical</th>
@@ -33,7 +33,7 @@
                           @foreach($admissions as $item)
                                 <tr>
                                   <td><b>{{ $item->patient->code_patient }}</b></td>
-                                  <td>
+                                  <td data-order="{{ $item->created_at ? $item->created_at->format('YmdHis') : str_pad($item->id, 14, '0', STR_PAD_LEFT) }}">
                                     {{ \Carbon\Carbon::parse($item->created_at)->format('d/m/Y') }} -
                                     {{ heureFr($item->created_at) }}
                                   </td>
@@ -59,7 +59,16 @@
                                     </td>
                                 
                                     <td>
-                                        <i>{{ $item->doctor->user->name }}</i>
+                                        @if ($item->doctor && $item->infirmier)
+                                            <div><span class="fw-semibold text-primary"><i class="fa fa-user-md me-1"></i>Dr. {{ $item->doctor->user->name ?? '' }} {{ $item->doctor->user->prenom ?? '' }}</span></div>
+                                            <div class="mt-1"><span class="fw-semibold text-info"><i class="fa fa-user-nurse me-1"></i>Inf. {{ $item->infirmier->user->name ?? '' }} {{ $item->infirmier->user->prenom ?? '' }}</span></div>
+                                        @elseif ($item->doctor)
+                                            <span class="fw-semibold text-primary"><i class="fa fa-user-md me-1"></i>Dr. {{ $item->doctor->user->name ?? '' }} {{ $item->doctor->user->prenom ?? '' }}</span>
+                                        @elseif ($item->infirmier)
+                                            <span class="fw-semibold text-info"><i class="fa fa-user-nurse me-1"></i>Inf. {{ $item->infirmier->user->name ?? '' }} {{ $item->infirmier->user->prenom ?? '' }}</span>
+                                        @else
+                                            <i class="text-muted">Non assigné</i>
+                                        @endif
                                     </td>
                                   
                                     <td class="text-danger fw-bold fs-6">
@@ -91,12 +100,23 @@
                                 </tr>
                           @endforeach
                         </tbody>
-                      </table>
+                    </table>
                 </div>
             </div>
           </div>
         </div>
     </div>
 
-
+    <script>
+        $(document).ready(function() {
+            if ($.fn.DataTable.isDataTable('#admissionTodayTable')) {
+                $('#admissionTodayTable').DataTable().destroy();
+            }
+            $('#admissionTodayTable').DataTable({
+                "order": [[1, "desc"]],
+                "pageLength": 10,
+                "responsive": true
+            });
+        });
+    </script>
 @endsection

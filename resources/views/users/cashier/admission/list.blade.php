@@ -62,15 +62,19 @@
                                         </td>
                                         <td>
                                             @if ($item->type == 'hospitalisation')
-                                                <i>{{ $item->hospitalisation->consultation->doctor->user->name }}</i>
+                                                <span class="fw-semibold text-primary"><i class="fa fa-user-md me-1"></i>Dr. {{ $item->hospitalisation->consultation->doctor->user->name ?? '' }} {{ $item->hospitalisation->consultation->doctor->user->prenom ?? '' }}</span>
                                             @elseif ($item->type == 'admission')
-                                                @if ($item->admission->doctor)
-                                                    <i>{{ $item->admission->doctor->user->name }}</i>
+                                                @if ($item->admission->doctor && $item->admission->infirmier)
+                                                    <div><span class="fw-semibold text-primary"><i class="fa fa-user-md me-1"></i>Dr. {{ $item->admission->doctor->user->name ?? '' }} {{ $item->admission->doctor->user->prenom ?? '' }}</span></div>
+                                                    <div class="mt-1"><span class="fw-semibold text-info"><i class="fa fa-user-nurse me-1"></i>Inf. {{ $item->admission->infirmier->user->name ?? '' }} {{ $item->admission->infirmier->user->prenom ?? '' }}</span></div>
+                                                @elseif ($item->admission->doctor)
+                                                    <span class="fw-semibold text-primary"><i class="fa fa-user-md me-1"></i>Dr. {{ $item->admission->doctor->user->name ?? '' }} {{ $item->admission->doctor->user->prenom ?? '' }}</span>
                                                 @elseif ($item->admission->infirmier)
-                                                    <i>{{ $item->admission->infirmier->user->name }}</i>
+                                                    <span class="fw-semibold text-info"><i class="fa fa-user-nurse me-1"></i>Inf. {{ $item->admission->infirmier->user->name ?? '' }} {{ $item->admission->infirmier->user->prenom ?? '' }}</span>
+                                                @else
+                                                    <i class="text-muted">Non assigné</i>
                                                 @endif
                                             @endif
-
                                         </td>
 
                                         <td>

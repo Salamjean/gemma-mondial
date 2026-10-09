@@ -189,22 +189,42 @@
                     </div>
                     <div>
                         <small class="text-muted fw-bold text-uppercase fs-11 d-block">Personnel en charge</small>
-                        <h5 class="fw-bold text-dark mb-0 fs-16">{{ $praticienName }}</h5>
+                        @if ($admission && $admission->doctor && $admission->infirmier)
+                            <div class="fw-bold text-primary fs-14"><i class="fa-solid fa-user-doctor me-1"></i> Dr. {{ $admission->doctor->user->name ?? '' }} {{ $admission->doctor->user->prenom ?? '' }}</div>
+                            <div class="fw-bold text-info fs-14 mt-1"><i class="fa-solid fa-user-nurse me-1"></i> Inf. {{ $admission->infirmier->user->name ?? '' }} {{ $admission->infirmier->user->prenom ?? '' }}</div>
+                        @elseif ($admission && $admission->doctor)
+                            <h5 class="fw-bold text-dark mb-0 fs-16">Dr. {{ $admission->doctor->user->name ?? '' }} {{ $admission->doctor->user->prenom ?? '' }}</h5>
+                        @elseif ($admission && $admission->infirmier)
+                            <h5 class="fw-bold text-dark mb-0 fs-16">Inf. {{ $admission->infirmier->user->name ?? '' }} {{ $admission->infirmier->user->prenom ?? '' }}</h5>
+                        @else
+                            <h5 class="fw-bold text-dark mb-0 fs-16">{{ $praticienName }}</h5>
+                        @endif
                     </div>
                 </div>
                 <div class="pt-10 border-top">
-                    <div class="d-flex justify-content-between mb-1 fs-13">
-                        <span class="text-muted">Rôle / Spécialité :</span>
-                        <span class="fw-semibold text-dark">{{ $praticienRole }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between mb-1 fs-13">
-                        <span class="text-muted">Matricule :</span>
-                        <span class="fw-semibold font-monospace text-dark">{{ $praticienMatricule }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between fs-13">
-                        <span class="text-muted">Contact :</span>
-                        <span class="fw-semibold text-dark">{{ $praticienContact }}</span>
-                    </div>
+                    @if ($admission && $admission->doctor)
+                        <div class="d-flex justify-content-between mb-1 fs-13">
+                            <span class="text-muted">Médecin :</span>
+                            <span class="fw-semibold text-dark">{{ $admission->doctor->user->name ?? '' }} {{ $admission->doctor->user->prenom ?? '' }}</span>
+                        </div>
+                    @endif
+                    @if ($admission && $admission->infirmier)
+                        <div class="d-flex justify-content-between mb-1 fs-13">
+                            <span class="text-muted">Infirmier(ère) :</span>
+                            <span class="fw-semibold text-dark">{{ $admission->infirmier->user->name ?? '' }} {{ $admission->infirmier->user->prenom ?? '' }}</span>
+                        </div>
+                    @endif
+                    @if ($admission && $admission->doctor && $admission->doctor->contact)
+                        <div class="d-flex justify-content-between fs-13">
+                            <span class="text-muted">Contact Dr :</span>
+                            <span class="fw-semibold text-dark">{{ $admission->doctor->contact }}</span>
+                        </div>
+                    @elseif ($admission && $admission->infirmier && $admission->infirmier->contact)
+                        <div class="d-flex justify-content-between fs-13">
+                            <span class="text-muted">Contact Inf :</span>
+                            <span class="fw-semibold text-dark">{{ $admission->infirmier->contact }}</span>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>

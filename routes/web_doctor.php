@@ -30,6 +30,7 @@ Route::middleware(['auth'])->group(function () {
                 Route::get('history', 'ConsultationController@history')->name('history');
                 //Route::get('detail/{id}', 'ConsultationController@detailconsulation')->name('detailConsul');
                 Route::get('detail/{id}', 'ConsultationController@detail')->name('detail');
+                Route::get('documents/{id}', 'ConsultationController@documents')->name('documents');
                 Route::get('info/{id}', 'ConsultationController@infoPatient')->name('info');
                 Route::get('patient/{id}/card', 'ConsultationController@patientCard')->name('patient.card');
                 //formulaire consultation
@@ -54,9 +55,10 @@ Route::middleware(['auth'])->group(function () {
                     Route::post('laboratoire', 'ConsultationController@storeLaboratoire')->name('laboratoire');
                 });
 
-                // Post-laboratoire & Export PDF
+                // Post-laboratoire & Export PDF & Upload Résultat
                 Route::get('laboratoire/recap/{id}', 'ConsultationController@laboratoireRecap')->name('laboratoire.recap');
                 Route::get('laboratoire/pdf/{id}', 'ConsultationController@laboratoirePdf')->name('laboratoire.pdf');
+                Route::post('laboratoire/upload-resultat/{id}', 'ConsultationController@uploadLaboratoireResultat')->name('laboratoire.upload_resultat');
 
                 //formulaire issue consultation
                 Route::get('formulaire_issue/{title}/{issue}/{id}', 'ConsultationController@formulaireIssue')->name('formulaire.issue');

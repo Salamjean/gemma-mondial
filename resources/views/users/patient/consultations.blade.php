@@ -197,6 +197,54 @@
                                 </div>
                             @endif
 
+                            <!-- Examens de Laboratoire & Résultats -->
+                            @php
+                                $bulletin = $item->examen ?? $item->bulletinExamen;
+                                $examensList = optional($bulletin)->examens ?? [];
+                            @endphp
+                            @if(count($examensList) > 0)
+                                <div>
+                                    <h4 class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                        <span>🔬 Examens de Laboratoire & Résultats :</span>
+                                    </h4>
+                                    <div class="bg-white p-3 rounded-lg border border-gray-200 space-y-2.5">
+                                        @foreach($examensList as $exam)
+                                            @php
+                                                $hasRes = !empty($exam->resultat) || !empty($exam->observation) || $exam->status == 1;
+                                                $fileUrl = $exam->resultat_url ?? (!empty($exam->resultat) ? asset('assets/uploads/analyses/' . $exam->resultat) : null);
+                                            @endphp
+                                            <div class="p-2.5 bg-gray-50 rounded-lg border border-gray-200 text-xs flex flex-col md:flex-row md:items-center justify-between gap-2">
+                                                <div class="space-y-1">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="font-bold text-gray-900">• {{ $exam->libelle }}</span>
+                                                        @if($hasRes)
+                                                            <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Résultat disponible</span>
+                                                        @else
+                                                            <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">En attente d'analyse</span>
+                                                        @endif
+                                                    </div>
+                                                    @if($exam->valeur)
+                                                        <div class="text-gray-700"><b>Valeur :</b> {{ $exam->valeur }}</div>
+                                                    @endif
+                                                    @if($exam->observation)
+                                                        <div class="text-gray-700 bg-white p-1.5 rounded border border-gray-200">
+                                                            <b>Observation médicale :</b> {{ $exam->observation }}
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                                @if($fileUrl)
+                                                    <div>
+                                                        <a href="{{ $fileUrl }}" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded font-bold text-xs shadow-sm">
+                                                            📥 Télécharger Compte-Rendu
+                                                        </a>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+
                             @if($issueMsg)
                                 <div>
                                     <span class="text-xs font-bold text-gray-500 uppercase tracking-wider block">Remarque du médecin :</span>

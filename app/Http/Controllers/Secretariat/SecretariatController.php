@@ -37,12 +37,12 @@ class SecretariatController extends Controller
 
         $availability = $doctor->user->availability;
         if (!$availability || empty($availability->days)) {
-            return false;
+            return true; // Par défaut disponible si non restreint
         }
 
         $days = json_decode($availability->days, true);
         if (!is_array($days) || empty($days)) {
-            return false;
+            return true;
         }
 
         $days = array_map('strval', $days);
@@ -56,53 +56,7 @@ class SecretariatController extends Controller
             || in_array($currentDayOfWeek, $days, true)
             || in_array($currentDayOfWeekIso, $days, true);
 
-        if (!$isToday) {
-            return false;
-        }
-
-        $dayIndex = intval($currentDayZeroMon); // 0 pour Lundi, ..., 6 pour Dimanche
-
-        $startTimes = json_decode($availability->hour_start, true);
-        $endTimes = json_decode($availability->hour_end, true);
-
-        $startTime = '00:00';
-        $endTime = '23:59';
-
-        if (is_array($startTimes)) {
-            if (isset($startTimes[$dayIndex]) && !empty($startTimes[$dayIndex])) {
-                $startTime = $startTimes[$dayIndex];
-            } elseif (isset($startTimes[0])) {
-                $startTime = $startTimes[0];
-            }
-        } elseif (!empty($availability->hour_start)) {
-            $startTime = $availability->hour_start;
-        }
-
-        if (is_array($endTimes)) {
-            if (isset($endTimes[$dayIndex]) && !empty($endTimes[$dayIndex])) {
-                $endTime = $endTimes[$dayIndex];
-            } elseif (isset($endTimes[0])) {
-                $endTime = $endTimes[0];
-            }
-        } elseif (!empty($availability->hour_end)) {
-            $endTime = $availability->hour_end;
-        }
-
-        if (empty($startTime) || $startTime === '00:00') {
-            $startTime = '00:00';
-        }
-        if (empty($endTime) || $endTime === '00:00') {
-            $endTime = '23:59';
-        }
-
-        $currentTime = $now->format('H:i');
-        $startFormatted = strlen($startTime) >= 5 ? substr($startTime, 0, 5) : '00:00';
-        $endFormatted = strlen($endTime) >= 5 ? substr($endTime, 0, 5) : '23:59';
-
-        // Marge de 30 minutes avant le début du créneau
-        $startCarbon = \Carbon\Carbon::createFromFormat('H:i', $startFormatted)->subMinutes(30)->format('H:i');
-
-        return ($currentTime >= $startCarbon && $currentTime <= $endFormatted);
+        return $isToday;
     }
 
     private function getCurrentHospitalId()
@@ -119,17 +73,57 @@ class SecretariatController extends Controller
     public function getDoctors($prestations)
     {
         $hospitalId = $this->getCurrentHospitalId();
-        $doctors = PrestationDoctor::whereHas('doctor', function ($q) use ($hospitalId) {
+
+        // 1. Chercher les médecins liés à la prestation
+        $prestationDoctors = PrestationDoctor::whereHas('doctor', function ($q) use ($hospitalId) {
             if ($hospitalId) {
                 $q->where('hospital_id', $hospitalId);
             }
         })->with(['doctor.user.availability', 'prestationHospital.prestationService'])
         ->where('prestation_hospital_id', $prestations)
-        ->get()
-        ->filter(function ($pd) {
-            return $this->isDoctorCurrentlyAvailable($pd->doctor);
-        })->values();
-        return response()->json($doctors);
+        ->get();
+
+        if ($prestationDoctors->isNotEmpty()) {
+            return response()->json($prestationDoctors);
+        }
+
+        // 2. Si aucun médecin n'est configuré dans PrestationDoctor, chercher par le service hospitalier
+        $prestationHopital = PrestationHospital::with(['serviceHospital', 'prestationService'])->find($prestations);
+        if ($prestationHopital) {
+            $serviceHospitalId = $prestationHopital->service_hospital_id;
+            $hId = $hospitalId ?: $prestationHopital->hospital_id;
+
+            $doctors = Doctor::where('hospital_id', $hId)
+                ->where(function ($q) use ($serviceHospitalId, $prestationHopital) {
+                    $q->where('service_hospital_id', $serviceHospitalId)
+                      ->orWhereHas('serviceHospital.service', function ($sq) use ($prestationHopital) {
+                          $servName = optional($prestationHopital->prestationService)->libelle ?? '';
+                          $sq->where('libelle', 'LIKE', "%{$servName}%");
+                      });
+                })
+                ->with(['user.availability', 'serviceHospital.service'])
+                ->get();
+
+            if ($doctors->isEmpty()) {
+                // Fallback: tous les médecins de l'établissement
+                $doctors = Doctor::where('hospital_id', $hId)
+                    ->with(['user.availability', 'serviceHospital.service'])
+                    ->get();
+            }
+
+            $formatted = $doctors->map(function ($doc) use ($prestations) {
+                return [
+                    'id' => $doc->id,
+                    'doctor_id' => $doc->id,
+                    'prestation_hospital_id' => $prestations,
+                    'doctor' => $doc,
+                ];
+            });
+
+            return response()->json($formatted);
+        }
+
+        return response()->json([]);
     }
     public function getPrestations($service)
     {
@@ -376,9 +370,16 @@ class SecretariatController extends Controller
             });
         }
 
-        $medecins = $query->get()->filter(function ($doctor) {
-            return $this->isDoctorCurrentlyAvailable($doctor);
-        })->values();
+        $medecins = $query->get();
+
+        // Si aucun médecin pour ce service spécifique, fallback sur les médecins de l'établissement (sauf si soins infirmiers)
+        if ($medecins->isEmpty() && (!$request->filled('service_name') || !preg_match('/infirmier|soin/i', $request->service_name))) {
+            $medecins = Doctor::with(['user.availability', 'serviceHospital.service'])
+                ->when($hospitalId, function ($q) use ($hospitalId) {
+                    $q->where('hospital_id', $hospitalId);
+                })
+                ->get();
+        }
 
         return response()->json(['medecins' => $medecins]);
     }

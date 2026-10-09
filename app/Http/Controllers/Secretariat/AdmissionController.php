@@ -31,7 +31,7 @@ class AdmissionController extends Controller
     public function list()
     {
         $hospitalId = $this->getHospitalId();
-        $query = Admission::orderByDESC("created_at")->with('patient.user', 'doctor.user', 'typeExamen');
+        $query = Admission::orderByDESC("created_at")->with('patient.user', 'doctor.user', 'infirmier.user', 'typeExamen');
 
         if ($hospitalId) {
             $query->where('hospital_id', $hospitalId);
@@ -51,7 +51,7 @@ class AdmissionController extends Controller
         $hospitalId = $this->getHospitalId();
         $query = Admission::orderByDESC("created_at")
             ->whereDate('created_at', $today)
-            ->with('patient.user', 'doctor.user', 'cashier.user');
+            ->with('patient.user', 'doctor.user', 'infirmier.user', 'cashier.user');
 
         if ($hospitalId) {
             $query->where('hospital_id', $hospitalId);
@@ -68,7 +68,7 @@ class AdmissionController extends Controller
     public function history()
     {
         $hospitalId = $this->getHospitalId();
-        $query = Admission::orderByDESC("created_at")->with('patient.user', 'doctor.user', 'cashier.user');
+        $query = Admission::orderByDesc("created_at")->orderByDesc("id")->with(['patient.user', 'doctor.user', 'cashier.user', 'infirmier.user', 'prestationHospital.prestationService']);
 
         if ($hospitalId) {
             $query->where('hospital_id', $hospitalId);

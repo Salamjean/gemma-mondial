@@ -47,7 +47,7 @@ class ConsultationController extends Controller
             ->whereNull('call_channel')
             ->where(function ($q) {
                 $q->whereNull('orientation_infirmier')
-                  ->orWhere('orientation_infirmier', '');
+                    ->orWhere('orientation_infirmier', '');
             })
             ->get();
 
@@ -63,26 +63,35 @@ class ConsultationController extends Controller
     public function formulaire($id)
     {
         $consultation = Consultation::with([
-            'patient.user', 
-            'patient.residenceActuelle', 
-            'prestationHospital.prestationService.service', 
+            'patient.user',
+            'patient.residenceActuelle',
+            'prestationHospital.prestationService.service',
             'admission.patient.user',
             'admission.prestationHospital.prestationService.service',
-            'doctor.serviceHospital.service'
+            'doctor.serviceHospital.service',
+            'registre.registreConsultationCurative',
+            'registre.registreConsultationPreNatale',
+            'registre.registreConsultationPostNatale',
+            'registre.registreAccouchement',
+            'bulletinExamen.examens',
+            'ordonnances.lignes',
+            'arret',
+            'examen',
+            'declaration'
         ])->findOrFail($id);
 
         // Déclencher l'annonce en salle d'attente (Écran TV H24 de l'hôpital)
         $this->triggerPatientCall($consultation);
 
-        $prestationService = optional($consultation->prestationHospital)->prestationService 
+        $prestationService = optional($consultation->prestationHospital)->prestationService
             ?? optional(optional($consultation->admission)->prestationHospital)->prestationService;
-        $service = optional($prestationService)->service 
+        $service = optional($prestationService)->service
             ?? optional(optional($consultation->doctor)->serviceHospital)->service;
 
         $serviceLibelle = strtolower(trim(($service->libelle ?? '') . ' ' . ($prestationService->libelle ?? '')));
 
-        $prestationServiceId = optional($consultation->prestationHospital)->prestation_service_id 
-            ?? optional(optional($consultation->admission)->prestationHospital)->prestation_service_id 
+        $prestationServiceId = optional($consultation->prestationHospital)->prestation_service_id
+            ?? optional(optional($consultation->admission)->prestationHospital)->prestation_service_id
             ?? 1;
 
         try {
@@ -98,6 +107,21 @@ class ConsultationController extends Controller
         if (str_contains($serviceLibelle, 'laboratoire') || str_contains($serviceLibelle, 'labo') || str_contains($serviceLibelle, 'analyse') || request('type') === 'laboratoire' || $type === 'laboratoire') {
             $type = 'laboratoire';
             $title = "Formulaire de demande d'examen - Laboratoire";
+
+            // Si le résultat de l'analyse a déjà été renseigné, la consultation ne peut plus être modifiée
+            $hasResultat = false;
+            if ($consultation->bulletinExamen && $consultation->bulletinExamen->examens) {
+                foreach ($consultation->bulletinExamen->examens as $ex) {
+                    if (!empty($ex->resultat)) {
+                        $hasResultat = true;
+                        break;
+                    }
+                }
+            }
+            if ($hasResultat) {
+                return redirect()->route('doctor.consultation.laboratoire.recap', $id)
+                    ->with('warning', 'Le résultat d\'analyse de laboratoire a déjà été enregistré et validé pour cette consultation. La demande ne peut plus être modifiée.');
+            }
         }
 
         $hospitalId = Auth::user()->doctor->hospital_id ?? optional($consultation->hospital)->id ?? Auth::user()->hospital_id;
@@ -161,10 +185,10 @@ class ConsultationController extends Controller
             $doctorUser = optional($doctor)->user ?? Auth::user();
             $doctorName = 'Dr. ' . trim(($doctorUser->name ?? '') . ' ' . ($doctorUser->prenom ?? ''));
 
-            $serviceName = optional(optional(optional($consultation->prestationHospital)->prestationService)->service)->libelle 
-                ?? optional(optional($consultation->prestationHospital)->prestationService)->libelle 
+            $serviceName = optional(optional(optional($consultation->prestationHospital)->prestationService)->service)->libelle
+                ?? optional(optional($consultation->prestationHospital)->prestationService)->libelle
                 ?? 'Consultation médicale';
-            
+
             $cabinet = 'Cabinet de ' . $serviceName;
 
             $hospitalId = $consultation->hospital_id ?? optional($doctor)->hospital_id ?? Auth::user()->hospital_id;
@@ -209,9 +233,12 @@ class ConsultationController extends Controller
     public function onlinePatientInfo($id)
     {
         $consultation = Consultation::with([
-            'patient.user', 'patient.residenceActuelle',
-            'admission.patient.user', 'admission.infirmier.user',
-            'infirmier.user', 'registre.registreConsultationCurative'
+            'patient.user',
+            'patient.residenceActuelle',
+            'admission.patient.user',
+            'admission.infirmier.user',
+            'infirmier.user',
+            'registre.registreConsultationCurative'
         ])->findOrFail($id);
 
         $patient = $consultation->patient ?? optional($consultation->admission)->patient;
@@ -234,12 +261,12 @@ class ConsultationController extends Controller
 
         $reg = optional($consultation->registre)->registreConsultationCurative;
         $gender = optional($patient)->gender ?? 'masculin';
-        $avatar = optional($patient)->img_url 
-            ? asset('assets/uploads/patient/' . $patient->img_url) 
+        $avatar = optional($patient)->img_url
+            ? asset('assets/uploads/patient/' . $patient->img_url)
             : ($gender == 'masculin' ? asset('assets/images/avatar/6.png') : asset('assets/images/avatar/2.png'));
 
-        $infirmierName = optional(optional($consultation->infirmier)->user)->name 
-            ?? optional(optional(optional($consultation->admission)->infirmier)->user)->name 
+        $infirmierName = optional(optional($consultation->infirmier)->user)->name
+            ?? optional(optional(optional($consultation->admission)->infirmier)->user)->name
             ?? 'Non renseigné';
 
         // Médicaments pour prescription
@@ -279,40 +306,40 @@ class ConsultationController extends Controller
 
         return response()->json([
             'patient_id' => optional($patient)->id,
-            'name'       => $name,
-            'code'       => optional($patient)->code_patient ?? 'N/A',
-            'avatar'     => $avatar,
+            'name' => $name,
+            'code' => optional($patient)->code_patient ?? 'N/A',
+            'avatar' => $avatar,
             'birth_date' => $birthDate,
-            'age'        => $age,
-            'gender'     => $gender,
-            'residence'  => optional(optional($patient)->residenceActuelle)->name ?? 'Non renseigné',
+            'age' => $age,
+            'gender' => $gender,
+            'residence' => optional(optional($patient)->residenceActuelle)->name ?? 'Non renseigné',
             'profession' => optional($patient)->profession ?? 'Non renseignée',
-            'phone'      => optional($patient)->telephone ?? 'Non renseigné',
-            'assurance'  => optional($patient)->no_assurance ?? 'Non renseigné',
-            'infirmier'  => $infirmierName,
+            'phone' => optional($patient)->telephone ?? 'Non renseigné',
+            'assurance' => optional($patient)->no_assurance ?? 'Non renseigné',
+            'infirmier' => $infirmierName,
             'patient_detail_url' => optional($patient)->id ? route('doctor.patient.detail', $patient->id) : '',
-            'motif'      => $consultation->motif_consultation
-                            ?? optional($consultation->admission)->motif_consultation
-                            ?? optional($reg)->motif_consultation ?? '',
-            'poids'      => $consultation->poids ?? optional($reg)->poids ?? '',
-            'taille'     => $consultation->taille ?? optional($reg)->taille ?? '',
-            'imc'        => $consultation->imc ?? optional($reg)->imc ?? '',
-            'ta'         => $consultation->tension_arterielle ?? optional($reg)->ta ?? '',
-            'pouls'      => $consultation->pouls ?? optional($reg)->pouls ?? '',
-            'temperature'=> $consultation->temperature ?? optional($reg)->temperature ?? '',
+            'motif' => $consultation->motif_consultation
+                ?? optional($consultation->admission)->motif_consultation
+                ?? optional($reg)->motif_consultation ?? '',
+            'poids' => $consultation->poids ?? optional($reg)->poids ?? '',
+            'taille' => $consultation->taille ?? optional($reg)->taille ?? '',
+            'imc' => $consultation->imc ?? optional($reg)->imc ?? '',
+            'ta' => $consultation->tension_arterielle ?? optional($reg)->ta ?? '',
+            'pouls' => $consultation->pouls ?? optional($reg)->pouls ?? '',
+            'temperature' => $consultation->temperature ?? optional($reg)->temperature ?? '',
             'saturation_oxygene' => $consultation->saturation_oxygene ?? optional($reg)->saturation_oxygene ?? '',
             'frequence_respiratoire' => optional($reg)->frequence_respiratoire ?? '',
             'perimetre_brachial' => $consultation->perimetre_brach ?? optional($reg)->perimetre_brachial ?? '',
             'perimetre_cranien' => optional($reg)->perimetre_cranien ?? '',
-            'zscore'     => optional($reg)->zcore ?? '',
-            'ordre_no'   => '0' . (function_exists('noOrdreConsultation') ? noOrdreConsultation() : '1'),
+            'zscore' => optional($reg)->zcore ?? '',
+            'ordre_no' => '0' . (function_exists('noOrdreConsultation') ? noOrdreConsultation() : '1'),
             'date_du_jour' => \Carbon\Carbon::now()->format('d/m/Y'),
             // Antécédents existants
-            'hta'        => optional($reg)->hta ?? '',
-            'diabete'    => optional($reg)->diabete ?? '',
-            'tabac'      => optional($reg)->tabac ?? '',
-            'alcool'     => optional($reg)->alcool ?? '',
-            'ugd'        => optional($reg)->UGD ?? '',
+            'hta' => optional($reg)->hta ?? '',
+            'diabete' => optional($reg)->diabete ?? '',
+            'tabac' => optional($reg)->tabac ?? '',
+            'alcool' => optional($reg)->alcool ?? '',
+            'ugd' => optional($reg)->UGD ?? '',
             'drepanocytaire' => optional($reg)->drepanocytaire ?? '',
             'traitement_medicamenteux' => optional($reg)->traitement_medicamenteux ?? '',
             'traitement_medicamenteux_anterieur' => optional($reg)->traitement_medicamenteux_anterieur ?? '',
@@ -322,9 +349,9 @@ class ConsultationController extends Controller
             'nom_operation' => optional($reg)->nom_operation ?? '',
             'autre_antecedent_chirurgical' => optional($reg)->autre_antecedent_chirurgical ?? '',
             'en_cours_de_grossesse' => optional($reg)->en_cours_de_grossesse ?? '',
-            'ddr'        => optional($reg)->ddr ?? '',
+            'ddr' => optional($reg)->ddr ?? '',
             'description_grossesse' => optional($reg)->description_grossesse ?? '',
-            'tuberculose'=> optional($reg)->tuberculose ?? '',
+            'tuberculose' => optional($reg)->tuberculose ?? '',
             'autre_examen_clinique' => optional($reg)->autre_examen_clinique ?? '',
             'examen_physique' => optional($reg)->examen_physique ?? '',
             'diagnostic_retenu' => optional($reg)->diagnostic_retenu ?? '',
@@ -376,17 +403,28 @@ class ConsultationController extends Controller
         $patient = $consultation->patient;
 
         // Mise à jour constantes existantes sur la table consultations
-        if ($request->filled('poids')) $consultation->poids = $getStr('poids');
-        if ($request->filled('taille')) $consultation->taille = $getStr('taille');
-        if ($request->filled('imc')) $consultation->imc = $getStr('imc');
-        if ($request->filled('temperature')) $consultation->temperature = $getStr('temperature');
-        if ($request->filled('ta')) $consultation->tension_arterielle = $getStr('ta');
-        if ($request->filled('pouls')) $consultation->pouls = $getStr('pouls');
-        if ($request->filled('saturation_oxygene')) $consultation->saturation_oxygene = $getStr('saturation_oxygene');
-        if ($request->filled('perimetre_brachial')) $consultation->perimetre_brach = $getStr('perimetre_brachial');
-        if ($request->filled('glycemie_a_jeun')) $consultation->gly_a_jeun = $getStr('glycemie_a_jeun');
-        if ($request->filled('glycemie_non_a_jeun')) $consultation->gly_nn_jeun = $getStr('glycemie_non_a_jeun');
-        if ($request->filled('motif_consultation')) $consultation->motif_consultation = $getStr('motif_consultation');
+        if ($request->filled('poids'))
+            $consultation->poids = $getStr('poids');
+        if ($request->filled('taille'))
+            $consultation->taille = $getStr('taille');
+        if ($request->filled('imc'))
+            $consultation->imc = $getStr('imc');
+        if ($request->filled('temperature'))
+            $consultation->temperature = $getStr('temperature');
+        if ($request->filled('ta'))
+            $consultation->tension_arterielle = $getStr('ta');
+        if ($request->filled('pouls'))
+            $consultation->pouls = $getStr('pouls');
+        if ($request->filled('saturation_oxygene'))
+            $consultation->saturation_oxygene = $getStr('saturation_oxygene');
+        if ($request->filled('perimetre_brachial'))
+            $consultation->perimetre_brach = $getStr('perimetre_brachial');
+        if ($request->filled('glycemie_a_jeun'))
+            $consultation->gly_a_jeun = $getStr('glycemie_a_jeun');
+        if ($request->filled('glycemie_non_a_jeun'))
+            $consultation->gly_nn_jeun = $getStr('glycemie_non_a_jeun');
+        if ($request->filled('motif_consultation'))
+            $consultation->motif_consultation = $getStr('motif_consultation');
         $consultation->status = 1;
         $consultation->save();
 
@@ -513,7 +551,8 @@ class ConsultationController extends Controller
                 $advices = (array) $request->input('healthDieteticAdvice', []);
 
                 foreach ($medCodes as $index => $item) {
-                    if (empty($item)) continue;
+                    if (empty($item))
+                        continue;
                     $drug = \App\Models\Drug::find($item);
 
                     $prescription = new \App\Models\Prescription();
@@ -560,7 +599,8 @@ class ConsultationController extends Controller
 
                 $price = 0;
                 foreach ($medCodesI as $index => $item) {
-                    if (empty($item)) continue;
+                    if (empty($item))
+                        continue;
                     $drug = \App\Models\DrugHospital::find($item);
 
                     $prescription = new \App\Models\Prescription();
@@ -607,7 +647,8 @@ class ConsultationController extends Controller
                 ]);
 
                 foreach ($natureExamen as $exams) {
-                    if (empty($exams)) continue;
+                    if (empty($exams))
+                        continue;
                     \App\Models\Examen::create([
                         'code_examen' => codeExamen($patient->code_patient, $patient->id),
                         'bulletin_examen_id' => $bulletin->id,
@@ -674,59 +715,113 @@ class ConsultationController extends Controller
             'consultation_id' => 'required|exists:consultations,id',
         ]);
 
-        $consultation = Consultation::with(['patient.user', 'hospital'])->findOrFail($request->consultation_id);
+        $consultation = Consultation::with(['patient.user', 'hospital', 'bulletinExamen.examens'])->findOrFail($request->consultation_id);
         $patient = $consultation->patient ?? optional($consultation->admission)->patient;
+
+        // Protection : si le résultat est déjà renseigné, interdire la réécriture
+        if ($consultation->bulletinExamen && $consultation->bulletinExamen->examens) {
+            foreach ($consultation->bulletinExamen->examens as $ex) {
+                if (!empty($ex->resultat)) {
+                    return redirect()->route('doctor.consultation.laboratoire.recap', $consultation->id)
+                        ->with('error', 'Impossible de modifier cette demande : le résultat d\'analyse a déjà été enregistré.');
+                }
+            }
+        }
 
         // Récupération des examens cochés dans toutes les catégories
         $selectedExams = (array) $request->input('examens', []);
 
         // Examens de profil spécifiques s'il y en a
         foreach ((array) $request->input('examens_profil', []) as $prof) {
-            if (!empty($prof)) $selectedExams[] = "Profil d'examen : " . $prof;
+            if (!empty($prof))
+                $selectedExams[] = "Profil d'examen : " . $prof;
         }
 
         // Examens de biochimie
         foreach ((array) $request->input('examens_biochimie', []) as $bio) {
-            if (!empty($bio)) $selectedExams[] = "Biochimie : " . $bio;
+            if (!empty($bio))
+                $selectedExams[] = "Biochimie : " . $bio;
         }
 
         // Examens d'hématologie
         foreach ((array) $request->input('examens_hematologie', []) as $hem) {
-            if (!empty($hem)) $selectedExams[] = "Hématologie : " . $hem;
+            if (!empty($hem))
+                $selectedExams[] = "Hématologie : " . $hem;
         }
 
         // Examens de microbiologie
         foreach ((array) $request->input('examens_microbiologie', []) as $mic) {
-            if (!empty($mic)) $selectedExams[] = "Microbiologie : " . $mic;
+            if (!empty($mic))
+                $selectedExams[] = "Microbiologie : " . $mic;
         }
 
         // Examens d'anapath
         foreach ((array) $request->input('examens_anapath', []) as $ana) {
             $site = $request->input('anapath_site') ? ' (Site: ' . $request->input('anapath_site') . ')' : '';
-            if (!empty($ana)) $selectedExams[] = "Anatomo-pathologie : " . $ana . $site;
+            if (!empty($ana))
+                $selectedExams[] = "Anatomo-pathologie : " . $ana . $site;
         }
 
         // Cytologie cervicale
         foreach ((array) $request->input('cytologie_type', []) as $cyto) {
-            $sites = !empty($request->input('cytologie_site')) ? ' [Sites: ' . implode(', ', (array)$request->input('cytologie_site')) . ']' : '';
+            $sites = !empty($request->input('cytologie_site')) ? ' [Sites: ' . implode(', ', (array) $request->input('cytologie_site')) . ']' : '';
             $selectedExams[] = "Cytologie cervicale : " . $cyto . $sites;
         }
 
-        // Examens supplémentaires textuels
-        if ($request->filled('examens_supplementaires')) {
-            $lines = preg_split('/[\r\n]+/', trim($request->examens_supplementaires));
-            foreach ($lines as $line) {
-                $line = trim($line);
-                if (!empty($line)) {
-                    $selectedExams[] = "Examen complémentaire : " . $line;
+        // Examens supplémentaires textuels : ils sont conservés dans les métadonnées et affichés dans leur carte dédiée
+        // et ne sont plus mélangés dans le tableau principal des examens de laboratoire.
+
+        // Échantillons, quantités et types
+        $rawTypes = (array) $request->input('type_echantillon', []);
+        $rawQuantites = (array) $request->input('quantite_echantillon', []);
+
+        $sampleLabels = [
+            'sang' => 'Sang',
+            'urine' => 'Urine',
+            'ecouvillon' => 'Écouvillon',
+            'tissu' => 'Tissu',
+            'feces' => 'Fèces',
+            'pus' => 'Pus',
+            'liquides' => 'Liquides',
+            'cytologie' => 'Cytologie',
+        ];
+
+        $echantillonsDetails = [];
+        $recordedKeys = [];
+
+        // 1. Traitement des types cochés
+        foreach ($rawTypes as $typeVal) {
+            $slug = \Illuminate\Support\Str::slug($typeVal);
+            $qty = $rawQuantites[$typeVal] ?? $rawQuantites[$slug] ?? null;
+            if (empty($qty)) {
+                foreach ($rawQuantites as $k => $v) {
+                    if (\Illuminate\Support\Str::slug($k) === $slug) {
+                        $qty = $v;
+                        break;
+                    }
                 }
+            }
+            $qtyStr = !empty(trim($qty)) ? ' (Quantité : ' . trim($qty) . ')' : '';
+            $echantillonsDetails[] = $typeVal . $qtyStr;
+            $recordedKeys[$slug] = true;
+        }
+
+        // 2. Traitement des quantités saisies même si la case n'a pas été explicitement cochée
+        foreach ($rawQuantites as $k => $v) {
+            $slug = \Illuminate\Support\Str::slug($k);
+            if (!empty(trim($v)) && $slug !== 'autre' && !isset($recordedKeys[$slug])) {
+                $label = $sampleLabels[$slug] ?? ucfirst($k);
+                $echantillonsDetails[] = $label . ' (Quantité : ' . trim($v) . ')';
+                $recordedKeys[$slug] = true;
             }
         }
 
-        // Échantillon et condition
-        $echantillons = (array) $request->input('type_echantillon', []);
+        // 3. Autre prélèvement
         if ($request->filled('echantillon_autre')) {
-            $echantillons[] = $request->input('echantillon_autre');
+            $autreName = trim($request->input('echantillon_autre'));
+            $qtyAutre = $rawQuantites['autre'] ?? $rawQuantites['Autre'] ?? null;
+            $qtyAutreStr = !empty(trim($qtyAutre)) ? ' (Quantité : ' . trim($qtyAutre) . ')' : '';
+            $echantillonsDetails[] = $autreName . $qtyAutreStr;
         }
 
         // Si aucun examen coché, mettre un libellé par défaut
@@ -759,8 +854,33 @@ class ConsultationController extends Controller
             ]);
         }
 
+        // Sauvegarde des métadonnées complètes pour le récapitulatif et le dossier
+        $laboMetadata = [
+            'date_reception' => $request->input('date_reception', date('Y-m-d')),
+            'urgence' => $request->input('urgence', 'Normal'),
+            'date_prelevement' => $request->input('date_prelevement', date('Y-m-d')),
+            'heure_prelevement' => $request->input('heure_prelevement', date('H:i')),
+            'a_jeun' => $request->input('a_jeun', 'A jeun'),
+            'echantillons' => $echantillonsDetails,
+            'quantites' => $rawQuantites,
+            'echantillon_autre' => $request->input('echantillon_autre'),
+            'traitement_medicamenteux' => $request->input('traitement_medicamenteux'),
+            'derniere_dose' => $request->input('derniere_dose'),
+            'derniere_dose_date' => $request->input('derniere_dose_date'),
+            'derniere_dose_heure' => $request->input('derniere_dose_heure'),
+            'motif_clinique' => $request->input('autres_infos_cliniques'),
+            'anapath_site' => $request->input('anapath_site'),
+            'examens_supplementaires' => $request->input('examens_supplementaires'),
+            'demandeur_nom' => $request->input('demandeur_nom'),
+            'demandeur_organisation' => $request->input('demandeur_organisation'),
+            'demandeur_adresse' => $request->input('demandeur_adresse'),
+            'demandeur_telephone' => $request->input('demandeur_telephone'),
+            'mode_sortie' => $request->input('mode_sortie', 'sortie'),
+        ];
+
         // Clôture de la consultation courante
         $consultation->status = 1;
+        $consultation->observation_infirmiere = json_encode($laboMetadata, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($request->filled('autres_infos_cliniques')) {
             $consultation->motif_consultation = $request->autres_infos_cliniques;
         }
@@ -779,7 +899,7 @@ class ConsultationController extends Controller
         if ($modeSortie === 'affecter-infirmier' && $request->filled('affectation_infirmier_id')) {
             $infirmierId = $request->input('affectation_infirmier_id');
             $instructions = $request->input('instructions_infirmier', 'Soins / Prélèvements suite examen de laboratoire');
-            
+
             $nbConsult = \App\Models\Consultation::where('patient_id', optional($patient)->id)->count();
             $newConsult = new \App\Models\Consultation();
             $newConsult->date_consultation = date('Y-m-d');
@@ -809,7 +929,7 @@ class ConsultationController extends Controller
             $justification = "Patient orienté vers l'infirmerie ({$infName}) : {$instructions}";
             $messageDetail .= " — Patient affecté à {$infName} pour soins/prélèvement.";
 
-        // 2. Affectation à un Médecin
+            // 2. Affectation à un Médecin
         } elseif ($modeSortie === 'affecter-medecin' && $request->filled('affectation_doctor_id')) {
             $targetDoctorId = $request->input('affectation_doctor_id');
             $noteMedecin = $request->input('note_transmission_medecin', 'Avis / Prise en charge suite examen de laboratoire');
@@ -834,7 +954,7 @@ class ConsultationController extends Controller
             $justification = "Patient référé au {$docName} : {$noteMedecin}";
             $messageDetail .= " — Patient réorienté vers {$docName}.";
 
-        // 3. Hospitalisation / Observation
+            // 3. Hospitalisation / Observation
         } elseif ($modeSortie === 'hospitalisation' || $modeSortie === 'observation') {
             $justification = ($modeSortie === 'hospitalisation' ? 'Hospitalisation requise' : 'Mise en observation requise') . ($request->filled('motif_hospitalisation') ? ' : ' . $request->motif_hospitalisation : '');
             $messageDetail .= " — Mode d'issue : " . ($modeSortie === 'hospitalisation' ? 'Hospitalisation' : 'Mise en observation') . ".";
@@ -903,6 +1023,52 @@ class ConsultationController extends Controller
         $response->header('Content-Disposition', "inline; filename=\"{$filename}\"");
 
         return $response;
+    }
+
+    /**
+     * Upload et enregistrement du résultat d'analyse de laboratoire
+     */
+    public function uploadLaboratoireResultat(Request $request, $id)
+    {
+        $request->validate([
+            'fichier_resultat' => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:20480',
+            'commentaire_resultat' => 'nullable|string|max:5000',
+        ]);
+
+        $consultation = Consultation::with('bulletinExamen.examens')->findOrFail($id);
+        $bulletin = $consultation->bulletinExamen;
+
+        $filename = null;
+        if ($request->hasFile('fichier_resultat')) {
+            $file = $request->file('fichier_resultat');
+            $uploadDirectory = public_path('assets/uploads/analyses/');
+            if (!\Illuminate\Support\Facades\File::exists($uploadDirectory)) {
+                \Illuminate\Support\Facades\File::makeDirectory($uploadDirectory, 0755, true);
+            }
+            $ext = strtolower($file->getClientOriginalExtension());
+            $filename = 'resultat_labo_' . $consultation->id . '_' . time() . '.' . $ext;
+            $file->move($uploadDirectory, $filename);
+        }
+
+        $commentaire = $request->input('commentaire_resultat');
+
+        if ($bulletin) {
+            foreach ($bulletin->examens as $exam) {
+                if ($filename) {
+                    $exam->resultat = $filename;
+                }
+                if ($commentaire !== null) {
+                    $exam->observation = $commentaire;
+                }
+                if ($filename || !empty($commentaire)) {
+                    $exam->status = 1; // Marqué comme disponible / effectué
+                }
+                $exam->save();
+            }
+        }
+
+        return redirect()->back()
+            ->with('success', 'Le résultat et la note d\'analyse de laboratoire ont été enregistrés avec succès !');
     }
 
 
@@ -1191,6 +1357,30 @@ class ConsultationController extends Controller
 
         return view('users.doctor.consultation.detail', compact('consultation', 'ordonnance'));
     }
+
+    public function documents($id)
+    {
+        $consultation = Consultation::with([
+            'patient.user',
+            'patient.residenceActuelle',
+            'doctor.user',
+            'doctor.serviceHospital.service',
+            'infirmier.user',
+            'hospital',
+            'prestationHospital.prestationService',
+            'admission.prestationHospital.prestationService',
+            'registre',
+            'bulletinExamen.examens',
+            'ordonnances.prescriptions.drug',
+            'ordonnances.prescriptions.drugHospital.drug',
+            'arret',
+            'declaration',
+            'hospitalisation'
+        ])->findOrFail($id);
+
+        return view('users.doctor.consultation.documents', compact('consultation'));
+    }
+
     public function infoPatient($id)
     {
         $consultation = Consultation::findOrFail($id);
@@ -1210,7 +1400,7 @@ class ConsultationController extends Controller
     {
         $consultation = Consultation::with(['infirmier.user', 'patient.user'])->findOrFail($id);
         $channel = $consultation->call_channel ?: ('consultation_room_' . $consultation->id);
-        
+
         $doctorUser = auth()->user();
         $doctorDoc = $doctorUser ? $doctorUser->doctor : null;
         $doctorId = $doctorDoc ? $doctorDoc->id : null;
@@ -1269,10 +1459,10 @@ class ConsultationController extends Controller
     {
         $consultation = Consultation::findOrFail($id);
         return response()->json([
-            'is_call_active' => (bool)$consultation->is_call_active,
+            'is_call_active' => (bool) $consultation->is_call_active,
             'call_status' => $consultation->call_status ?? ($consultation->is_call_active ? 'calling' : 'ended'),
             'channel' => $consultation->call_channel,
-            'duration' => (int)($consultation->call_duration ?? 0),
+            'duration' => (int) ($consultation->call_duration ?? 0),
         ]);
     }
 
@@ -1282,8 +1472,8 @@ class ConsultationController extends Controller
         $consultations = Consultation::where('doctor_id', $doctor->id)
             ->where(function ($q) {
                 $q->whereNotNull('call_started_at')
-                  ->orWhereNotNull('call_ended_at')
-                  ->orWhereIn('call_status', ['ended', 'rejected', 'patient_left', 'accepted', 'calling']);
+                    ->orWhereNotNull('call_ended_at')
+                    ->orWhereIn('call_status', ['ended', 'rejected', 'patient_left', 'accepted', 'calling']);
             })
             ->with(['patient.user', 'prestationHospital.prestationService'])
             ->orderBy('created_at', 'desc')
@@ -1294,7 +1484,8 @@ class ConsultationController extends Controller
 
     private function isDoctorInSchedule($user)
     {
-        if (!$user) return false;
+        if (!$user)
+            return false;
 
         // Si le médecin est actuellement connecté et actif sur la plateforme, il est considéré comme disponible
         if (auth()->check() && auth()->id() == $user->id) {
@@ -1311,7 +1502,7 @@ class ConsultationController extends Controller
         if ($days === null && !empty($availability->days)) {
             $days = explode(',', $availability->days);
         }
-        $days = array_map('intval', (array)($days ?? []));
+        $days = array_map('intval', (array) ($days ?? []));
 
         if (empty($days)) {
             return true;
@@ -1322,8 +1513,8 @@ class ConsultationController extends Controller
         $currentDayOfWeekIso = $now->dayOfWeekIso; // 1 (Mon) à 7 (Sun)
         $currentDayZeroMon = ($currentDayOfWeekIso - 1); // 0 (Mon) à 6 (Sun)
 
-        $isTodayInDays = in_array($currentDayOfWeek, $days, true) 
-            || in_array($currentDayOfWeekIso, $days, true) 
+        $isTodayInDays = in_array($currentDayOfWeek, $days, true)
+            || in_array($currentDayOfWeekIso, $days, true)
             || in_array($currentDayZeroMon, $days, true);
 
         if (!$isTodayInDays) {
@@ -1341,15 +1532,20 @@ class ConsultationController extends Controller
         }
 
         $idx = array_search($currentDayZeroMon, $days);
-        if ($idx === false) $idx = array_search($currentDayOfWeek, $days);
-        if ($idx === false) $idx = array_search($currentDayOfWeekIso, $days);
-        if ($idx === false) $idx = 0;
+        if ($idx === false)
+            $idx = array_search($currentDayOfWeek, $days);
+        if ($idx === false)
+            $idx = array_search($currentDayOfWeekIso, $days);
+        if ($idx === false)
+            $idx = 0;
 
         $start = $startTimes[$idx] ?? $startTimes[0] ?? '00:00';
         $end = $endTimes[$idx] ?? $endTimes[0] ?? '23:59';
 
-        if (empty($start) || $start === '00:00') return true;
-        if (empty($end) || $end === '00:00') $end = '23:59';
+        if (empty($start) || $start === '00:00')
+            return true;
+        if (empty($end) || $end === '00:00')
+            $end = '23:59';
 
         $currentTime = $now->format('H:i');
 
@@ -1361,15 +1557,16 @@ class ConsultationController extends Controller
 
     private function isDoctorMatchingConsultation($doctor, $consultation)
     {
-        if (!$doctor || !$consultation) return false;
+        if (!$doctor || !$consultation)
+            return false;
 
         // Si la consultation est directement attribuée à ce médecin
-        if ($consultation->doctor_id && (int)$consultation->doctor_id === (int)$doctor->id) {
+        if ($consultation->doctor_id && (int) $consultation->doctor_id === (int) $doctor->id) {
             return true;
         }
 
         // Filtrer strictement par hôpital : s'assurer que la demande correspond à l'hôpital du médecin
-        if ($consultation->hospital_id && $doctor->hospital_id && (int)$consultation->hospital_id !== (int)$doctor->hospital_id) {
+        if ($consultation->hospital_id && $doctor->hospital_id && (int) $consultation->hospital_id !== (int) $doctor->hospital_id) {
             return false;
         }
 
@@ -1423,7 +1620,8 @@ class ConsultationController extends Controller
                 return true;
             }
             foreach ($doctorKeywords as $dk) {
-                if (empty($dk) || $dk === 'specialiste' || $dk === 'spécialiste') continue;
+                if (empty($dk) || $dk === 'specialiste' || $dk === 'spécialiste')
+                    continue;
                 if (str_contains($ck, $dk) || str_contains($dk, $ck)) {
                     return true;
                 }
@@ -1450,9 +1648,9 @@ class ConsultationController extends Controller
             ->where('call_status', 'calling')
             ->where(function ($q) {
                 $q->whereNull('orientation_infirmier')
-                  ->orWhere('orientation_infirmier', '!=', 'teleconsultation')
-                  ->orWhere('orientation_infirmier', 'urgence')
-                  ->orWhere('is_urgence', 1);
+                    ->orWhere('orientation_infirmier', '!=', 'teleconsultation')
+                    ->orWhere('orientation_infirmier', 'urgence')
+                    ->orWhere('is_urgence', 1);
             })
             ->with([
                 'patient.user',
@@ -1583,13 +1781,13 @@ class ConsultationController extends Controller
         $doctor = $user->doctor;
 
         $pending = Consultation::where(function ($q) {
-                $q->where(function ($sq) {
-                    $sq->whereNotNull('call_channel')->where('call_channel', '!=', '');
-                })
+            $q->where(function ($sq) {
+                $sq->whereNotNull('call_channel')->where('call_channel', '!=', '');
+            })
                 ->orWhere('orientation_infirmier', 'teleconsultation')
                 ->orWhere('orientation_infirmier', 'urgence')
                 ->orWhere('is_urgence', 1);
-            })
+        })
             ->where(function ($q) use ($doctor) {
                 $q->whereNull('doctor_id')->orWhere('doctor_id', $doctor->id);
             })
@@ -1629,8 +1827,8 @@ class ConsultationController extends Controller
                         ->where('id', '!=', $c->id)
                         ->where(function ($q) {
                             $q->whereNotNull('doctor_id')
-                              ->orWhereIn('call_status', ['accepted', 'ended', 'completed'])
-                              ->orWhere('status', 1);
+                                ->orWhereIn('call_status', ['accepted', 'ended', 'completed'])
+                                ->orWhere('status', 1);
                         })
                         ->latest('created_at')
                         ->first();
@@ -1641,7 +1839,7 @@ class ConsultationController extends Controller
                         ->whereNull('doctor_id')
                         ->where(function ($q) {
                             $q->where('is_call_active', 0)
-                              ->orWhereIn('call_status', ['cancelled', 'rejected', 'patient_left', 'missed']);
+                                ->orWhereIn('call_status', ['cancelled', 'rejected', 'patient_left', 'missed']);
                         });
 
                     if ($lastAnswered && $lastAnswered->created_at) {
@@ -1653,7 +1851,7 @@ class ConsultationController extends Controller
                     $currentIgnored = \Illuminate\Support\Facades\Cache::get("consultation_{$c->id}_ignored_doctors", []);
                     $currentIgnoredCount = is_array($currentIgnored) ? count($currentIgnored) : 0;
 
-                    $currentMissedCount = max((int)($c->missed_count ?? 0), $isCurrentMissed ? 1 : 0);
+                    $currentMissedCount = max((int) ($c->missed_count ?? 0), $isCurrentMissed ? 1 : 0);
                     $patientMissedCount = $currentMissedCount + $pastMissed + $currentIgnoredCount;
                 }
 
@@ -1666,7 +1864,7 @@ class ConsultationController extends Controller
                     'patient_name' => $name,
                     'patient_initials' => $initials ?: 'PT',
                     'patient_code' => optional($c->patient)->code_patient ?? '',
-                    'patient_photo' => ($pUser && $pUser->photo) ? asset('storage/'.$pUser->photo) : null,
+                    'patient_photo' => ($pUser && $pUser->photo) ? asset('storage/' . $pUser->photo) : null,
                     'infirmier_id' => $c->infirmier_id,
                     'infirmier_name' => $infName ? ('Inf. ' . $infName) : 'Infirmier(ère)',
                     'motif' => optional(optional($c->prestationHospital)->prestationService)->libelle ?? $c->motif_consultation ?? 'Téléconsultation en ligne',
@@ -1675,7 +1873,7 @@ class ConsultationController extends Controller
                     'desired_time' => $c->desired_time ?: ($c->created_at ? $c->created_at->format('H:i') : ''),
                     'created_at' => $c->created_at ? $c->created_at->format('d/m/Y H:i') : '',
                     'time_formatted' => $c->created_at ? $c->created_at->format('H:i') : '',
-                    'is_call_active' => (bool)$c->is_call_active,
+                    'is_call_active' => (bool) $c->is_call_active,
                     'call_status' => $c->call_status,
                     'is_taken_by_me' => $isTakenByMe,
                     'patient_missed_count' => $patientMissedCount,
@@ -1686,7 +1884,7 @@ class ConsultationController extends Controller
             ->whereNull('doctor_id')
             ->where(function ($q) {
                 $q->where('is_call_active', 0)
-                  ->orWhereIn('call_status', ['cancelled', 'rejected', 'patient_left', 'missed']);
+                    ->orWhereIn('call_status', ['cancelled', 'rejected', 'patient_left', 'missed']);
             })
             ->whereDate('created_at', now()->toDateString())
             ->get()

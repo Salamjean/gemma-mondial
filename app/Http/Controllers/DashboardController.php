@@ -196,19 +196,27 @@ class DashboardController extends Controller
             if ($serviceId == 5) {
 
                 $pending_count = CareRequested::with('admission')->whereHas('admission', function ($query) use ($infirmierId) {
-                    $query->where('infirmier_id', $infirmierId);
+                    if ($infirmierId) {
+                        $query->where('infirmier_id', $infirmierId)->orWhereNull('infirmier_id');
+                    }
                 })->where('status', 'pending')->whereDate('created_at', date('Y-m-d'))->count();
 
                 $payment_pending_count = CareRequested::with('admission')->whereHas('admission', function ($query) use ($infirmierId) {
-                    $query->where('infirmier_id', $infirmierId);
+                    if ($infirmierId) {
+                        $query->where('infirmier_id', $infirmierId)->orWhereNull('infirmier_id');
+                    }
                 })->where('status', 'payment_pending')->whereDate('created_at', date('Y-m-d'))->count();
 
                 $payment_success_count = CareRequested::with('admission')->whereHas('admission', function ($query) use ($infirmierId) {
-                    $query->where('infirmier_id', $infirmierId);
+                    if ($infirmierId) {
+                        $query->where('infirmier_id', $infirmierId)->orWhereNull('infirmier_id');
+                    }
                 })->where('status', 'payment_success')->whereDate('created_at', date('Y-m-d'))->count();
 
                 $success_count = CareRequested::with('admission')->whereHas('admission', function ($query) use ($infirmierId) {
-                    $query->where('infirmier_id', $infirmierId);
+                    if ($infirmierId) {
+                        $query->where('infirmier_id', $infirmierId)->orWhereNull('infirmier_id');
+                    }
                 })->where('status', 'success')->whereDate('created_at', date('Y-m-d'))->count();
 
                 $count = [
@@ -219,7 +227,9 @@ class DashboardController extends Controller
                 ];
 
                 $cares = CareRequested::with('admission')->whereHas('admission', function ($query) use ($infirmierId) {
-                    $query->where('infirmier_id', $infirmierId);
+                    if ($infirmierId) {
+                        $query->where('infirmier_id', $infirmierId)->orWhereNull('infirmier_id');
+                    }
                 })->where('status', '!=', 'success')->whereDate('created_at', date('Y-m-d'))->get();
 
                 return view('dashboard.index', compact('cares', 'count'));

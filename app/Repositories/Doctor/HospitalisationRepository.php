@@ -86,14 +86,22 @@ class HospitalisationRepository
         $this->syncPendingHospitalisationsFromConsultations();
         $doctor = auth()->check() ? auth()->user()->doctor : null;
 
-        $hospitalisations = $this->model()::orderByDESC('id')
+        $query = $this->model()::orderByDESC('id')
             ->where('status', 'in_progress')
             ->whereHas('daysHospitalisation', function ($q) {
                 $q->whereNotNull('bed_id');
-            })
-            ->get();
+            });
 
-        return $hospitalisations;
+        if ($doctor) {
+            $query->where(function ($q) use ($doctor) {
+                $q->where('doctor_id', $doctor->id)
+                  ->orWhereHas('consultation', function ($cq) use ($doctor) {
+                      $cq->where('doctor_id', $doctor->id);
+                  });
+            });
+        }
+
+        return $query->get();
     }
 
     public function pending_room()
@@ -101,26 +109,43 @@ class HospitalisationRepository
         $this->syncPendingHospitalisationsFromConsultations();
         $doctor = auth()->check() ? auth()->user()->doctor : null;
 
-        $hospitalisations = $this->model()::orderByDESC('id')
+        $query = $this->model()::orderByDESC('id')
             ->where('status', 'in_progress')
             ->where(function ($query) {
                 $query->whereDoesntHave('daysHospitalisation')
                     ->orWhereHas('daysHospitalisation', function ($q) {
                         $q->whereNull('bed_id');
                     });
-            })
-            ->get();
+            });
 
-        return $hospitalisations;
+        if ($doctor) {
+            $query->where(function ($q) use ($doctor) {
+                $q->where('doctor_id', $doctor->id)
+                  ->orWhereHas('consultation', function ($cq) use ($doctor) {
+                      $cq->where('doctor_id', $doctor->id);
+                  });
+            });
+        }
+
+        return $query->get();
     }
 
     public function history()
     {
         $this->syncPendingHospitalisationsFromConsultations();
         $doctor = auth()->check() ? auth()->user()->doctor : null;
-        $hospitalisations = $this->model()::orderByDESC('id')->where('status', '!=', 'in_progress')->get();
+        $query = $this->model()::orderByDESC('id')->where('status', '!=', 'in_progress');
 
-        return $hospitalisations;
+        if ($doctor) {
+            $query->where(function ($q) use ($doctor) {
+                $q->where('doctor_id', $doctor->id)
+                  ->orWhereHas('consultation', function ($cq) use ($doctor) {
+                      $cq->where('doctor_id', $doctor->id);
+                  });
+            });
+        }
+
+        return $query->get();
     }
 
     public function store(Request $request, $hospitalisation)

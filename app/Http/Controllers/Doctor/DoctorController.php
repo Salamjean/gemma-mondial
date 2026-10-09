@@ -53,7 +53,7 @@ class DoctorController extends Controller
         return redirect()->route('dashboard')->with('success', "Informations modifié avec succès.");
     }
 
-        //services, prestations ...
+    //services, prestations ...
 
     public function getPrestations($service)
     {
@@ -63,13 +63,13 @@ class DoctorController extends Controller
             ->with(['prestationService', 'serviceHospital.service'])
             ->whereHas('serviceHospital', function (Builder $query) use ($hospitalId, $service) {
                 $query->where('hospital_id', $hospitalId)
-                      ->where(function (Builder $q) use ($service) {
-                          $q->where('id', $service)
+                    ->where(function (Builder $q) use ($service) {
+                        $q->where('id', $service)
                             ->orWhere('service_id', $service)
                             ->orWhereHas('service', function (Builder $sq) use ($service) {
                                 $sq->where('libelle', $service)->orWhere('id', $service);
                             });
-                      });
+                    });
             })->get();
         return response()->json($prestations);
     }
@@ -81,28 +81,87 @@ class DoctorController extends Controller
                 $outerQuery->whereHas('serviceHospital', function (Builder $query) use ($service) {
                     $query->where(function (Builder $q) use ($service) {
                         $q->where('id', $service)
-                          ->orWhere('service_id', $service)
-                          ->orWhereHas('service', function (Builder $sq) use ($service) {
-                              $sq->where('libelle', $service)->orWhere('id', $service);
-                          });
+                            ->orWhere('service_id', $service)
+                            ->orWhereHas('service', function (Builder $sq) use ($service) {
+                                $sq->where('libelle', $service)->orWhere('id', $service);
+                            });
                     });
                 })->orWhereHas('services.serviceHospital', function (Builder $query) use ($service) {
                     $query->where(function (Builder $q) use ($service) {
                         $q->where('id', $service)
-                          ->orWhere('service_id', $service)
-                          ->orWhereHas('service', function (Builder $sq) use ($service) {
-                              $sq->where('libelle', $service)->orWhere('id', $service);
-                          });
+                            ->orWhere('service_id', $service)
+                            ->orWhereHas('service', function (Builder $sq) use ($service) {
+                                $sq->where('libelle', $service)->orWhere('id', $service);
+                            });
                     });
                 });
             })->with('user')->get();
 
         return response()->json($infirmiers);
     }
+
+    public function getDoctors($service = null)
+    {
+        $hospitalId = Auth::user()->doctor->hospital_id ?? Auth::user()->doctor->hospital->id ?? (Auth::user()->hospital_id ?? null);
+
+        $query = Doctor::query()->with(['user', 'serviceHospital.service']);
+        if ($hospitalId) {
+            $query->where('hospital_id', $hospitalId);
+        }
+
+        if ($service && $service !== 'all') {
+            $serviceLower = strtolower($service);
+            $isLabo = str_contains($serviceLower, 'labo') || str_contains($serviceLower, 'biolog') || str_contains($serviceLower, 'analyse');
+
+            $matchedDoctors = (clone $query)->where(function (Builder $outerQuery) use ($service) {
+                $outerQuery->whereHas('serviceHospital', function (Builder $query) use ($service) {
+                    $query->where(function (Builder $q) use ($service) {
+                        $q->where('id', $service)
+                            ->orWhere('service_id', $service)
+                            ->orWhereHas('service', function (Builder $sq) use ($service) {
+                                $sq->where('libelle', $service)->orWhere('id', $service);
+                            });
+                    });
+                })->orWhereHas('prestationDoctors.prestationHospital', function (Builder $query) use ($service) {
+                    $query->where(function (Builder $q) use ($service) {
+                        $q->where('id', $service)
+                            ->orWhere('prestation_service_id', $service)
+                            ->orWhereHas('serviceHospital.service', function (Builder $sq) use ($service) {
+                                $sq->where('libelle', $service)->orWhere('id', $service);
+                            });
+                    });
+                });
+            })->get();
+
+            if ($matchedDoctors->isNotEmpty()) {
+                return response()->json($matchedDoctors);
+            }
+
+            if ($isLabo) {
+                $labDoctors = (clone $query)->where(function ($q) {
+                    $q->whereHas('typeDoctor', function ($td) {
+                        $td->where('libelle', 'like', '%biolog%')
+                            ->orWhere('libelle', 'like', '%labo%');
+                    })->orWhereHas('typeAgent', function ($ta) {
+                        $ta->where('libelle', 'like', '%biolog%')
+                            ->orWhere('libelle', 'like', '%labo%');
+                    });
+                })->get();
+
+                if ($labDoctors->isNotEmpty()) {
+                    return response()->json($labDoctors);
+                }
+            }
+        }
+
+        $doctors = $query->get();
+        return response()->json($doctors);
+    }
+
     public function getPrestationServices()
     {
         $prestation_services = PrestationService::where('status', 0)->get();
-        return  response()->json(['prestation_services' => $prestation_services]);
+        return response()->json(['prestation_services' => $prestation_services]);
     }
     public function getPrixPrestation(Request $request)
     {

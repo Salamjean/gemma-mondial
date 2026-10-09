@@ -45,18 +45,28 @@
                             <h6 class="card-title fw-bold">Antécédent médicaux </h6>
                         </div>
                         <div class="card-body">
+                            @php
+                                $regCur = optional(optional($consultation->registre)->registreConsultationCurative);
+                                $valHTA = $regCur->hta ?? '';
+                                $valDiabete = $regCur->diabete ?? '';
+                                $valAlcool = $regCur->alcool ?? '';
+                                $valTabac = $regCur->tabac ?? '';
+                                $valUGD = $regCur->UGD ?? ($regCur->ugd ?? '');
+                                $valDrepanocytaire = $regCur->drepanocytaire ?? '';
+                                $valTraitementMed = $regCur->traitement_medicamenteux ?? '';
+                                $valAntecedentMed = $regCur->antecedent_medical ?? '';
+                                $valAntecedentChir = $regCur->antecedent_chirurgical ?? '';
+                                $valNomOp = $regCur->nom_operation ?? '';
+                            @endphp
                             <div class="row mt-5 mb-5">
                                 <div class="col-md-3">
                                     <div class="form-group">
-                                        @php
-                                            $valeur = optional(optional($consultation->registre)->registreConsultationCurative)->hta ?? '';
-                                        @endphp
                                         <label class="form-label fw-bold"> HTA :</label>
                                         <div class="c-inputs-stacked">
-                                            <input type="radio" {{ $valeur == 'Oui HTA' ? 'checked' : '' }} id="ouiHTA"
+                                            <input type="radio" {{ $valHTA == 'Oui HTA' || $valHTA == 'Oui' ? 'checked' : '' }} id="ouiHTA"
                                                 value="Oui HTA" name="hta">
                                             <label for="ouiHTA" class="me-30">Oui</label>
-                                            <input type="radio" {{ $valeur == 'Non HTA' ? 'checked' : '' }} id="nonHTA"
+                                            <input type="radio" {{ $valHTA == 'Non HTA' || $valHTA == 'Non' ? 'checked' : '' }} id="nonHTA"
                                                 value="Non HTA" name="hta">
                                             <label for="nonHTA" class="me-30">Non</label>
                                         </div>
@@ -64,15 +74,12 @@
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-group">
-                                        @php
-                                            $valeur = optional(optional($consultation->registre)->registreConsultationCurative)->diabete ?? '';
-                                        @endphp
                                         <label class="form-label fw-bold">DIABETE :</label>
                                         <div class="c-inputs-stacked">
-                                            <input type="radio" {{ $valeur == 'Oui Diabétique' ? 'checked' : '' }}
+                                            <input type="radio" {{ $valDiabete == 'Oui Diabétique' || $valDiabete == 'Oui' ? 'checked' : '' }}
                                                 id="ouiDiabetique" value="Oui Diabétique" name="diabete">
                                             <label for="ouiDiabetique" class="me-30">Oui</label>
-                                            <input type="radio" {{ $valeur == 'Non Diabétique' ? 'checked' : '' }}
+                                            <input type="radio" {{ $valDiabete == 'Non Diabétique' || $valDiabete == 'Non' ? 'checked' : '' }}
                                                 id="nonDiabetique" value="Non Diabétique" name="diabete">
                                             <label for="nonDiabetique" class="me-30">Non</label>
                                         </div>
@@ -82,9 +89,9 @@
                                     <div class="form-group">
                                         <label class="form-label fw-bold">Alcool:</label>
                                         <div class="c-inputs-stacked">
-                                            <input type="radio" id="ouiAlcool" value="Oui" name="alcool">
+                                            <input type="radio" {{ $valAlcool == 'Oui' ? 'checked' : '' }} id="ouiAlcool" value="Oui" name="alcool">
                                             <label for="ouiAlcool" class="me-30">Oui</label>
-                                            <input type="radio" id="nonAlcool" value="Non" name="alcool">
+                                            <input type="radio" {{ $valAlcool == 'Non' ? 'checked' : '' }} id="nonAlcool" value="Non" name="alcool">
                                             <label for="nonAlcool" class="me-30">Non</label>
                                         </div>
                                     </div>
@@ -93,9 +100,9 @@
                                     <div class="form-group">
                                         <label class="form-label fw-bold"> Tabac:</label>
                                         <div class="c-inputs-stacked">
-                                            <input type="radio" id="ouiTabac" value="Oui" name="tabac">
+                                            <input type="radio" {{ $valTabac == 'Oui' ? 'checked' : '' }} id="ouiTabac" value="Oui" name="tabac">
                                             <label for="ouiTabac" class="me-30">Oui</label>
-                                            <input type="radio" id="nonTabac" value="Non" name="tabac">
+                                            <input type="radio" {{ $valTabac == 'Non' ? 'checked' : '' }} id="nonTabac" value="Non" name="tabac">
                                             <label for="nonTabac" class="me-30">Non</label>
                                         </div>
                                     </div>
@@ -107,9 +114,9 @@
                                     <div class="form-group">
                                         <label class="form-label fw-bold">UGD:</label>
                                         <div class="c-inputs-stacked">
-                                            <input type="radio" id="ouiUGD" value="Oui" name="UGD">
+                                            <input type="radio" {{ $valUGD == 'Oui' ? 'checked' : '' }} id="ouiUGD" value="Oui" name="UGD">
                                             <label for="ouiUGD" class="me-30">Oui</label>
-                                            <input type="radio" id="nonUGD" value="Non" name="UGD">
+                                            <input type="radio" {{ $valUGD == 'Non' ? 'checked' : '' }} id="nonUGD" value="Non" name="UGD">
                                             <label for="nonUGD" class="me-30">Non</label>
                                         </div>
                                     </div>
@@ -118,10 +125,10 @@
                                     <div class="form-group">
                                         <label class="form-label fw-bold"> Drépanocytaire:</label>
                                         <div class="c-inputs-stacked">
-                                            <input type="radio" id="ouiDrepanocytaire" value="Oui"
+                                            <input type="radio" {{ $valDrepanocytaire == 'Oui' ? 'checked' : '' }} id="ouiDrepanocytaire" value="Oui"
                                                 name="drepanocytaire">
                                             <label for="ouiDrepanocytaire" class="me-30">Oui</label>
-                                            <input type="radio" id="nonDrepanocytaire" value="Non"
+                                            <input type="radio" {{ $valDrepanocytaire == 'Non' ? 'checked' : '' }} id="nonDrepanocytaire" value="Non"
                                                 name="drepanocytaire">
                                             <label for="nonDrepanocytaire" class="me-30">Non</label>
                                         </div>
@@ -132,10 +139,10 @@
                                         <label class="form-label fw-bold"> Traitement médicaux antérieur/en
                                             cours:</label>
                                         <div class="c-inputs-stacked">
-                                            <input type="radio" id="ouitraitement" value="Oui"
+                                            <input type="radio" {{ $valTraitementMed == 'Oui' || !empty($regCur->traitement_medicamenteux_anterieur) ? 'checked' : '' }} id="ouitraitement" value="Oui"
                                                 name="traitement_medicamenteux">
                                             <label for="ouitraitement" class="me-30">Oui</label>
-                                            <input type="radio" id="nontraitement" value="Non"
+                                            <input type="radio" {{ $valTraitementMed == 'Non' ? 'checked' : '' }} id="nontraitement" value="Non"
                                                 name="traitement_medicamenteux">
                                             <label for="nontraitement" class="me-30">Non</label>
                                         </div>
@@ -145,10 +152,10 @@
                                     <div class="form-group">
                                         <label class="form-label fw-bold"> Autres antécédents médicaux:</label>
                                         <div class="c-inputs-stacked">
-                                            <input type="radio" id="ouiAntecedent" value="Oui"
+                                            <input type="radio" {{ $valAntecedentMed == 'Oui' || !empty($regCur->autre_antecedent_medical) ? 'checked' : '' }} id="ouiAntecedent" value="Oui"
                                                 name="antecedent_medical">
                                             <label for="ouiAntecedent" class="me-30">Oui</label>
-                                            <input type="radio" id="nonAntecedent" value="Non"
+                                            <input type="radio" {{ $valAntecedentMed == 'Non' ? 'checked' : '' }} id="nonAntecedent" value="Non"
                                                 name="antecedent_medical">
                                             <label for="nonAntecedent" class="me-30">Non</label>
                                         </div>
@@ -160,13 +167,13 @@
                                     <div class="form-group">
                                         <textarea class="form-control"
                                             placeholder="Traitement médicamenteux antérieur ou en cours"
-                                            name="traitement_medicamenteux_anterieur"></textarea>
+                                            name="traitement_medicamenteux_anterieur">{{ $regCur->traitement_medicamenteux_anterieur ?? ($regCur->traitement_medicamenteux ?? '') }}</textarea>
                                     </div>
                                 </div>
                                 <div class="col-md-4" id="autreAntecedent">
                                     <div class="form-group">
                                         <textarea class="form-control" placeholder="Autre antécédent médical"
-                                            name="autre_antecedent_medical"></textarea>
+                                            name="autre_antecedent_medical">{{ $regCur->autre_antecedent_medical ?? '' }}</textarea>
                                     </div>
                                 </div>
                             </div>
@@ -182,23 +189,23 @@
                                 <div class="col-md-4">
                                     <label class="form-label fs-16 fw-500 mt-10">Opération ?</label>
                                     <div class="c-inputs-stacked form-group" id="operation">
-                                        <input type="radio" name="antecedent_chirurgical" id="radio-8" value="Oui">
+                                        <input type="radio" name="antecedent_chirurgical" id="radio-8" value="Oui" {{ $valAntecedentChir == 'Oui' || !empty($valNomOp) ? 'checked' : '' }}>
                                         <label class="me-30" for="radio-8">Oui</label>
-                                        <input type="radio" name="antecedent_chirurgical" id="radio-9" value="Non">
+                                        <input type="radio" name="antecedent_chirurgical" id="radio-9" value="Non" {{ $valAntecedentChir == 'Non' ? 'checked' : '' }}>
                                         <label class="me-30" for="radio-9">Non</label>
                                     </div>
                                 </div>
                                 <div class="col-md-8 form-group" id="nomOperation">
                                     <label class="form-label fs-16 fw-500 mt-10">Préciser l'opération effectuée</label>
                                     <select class="form-select" id="nom_operation" name="nom_operation">
-                                        <option value="" disabled selected>---selectionner---</option>
+                                        <option value="" disabled {{ empty($valNomOp) ? 'selected' : '' }}>---selectionner---</option>
                                         <optgroup label="Chirurgie générale">
-                                            <option value="Appendicectomie">Appendicectomie</option>
-                                            <option value="Cholécystectomie (ablation de la vésicule biliaire)">
+                                            <option value="Appendicectomie" {{ $valNomOp == 'Appendicectomie' ? 'selected' : '' }}>Appendicectomie</option>
+                                            <option value="Cholécystectomie (ablation de la vésicule biliaire)" {{ $valNomOp == 'Cholécystectomie (ablation de la vésicule biliaire)' ? 'selected' : '' }}>
                                                 Cholécystectomie (ablation de la vésicule biliaire)</option>
-                                            <option value="Hernie réparatrice">Hernie réparatrice</option>
+                                            <option value="Hernie réparatrice" {{ $valNomOp == 'Hernie réparatrice' ? 'selected' : '' }}>Hernie réparatrice</option>
                                             <option
-                                                value="Colectomie (ablation d'une partie ou de la totalité du côlon)">
+                                                value="Colectomie (ablation d'une partie ou de la totalité du côlon)" {{ $valNomOp == "Colectomie (ablation d'une partie ou de la totalité du côlon)" ? 'selected' : '' }}>
                                                 Colectomie (ablation d'une partie ou de la totalité du côlon)</option>
                                         </optgroup>
 
@@ -284,14 +291,17 @@
                             </div>
                             <div class="row mt-5">
                                 @if (strtolower($consultation->admission->patient->gender ?? ($consultation->patient->gender ?? '')) != 'masculin')
+                                    @php
+                                        $valGrossesse = $regCur->en_cours_de_grossesse ?? '';
+                                    @endphp
                                     <div class="col-md-4">
                                         <div class="form-group">
                                             <label class="form-label fw-bold">Grossesse en cours:</label>
                                             <div class="c-inputs-stacked">
-                                                <input type="radio" id="ouigrossesse" value="Oui"
+                                                <input type="radio" id="ouigrossesse" value="Oui" {{ $valGrossesse == 'Oui' ? 'checked' : '' }}
                                                     name="en_cours_de_grossesse" onclick="activerDDR()">
                                                 <label for="ouigrossesse" class="me-30">Oui</label>
-                                                <input type="radio" id="nongrossesse" value="Non"
+                                                <input type="radio" id="nongrossesse" value="Non" {{ $valGrossesse == 'Non' ? 'checked' : '' }}
                                                     name="en_cours_de_grossesse" onclick="desactiverDDR()">
                                                 <label for="nongrossesse" class="me-30">Non</label>
                                             </div>
@@ -306,16 +316,18 @@
                                                     <i class="fa fa-calendar"></i>
                                                 </div>
                                                 <input type="text" name="ddr" id="ddr" class="form-control"
-                                                    data-inputmask="'alias': 'dd/mm/yyyy'" data-mask="" readonly>
+                                                    value="{{ $regCur->ddr ?? '' }}"
+                                                    data-inputmask="'alias': 'dd/mm/yyyy'" data-mask="" {{ $valGrossesse == 'Oui' ? '' : 'readonly' }}>
                                             </div>
                                         </div>
                                     </div>
                                 @endif
                                 <div class="col-md-4">
                                     <div class="form-group">
-                                        <label class="form-label fw-bold">Autres:</label>
+                                        <label class="form-label fw-bold">Autres antécédents chirurgicaux:</label>
                                         <div>
-                                            <input type="text" class="form-control" name="autre_antecedent_chirurgical">
+                                            <input type="text" class="form-control" name="autre_antecedent_chirurgical"
+                                                value="{{ $regCur->autre_antecedent_chirurgical ?? '' }}">
                                         </div>
                                     </div>
                                 </div>
@@ -325,7 +337,7 @@
                                 <div class="row mt-5" id="descGrossesse">
                                     <div class="col-md-8 mb-10">
                                         <textarea rows="5" class="form-control" placeholder="Description de la grossesse"
-                                            name="description_grossesse"></textarea>
+                                            name="description_grossesse">{{ $regCur->description_grossesse ?? '' }}</textarea>
                                     </div>
                                 </div>
                             @endif
@@ -339,7 +351,6 @@
 
                             <div class="row">
                                 @php
-                                    $regCur = optional(optional($consultation->registre)->registreConsultationCurative);
                                     $valPoids = $consultation->poids ?: ($regCur->poids ?? '');
                                     $valTaille = $consultation->taille ?: ($regCur->taille ?? '');
                                     $valImc = $consultation->imc ?: ($regCur->imc ?? '');
@@ -397,7 +408,7 @@
                                         <input type="text"
                                             class="form-control @error('glycemie_a_jeun') is-invalid @enderror"
                                             id="glycemie_a_jeun" name="glycemie_a_jeun"
-                                            value="{{ $consultation->gly_a_jeun }}" placeholder="A jeûn(g/l)">
+                                            value="{{ $consultation->gly_a_jeun ?? ($regCur->glycemie_a_jeun ?? '') }}" placeholder="A jeûn(g/l)">
                                     </div>
                                 </div>
                                 <div class="col-md-2">
@@ -407,7 +418,7 @@
                                         <input type="text"
                                             class="form-control @error('glycemie_non_a_jeun') is-invalid @enderror"
                                             id="glycemie_non_a_jeun" name="glycemie_non_a_jeun"
-                                            value="{{ $consultation->gly_nn_jeun }}" placeholder="non-jeûn(g/l)">
+                                            value="{{ $consultation->gly_nn_jeun ?? ($regCur->glycemie_non_a_jeun ?? '') }}" placeholder="non-jeûn(g/l)">
                                     </div>
                                 </div>
                                 <div class="col-md-2">
@@ -415,7 +426,7 @@
                                         <label for="saturation_oxygene" class="form-label"> <b>Oxygène</b></label>
                                         <input type="text"
                                             class="form-control @error('saturation_oxygene') is-invalid @enderror"
-                                            id="saturation_oxygene" value="{{ $consultation->saturation_oxygene }}"
+                                            id="saturation_oxygene" value="{{ $consultation->saturation_oxygene ?? ($regCur->saturation_oxygene ?? '') }}"
                                             name="saturation_oxygene">
                                     </div>
                                 </div>
@@ -426,7 +437,7 @@
                                         <input type="text"
                                             class="form-control @error('perimetre_brachial') is-invalid @enderror"
                                             id="perimetre_brachial" name="perimetre_brachial"
-                                            value="{{ $consultation->perimetre_brach }}" placeholder="______cm">
+                                            value="{{ $consultation->perimetre_brach ?? ($regCur->perimetre_brachial ?? '') }}" placeholder="______cm">
                                     </div>
                                 </div>
                                 <div class="col-md-2">
@@ -453,67 +464,57 @@
                                     </div>
                                 </div>
                                 <div class="col-md-4">
+                                    @php
+                                        $valTb = $regCur->tuberculose ?? '';
+                                    @endphp
                                     <div class="form-group">
                                         <label class="form-label fw-bold">Recherche active de la tuberculose :</label>
                                         <div class="c-inputs-stacked">
-                                            <input type="radio" id="ouiTuberculose" value="Oui" name="tuberculose">
+                                            <input type="radio" id="ouiTuberculose" value="Oui" name="tuberculose" {{ $valTb == 'Oui' ? 'checked' : '' }}>
                                             <label for="ouiTuberculose" class="me-30">Oui</label>
-                                            <input type="radio" id="nonTuberculose" value="Non" name="tuberculose">
+                                            <input type="radio" id="nonTuberculose" value="Non" name="tuberculose" {{ $valTb == 'Non' ? 'checked' : '' }}>
                                             <label for="nonTuberculose" class="me-30">Non</label>
-                                            <input type="radio" id="naTuberculose" value="NA" name="tuberculose">
+                                            <input type="radio" id="naTuberculose" value="NA" name="tuberculose" {{ $valTb == 'NA' ? 'checked' : '' }}>
                                             <label for="naTuberculose" class="me-30">NA</label>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
+                                    @php
+                                        $hasAutreExam = !empty($regCur->autre_examen_clinique);
+                                    @endphp
                                     <div class="form-group">
                                         <label class="form-label fw-bold">Autre(s) examens ?:</label>
                                         <div class="c-inputs-stacked">
-                                            <input type="radio" id="ouiautreExam" value="Oui" name="autre_examen">
+                                            <input type="radio" id="ouiautreExam" value="Oui" name="autre_examen" {{ $hasAutreExam ? 'checked' : '' }}>
                                             <label for="ouiautreExam" class="me-30">Oui</label>
-                                            <input type="radio" id="nonautreExam" value="Non" name="autre_examen">
+                                            <input type="radio" id="nonautreExam" value="Non" name="autre_examen" {{ !$hasAutreExam ? 'checked' : '' }}>
                                             <label for="nonautreExam" class="me-30">Non</label>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-md-8 mt-10 mb-10" id="InputAutreExam">
                                     <textarea rows="5" class="form-control" placeholder="autres examens clinique ici"
-                                        name="autre_examen_clinique"></textarea>
+                                        name="autre_examen_clinique">{{ $regCur->autre_examen_clinique ?? '' }}</textarea>
                                 </div>
                             </div>
 
                             <div>
-                                <!--
-                                    <div class="card-header fw-bold">Examen clinique</div>
-                                    <div class="card-body">
-                                        <p class="card-title">Vous avez le choix de <span class="fw-bold">saisir</span> les informations de l'examen clinique ou <span class="fw-bold">téléverser</span> l'image de d'examen clinique</p>
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label class="form-label fw-bold">saisissez ici :</label>
-                                                    <textarea class="form-control" rows="4" type="text" name="examen_clinique" id="examen_clinique"></textarea>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label class="form-label fw-bold">Image de l'examen :</label>
-                                                    <input type="file" accept=".jpeg,.png" id="fileInput" onchange="previewImage()" name="examen_clinique" multiple/>
-                                                    <div class="previews"></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    -->
                                 <div class="row">
+                                    @php
+                                        $hasExamPhysiq = !empty($regCur->examen_physique);
+                                        $hasDiag = !empty($regCur->diagnostic_retenu);
+                                        $hasPatho = !empty($regCur->autre_pathologie_associee);
+                                    @endphp
                                     <div class="col-md-4">
                                         <div class="form-group">
                                             <label class="form-label fw-bold">Examen physique ?:</label>
                                             <div class="c-inputs-stacked">
                                                 <input type="radio" id="ouiExamPhysiq" value="Oui"
-                                                    name="examen_physique_q">
+                                                    name="examen_physique_q" {{ $hasExamPhysiq ? 'checked' : '' }}>
                                                 <label for="ouiExamPhysiq" class="me-30">Oui</label>
                                                 <input type="radio" id="nonExamPhysiq" value="Non"
-                                                    name="examen_physique_q">
+                                                    name="examen_physique_q" {{ !$hasExamPhysiq ? 'checked' : '' }}>
                                                 <label for="nonExamPhysiq" class="me-30">Non</label>
                                             </div>
                                         </div>
@@ -523,10 +524,10 @@
                                             <label class="form-label fw-bold">Diagnostic retenu ?:</label>
                                             <div class="c-inputs-stacked">
                                                 <input type="radio" id="ouiDiagnostic" value="Oui"
-                                                    name="diagnostic_retenu">
+                                                    name="diagnostic_retenu" {{ $hasDiag ? 'checked' : '' }}>
                                                 <label for="ouiDiagnostic" class="me-30">Oui</label>
                                                 <input type="radio" id="nonDiagnostic" value="Non"
-                                                    name="diagnostic_retenu">
+                                                    name="diagnostic_retenu" {{ !$hasDiag ? 'checked' : '' }}>
                                                 <label for="nonDiagnostic" class="me-30">Non</label>
                                             </div>
                                         </div>
@@ -536,10 +537,10 @@
                                             <label class="form-label fw-bold">Autres pathologies associées ?:</label>
                                             <div class="c-inputs-stacked">
                                                 <input type="radio" id="ouiPathologie" value="Oui"
-                                                    name="autre_pathologie_associee">
+                                                    name="autre_pathologie_associee" {{ $hasPatho ? 'checked' : '' }}>
                                                 <label for="ouiPathologie" class="me-30">Oui</label>
                                                 <input type="radio" id="nonPathologie" value="Non"
-                                                    name="autre_pathologie_associee">
+                                                    name="autre_pathologie_associee" {{ !$hasPatho ? 'checked' : '' }}>
                                                 <label for="nonPathologie" class="me-30">Non</label>
                                             </div>
                                         </div>
@@ -547,14 +548,14 @@
                                 </div>
                                 <div class="row">
                                     <div class="col-md-4 mt-10" id="InputExamPhysiq">
-                                        <textarea rows="5" class="form-control" name="examen_physique"></textarea>
+                                        <textarea rows="5" class="form-control" name="examen_physique" placeholder="Détails de l'examen physique">{{ $regCur->examen_physique ?? '' }}</textarea>
                                     </div>
                                     <div class="col-md-4 mt-10" id="InputDiagnostic">
-                                        <textarea rows="5" class="form-control" name="diagnostic_retenu"></textarea>
+                                        <textarea rows="5" class="form-control" name="diagnostic_retenu" placeholder="Diagnostic retenu">{{ $regCur->diagnostic_retenu ?? '' }}</textarea>
                                     </div>
                                     <div class="col-md-4 mt-10" id="InputPathologie">
                                         <textarea rows="5" class="form-control"
-                                            name="autre_pathologie_associee"></textarea>
+                                            name="autre_pathologie_associee" placeholder="Autres pathologies">{{ $regCur->autre_pathologie_associee ?? '' }}</textarea>
                                     </div>
                                 </div>
                             </div>
@@ -774,26 +775,47 @@
     </form>
 </div>
 <script>
-    const grossesse = document.querySelectorAll('input[type=radio][name="en_cours_de_grossesse"]');
-    const inputGrossesse = document.getElementById('descGrossesse');
+    document.addEventListener("DOMContentLoaded", function () {
+        function setupConditionalRadio(radioName, containerId) {
+            const radios = document.querySelectorAll('input[type=radio][name="' + radioName + '"]');
+            const container = document.getElementById(containerId);
+            if (!container) return;
 
-    if (inputGrossesse) {
-        inputGrossesse.style.display = 'none';
+            function updateVisibility() {
+                let isOui = false;
+                radios.forEach(function (r) {
+                    if (r.checked && (r.value === 'Oui' || r.value === 'Oui HTA' || r.value === 'Oui Diabétique')) {
+                        isOui = true;
+                    }
+                });
+                // Si le conteneur contient un textarea ou input avec du contenu, on l'affiche aussi
+                const innerInputs = container.querySelectorAll('input, textarea, select');
+                innerInputs.forEach(function (inp) {
+                    if (inp.value && inp.value.trim() !== '') {
+                        isOui = true;
+                    }
+                });
 
-        Array.prototype.forEach.call(grossesse, function (radio) {
-            radio.addEventListener('change', changeHandlerAM);
-        });
-
-        function changeHandlerAM(event) {
-            if (this.value == 'Oui') {
-                inputGrossesse.style.display = 'block';
-                inputGrossesse.required = true;
-            } else {
-                inputGrossesse.style.display = 'none';
-                inputGrossesse.required = false;
+                container.style.display = isOui ? 'block' : 'none';
             }
+
+            radios.forEach(function (radio) {
+                radio.addEventListener('change', updateVisibility);
+            });
+
+            // Initialisation au chargement
+            updateVisibility();
         }
-    }
+
+        setupConditionalRadio('en_cours_de_grossesse', 'descGrossesse');
+        setupConditionalRadio('antecedent_chirurgical', 'nomOperation');
+        setupConditionalRadio('autre_examen', 'InputAutreExam');
+        setupConditionalRadio('autre_pathologie_associee', 'InputPathologie');
+        setupConditionalRadio('diagnostic_retenu', 'InputDiagnostic');
+        setupConditionalRadio('examen_physique_q', 'InputExamPhysiq');
+        setupConditionalRadio('traitement_medicamenteux', 'formTraitement');
+        setupConditionalRadio('antecedent_medical', 'autreAntecedent');
+    });
 
     function activerDDR() {
         const ddrEl = document.getElementById('ddr');
@@ -804,132 +826,11 @@
         const ddrEl = document.getElementById('ddr');
         if (ddrEl) ddrEl.setAttribute('readonly', 'readonly');
     }
-</script>
-<script>
-    const operation = document.querySelectorAll('input[type=radio][name="antecedent_chirurgical"]');
-    const selectOperation = document.getElementById('nomOperation')
 
-    selectOperation.style.display = 'none';
-
-    Array.prototype.forEach.call(operation, function (radio) {
-        radio.addEventListener('change', changeHandlerAM);
-    });
-
-    function changeHandlerAM(event) {
-        if (this.value == 'Oui') {
-            selectOperation.style.display = 'block';
-            selectOperation.required = true;
-        } else {
-            selectOperation.style.display = 'none';
-            selectOperation.required = false;
-        }
-    }
-</script>
-<script>
-    const autre_examenPhy = document.querySelectorAll('input[type=radio][name="autre_examen"]');
-    const InputAutreExam = document.getElementById('InputAutreExam')
-
-    InputAutreExam.style.display = 'none';
-
-    Array.prototype.forEach.call(autre_examenPhy, function (radio) {
-        radio.addEventListener('change', changeHandlerAM);
-    });
-
-    function changeHandlerAM(event) {
-        if (this.value == 'Oui') {
-            InputAutreExam.style.display = 'block';
-            InputAutreExam.required = true;
-        } else {
-            InputAutreExam.style.display = 'none';
-            InputAutreExam.required = false;
-        }
-    }
-</script>
-<script>
-    const pathologieAssocie = document.querySelectorAll('input[type=radio][name="autre_pathologie_associee"]');
-    const InputPathologie = document.getElementById('InputPathologie')
-
-    InputPathologie.style.display = 'none';
-
-    Array.prototype.forEach.call(pathologieAssocie, function (radio) {
-        radio.addEventListener('change', changeHandlerAM);
-    });
-
-    function changeHandlerAM(event) {
-        if (this.value == 'Oui') {
-            InputPathologie.style.display = 'block';
-            InputPathologie.required = true;
-        } else {
-            InputPathologie.style.display = 'none';
-            InputPathologie.required = false;
-        }
-    }
-</script>
-<script>
-    const Diagnostic = document.querySelectorAll('input[type=radio][name="diagnostic_retenu"]');
-    const InputDiagnostic = document.getElementById('InputDiagnostic')
-
-    InputDiagnostic.style.display = 'none';
-
-    Array.prototype.forEach.call(Diagnostic, function (radio) {
-        radio.addEventListener('change', changeHandlerAM);
-    });
-
-    function changeHandlerAM(event) {
-        if (this.value == 'Oui') {
-            InputDiagnostic.style.display = 'block';
-            InputDiagnostic.required = true;
-        } else {
-            InputDiagnostic.style.display = 'none';
-            InputDiagnostic.required = false;
-        }
-    }
-</script>
-<script>
-    const ExamenPhysique = document.querySelectorAll('input[type=radio][name="examen_physique_q"]');
-    const InputExamenPhysique = document.getElementById('InputExamPhysiq');
-
-    InputExamenPhysique.style.display = 'none';
-
-    Array.prototype.forEach.call(ExamenPhysique, function (radio) {
-        radio.addEventListener('change', changeHandlerAM);
-    });
-
-    function changeHandlerAM(event) {
-        if (this.value == 'Oui') {
-            InputExamenPhysique.style.display = 'block';
-            InputExamenPhysique.required = true;
-        } else {
-            InputExamenPhysique.style.display = 'none';
-            InputExamenPhysique.required = false;
-        }
-    }
-
-</script>
-<script>
-    const traitementMedical = document.querySelectorAll('input[type=radio][name="traitement_medicamenteux"]');
-    const InputTraitementMedical = document.getElementById('formTraitement');
-
-    InputTraitementMedical.style.display = 'none';
-
-    Array.prototype.forEach.call(traitementMedical, function (radio) {
-        radio.addEventListener('change', changeHandlerAM);
-    });
-
-    function changeHandlerAM(event) {
-        if (this.value == 'Oui') {
-            InputTraitementMedical.style.display = 'block';
-            InputTraitementMedical.required = true;
-        } else {
-            InputTraitementMedical.style.display = 'none';
-            InputTraitementMedical.required = false;
-        }
-    }
-</script>
-<script>
     function previewImage() {
         var fileInput = document.getElementById('fileInput');
         var previewsContainer = document.querySelector('.previews');
+        if (!previewsContainer) return;
         previewsContainer.innerHTML = '';
         for (var i = 0; i < fileInput.files.length; i++) {
             var file = fileInput.files[i];
@@ -945,25 +846,4 @@
             }
         }
     }
-</script>
-<script>
-    const AntecedentMedical = document.querySelectorAll('input[type=radio][name="antecedent_medical"]');
-    const InputAntecedentMedical = document.getElementById('autreAntecedent');
-
-    InputAntecedentMedical.style.display = 'none';
-
-    Array.prototype.forEach.call(AntecedentMedical, function (radio) {
-        radio.addEventListener('change', changeHandlerAM);
-    });
-
-    function changeHandlerAM(event) {
-        if (this.value == 'Oui') {
-            InputAntecedentMedical.style.display = 'block';
-            InputAntecedentMedical.required = true;
-        } else {
-            InputAntecedentMedical.style.display = 'none';
-            InputAntecedentMedical.required = false;
-        }
-    }
-
 </script>

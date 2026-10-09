@@ -24,7 +24,7 @@ class CareController extends Controller
         $infirmierId = optional(Auth::user()->infirmier)->id;
         $cares = CareRequested::with('admission')->whereHas('admission', function ($query) use ($infirmierId) {
             if ($infirmierId) {
-                $query->where('infirmier_id', $infirmierId);
+                $query->where('infirmier_id', $infirmierId)->orWhereNull('infirmier_id');
             }
         })->where('status', '!=', 'success')->whereDate('created_at', date('Y-m-d'))->get();
 
@@ -50,7 +50,7 @@ class CareController extends Controller
         $infirmierId = optional(Auth::user()->infirmier)->id;
         $cares = CareRequested::with('admission')->whereHas('admission', function ($query) use ($infirmierId) {
             if ($infirmierId) {
-                $query->where('infirmier_id', $infirmierId);
+                $query->where('infirmier_id', $infirmierId)->orWhereNull('infirmier_id');
             }
         })->get();
 

@@ -170,6 +170,7 @@ class PatientRepository
                 'ordonnances.prescriptions.drug',
                 'ordonnances.prescriptions.drugHospital.drug',
                 'examen.examens',
+                'bulletinExamen.examens',
                 'arret',
                 'registre.registreConsultationCurative',
                 'declaration.deces',

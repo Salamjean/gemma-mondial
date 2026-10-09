@@ -45,11 +45,18 @@ class SmsRepository
         // Endpoint V3 standard pour l'envoi de SMS
         $url = $this->baseUrl . "/sms/send";
 
+        // Nettoyer les accents du message pour assurer la compatibilité GSM 7-bit maximale
+        $cleanMessage = str_replace(
+            ['é', 'è', 'ê', 'ë', 'É', 'È', 'Ê', 'Ë', 'à', 'â', 'ä', 'À', 'Â', 'Ä', 'î', 'ï', 'Î', 'Ï', 'ô', 'ö', 'Ô', 'Ö', 'ù', 'û', 'ü', 'Ù', 'Û', 'Ü', 'ç', 'Ç'],
+            ['e', 'e', 'e', 'e', 'E', 'E', 'E', 'E', 'a', 'a', 'a', 'A', 'A', 'A', 'i', 'i', 'I', 'I', 'o', 'o', 'O', 'O', 'u', 'u', 'u', 'U', 'U', 'U', 'c', 'C'],
+            $this->message
+        );
+
         // Paramètres pour l'API V3 (POST JSON)
         $data = [
             'recipient' => $cleanPhone,
             'sender_id' => $this->senderId, // Doit correspondre à un Sender ID validé
-            'message' => $this->message,
+            'message' => $cleanMessage,
             'type' => 'plain' // Parfois 'text' ou 'plain'
         ];
 
@@ -77,9 +84,15 @@ class SmsRepository
         if ($error) {
             \Illuminate\Support\Facades\Log::error("1smsafrica Curl Error: $error");
             return ['success' => false, 'error' => $error];
-        } else {
-            \Illuminate\Support\Facades\Log::info("1smsafrica Response ($httpCode) at $effectiveUrl (Redirect: $redirectUrl): $response");
-            return ['success' => true, 'response' => $response];
         }
+
+        $isSuccess = ($httpCode >= 200 && $httpCode < 300);
+        if (!$isSuccess) {
+            \Illuminate\Support\Facades\Log::warning("1smsafrica Response Non-2xx ($httpCode) at $effectiveUrl: $response");
+            return ['success' => false, 'http_code' => $httpCode, 'response' => $response];
+        }
+
+        \Illuminate\Support\Facades\Log::info("1smsafrica Response ($httpCode) at $effectiveUrl (Redirect: $redirectUrl): $response");
+        return ['success' => true, 'http_code' => $httpCode, 'response' => $response];
     }
 }

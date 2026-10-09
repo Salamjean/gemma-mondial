@@ -51,6 +51,58 @@
         ];
     }
     $doctorsJson = json_encode($doctorsArray);
+
+    // Décodage des métadonnées de laboratoire préalablement enregistrées
+    $laboMeta = [];
+    if (!empty($consultation->observation_infirmiere)) {
+        $decoded = json_decode($consultation->observation_infirmiere, true);
+        if (is_array($decoded)) {
+            $laboMeta = $decoded;
+        }
+    }
+
+    $savedExams = [];
+    if ($consultation->bulletinExamen && $consultation->bulletinExamen->examens) {
+        foreach ($consultation->bulletinExamen->examens as $ex) {
+            $savedExams[] = trim($ex->nature_examen);
+        }
+    }
+
+    // Fonction de vérification d'un examen coché
+    $isExamChecked = function ($examValue) use ($savedExams) {
+        $cleanVal = trim($examValue);
+        if (in_array($cleanVal, $savedExams)) return true;
+        
+        $parts = explode(':', $cleanVal);
+        $shortName = trim(end($parts));
+        foreach ($savedExams as $se) {
+            if ($se === $cleanVal || $se === $shortName || str_ends_with($se, $shortName) || (strlen($shortName) >= 3 && str_contains($se, $shortName))) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    $savedQuantites = (array) ($laboMeta['quantites'] ?? []);
+    $savedEchantillons = (array) ($laboMeta['echantillons'] ?? []);
+
+    $isSampleChecked = function ($sampleKey, $sampleVal) use ($savedQuantites, $savedEchantillons) {
+        if (!empty($savedQuantites[$sampleKey])) return true;
+        foreach ($savedEchantillons as $se) {
+            if (stripos($se, $sampleKey) !== false || stripos($se, $sampleVal) !== false) return true;
+        }
+        return false;
+    };
+
+    $getSampleQty = function ($sampleKey, $sampleVal) use ($savedQuantites, $savedEchantillons) {
+        if (!empty($savedQuantites[$sampleKey])) return $savedQuantites[$sampleKey];
+        foreach ($savedEchantillons as $se) {
+            if ((stripos($se, $sampleKey) !== false || stripos($se, $sampleVal) !== false) && preg_match('/Quantit[ée]\s*:\s*([^)]+)/iu', $se, $matches)) {
+                return trim($matches[1]);
+            }
+        }
+        return '';
+    };
 @endphp
 
 <!-- CONTENEUR GENERAL AVEC EXACTEMENT 2% DE MARGE A GAUCHE ET A DROITE -->
@@ -106,7 +158,7 @@
                 <div class="labo-sheet-header-right">
                     <div class="labo-reception-box">
                         <div class="reception-label">Reçu le :</div>
-                        <input type="date" name="date_reception" class="reception-input" value="{{ date('Y-m-d') }}">
+                        <input type="date" name="date_reception" class="reception-input" value="{{ $laboMeta['date_reception'] ?? date('Y-m-d') }}">
                     </div>
                 </div>
             </div>
@@ -162,25 +214,31 @@
                     <div class="labo-box-body bg-light-subtle">
                         <div class="labo-field-row">
                             <span class="labo-field-label">Médecin prescripteur :</span>
-                            <input type="text" name="demandeur_nom" class="labo-field-input labo-field-readonly fw-bold" value="{{ $doctorFullName }}" readonly tabindex="-1">
+                            <input type="text" name="demandeur_nom" class="labo-field-input labo-field-readonly fw-bold" value="{{ $laboMeta['demandeur_nom'] ?? $doctorFullName }}" readonly tabindex="-1">
                         </div>
                         <div class="labo-field-row">
                             <span class="labo-field-label">Établissement / Org. :</span>
-                            <input type="text" name="demandeur_organisation" class="labo-field-input labo-field-readonly" value="{{ $hospitalName }}" readonly tabindex="-1">
+                            <input type="text" name="demandeur_organisation" class="labo-field-input labo-field-readonly" value="{{ $laboMeta['demandeur_organisation'] ?? $hospitalName }}" readonly tabindex="-1">
                         </div>
                         <div class="labo-field-row">
                             <span class="labo-field-label">Adresse :</span>
-                            <input type="text" name="demandeur_adresse" class="labo-field-input labo-field-readonly" value="{{ $hospitalAddress }}" readonly tabindex="-1">
+                            <input type="text" name="demandeur_adresse" class="labo-field-input labo-field-readonly" value="{{ $laboMeta['demandeur_adresse'] ?? $hospitalAddress }}" readonly tabindex="-1">
                         </div>
                         <div class="labo-field-row">
                             <span class="labo-field-label">N° Téléphone :</span>
-                            <input type="text" name="demandeur_telephone" class="labo-field-input labo-field-readonly" value="{{ $doctorPhone }}" readonly tabindex="-1" placeholder="Non renseigné">
+                            <input type="text" name="demandeur_telephone" class="labo-field-input labo-field-readonly" value="{{ $laboMeta['demandeur_telephone'] ?? $doctorPhone }}" readonly tabindex="-1" placeholder="Non renseigné">
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- SECTION 2 : INFORMATIONS SUR L'ECHANTILLON -->
+            @php
+                $savedUrgence = $laboMeta['urgence'] ?? 'Normal';
+                $savedAJeun = $laboMeta['a_jeun'] ?? 'A jeun';
+                $savedDatePrelev = $laboMeta['date_prelevement'] ?? date('Y-m-d');
+                $savedHeurePrelev = $laboMeta['heure_prelevement'] ?? date('H:i');
+            @endphp
             <div class="labo-box mb-3">
                 <div class="labo-box-title">
                     <i class="fa-solid fa-vial me-1 text-primary"></i> Informations sur l'échantillon
@@ -192,11 +250,11 @@
                             <div class="labo-sub-label">Niveau d'Urgence :</div>
                             <div class="labo-radio-group">
                                 <label class="labo-choice">
-                                    <input type="radio" name="urgence" value="Normal" checked>
+                                    <input type="radio" name="urgence" value="Normal" {{ $savedUrgence === 'Normal' ? 'checked' : '' }}>
                                     <span class="badge-normal">Normal</span>
                                 </label>
                                 <label class="labo-choice">
-                                    <input type="radio" name="urgence" value="URGENT">
+                                    <input type="radio" name="urgence" value="URGENT" {{ $savedUrgence === 'URGENT' ? 'checked' : '' }}>
                                     <span class="badge-urgent"><i class="fa fa-bolt me-1"></i> URGENT</span>
                                 </label>
                             </div>
@@ -207,11 +265,11 @@
                             <div class="d-flex align-items-center gap-3 flex-wrap">
                                 <div class="d-flex align-items-center gap-1">
                                     <span class="fs-12 text-muted fw-bold">Date :</span>
-                                    <input type="date" name="date_prelevement" class="labo-inline-input" value="{{ date('Y-m-d') }}">
+                                    <input type="date" name="date_prelevement" class="labo-inline-input" value="{{ $savedDatePrelev }}">
                                 </div>
                                 <div class="d-flex align-items-center gap-1">
                                     <span class="fs-12 text-muted fw-bold">Heure :</span>
-                                    <input type="time" name="heure_prelevement" class="labo-inline-input" value="{{ date('H:i') }}">
+                                    <input type="time" name="heure_prelevement" class="labo-inline-input" value="{{ $savedHeurePrelev }}">
                                 </div>
                             </div>
                         </div>
@@ -223,57 +281,67 @@
                             <span class="labo-sub-label mb-0">Condition du patient :</span>
                             <div class="labo-radio-group">
                                 <label class="labo-choice">
-                                    <input type="radio" name="a_jeun" value="A jeun" checked>
+                                    <input type="radio" name="a_jeun" value="A jeun" {{ $savedAJeun === 'A jeun' ? 'checked' : '' }}>
                                     <span>À jeun</span>
                                 </label>
                                 <label class="labo-choice">
-                                    <input type="radio" name="a_jeun" value="Non a jeun">
+                                    <input type="radio" name="a_jeun" value="Non a jeun" {{ $savedAJeun === 'Non a jeun' ? 'checked' : '' }}>
                                     <span>Non à jeun</span>
                                 </label>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Types de prélèvements (8 items OMS) -->
+                    <!-- Types de prélèvements (8 items OMS avec quantité dynamique) -->
                     <div class="labo-sub-card">
-                        <div class="labo-sub-label mb-2">Nature du prélèvement :</div>
-                        <div class="labo-sample-grid">
-                            <label class="labo-sample-item">
-                                <input type="checkbox" name="type_echantillon[]" value="Sang">
-                                <span>Sang</span>
-                            </label>
-                            <label class="labo-sample-item">
-                                <input type="checkbox" name="type_echantillon[]" value="Urine">
-                                <span>Urine</span>
-                            </label>
-                            <label class="labo-sample-item">
-                                <input type="checkbox" name="type_echantillon[]" value="Écouvillon">
-                                <span>Écouvillon</span>
-                            </label>
-                            <label class="labo-sample-item">
-                                <input type="checkbox" name="type_echantillon[]" value="Tissu">
-                                <span>Tissu</span>
-                            </label>
-                            <label class="labo-sample-item">
-                                <input type="checkbox" name="type_echantillon[]" value="Fèces">
-                                <span>Fèces</span>
-                            </label>
-                            <label class="labo-sample-item">
-                                <input type="checkbox" name="type_echantillon[]" value="Pus">
-                                <span>Pus</span>
-                            </label>
-                            <label class="labo-sample-item">
-                                <input type="checkbox" name="type_echantillon[]" value="Liquides">
-                                <span>Liquides</span>
-                            </label>
-                            <label class="labo-sample-item">
-                                <input type="checkbox" name="type_echantillon[]" value="Cytologie">
-                                <span>Cytologie</span>
-                            </label>
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="labo-sub-label mb-0">Nature du prélèvement :</span>
+                            <span class="fs-11 text-muted"><i class="fa-solid fa-info-circle me-1"></i> Cochez pour indiquer la quantité prélevée</span>
                         </div>
-                        <div class="d-flex align-items-center gap-2 mt-2 pt-2 border-top">
-                            <span class="fs-12 fw-bold text-dark text-nowrap">Autre, préciser :</span>
-                            <input type="text" name="echantillon_autre" class="labo-field-input" placeholder="Préciser tout autre type de prélèvement...">
+                        <div class="labo-sample-grid">
+                            @php
+                                $sampleList = [
+                                    ['id' => 'sang', 'val' => 'Sang', 'icon' => 'fa-droplet', 'color' => '#dc2626', 'placeholder' => 'ex: 5 ml / 2 tubes'],
+                                    ['id' => 'urine', 'val' => 'Urine', 'icon' => 'fa-flask', 'color' => '#d97706', 'placeholder' => 'ex: 50 ml / 1 flacon'],
+                                    ['id' => 'ecouvillon', 'val' => 'Écouvillon', 'icon' => 'fa-wand-magic-sparkles', 'color' => '#0284c7', 'placeholder' => 'ex: 1 écouvillon nasal/gorge'],
+                                    ['id' => 'tissu', 'val' => 'Tissu', 'icon' => 'fa-cube', 'color' => '#7c3aed', 'placeholder' => 'ex: 1 biopsie (1x1 cm)'],
+                                    ['id' => 'feces', 'val' => 'Fèces', 'icon' => 'fa-shield-halved', 'color' => '#854d0e', 'placeholder' => 'ex: 1 pot stérile'],
+                                    ['id' => 'pus', 'val' => 'Pus', 'icon' => 'fa-virus', 'color' => '#ea580c', 'placeholder' => 'ex: 2 ml / seringue'],
+                                    ['id' => 'liquides', 'val' => 'Liquides', 'icon' => 'fa-vial', 'color' => '#0891b2', 'placeholder' => 'ex: 10 ml liquide pleural'],
+                                    ['id' => 'cytologie', 'val' => 'Cytologie', 'icon' => 'fa-microscope', 'color' => '#059669', 'placeholder' => 'ex: 2 lames frottis'],
+                                ];
+                            @endphp
+
+                            @foreach($sampleList as $s)
+                                @php
+                                    $isSampleOn = $isSampleChecked($s['id'], $s['val']);
+                                    $sampleQtyVal = $getSampleQty($s['id'], $s['val']);
+                                @endphp
+                                <div class="labo-sample-card" id="sample-card-{{ $s['id'] }}">
+                                    <label class="labo-sample-label text-nowrap mb-0">
+                                        <input type="checkbox" name="type_echantillon[]" value="{{ $s['val'] }}" id="check-sample-{{ $s['id'] }}" class="sample-checkbox" onchange="toggleSampleQty(this, 'qty-{{ $s['id'] }}')" {{ $isSampleOn ? 'checked' : '' }}>
+                                        <span class="sample-val-text"><i class="fa-solid {{ $s['icon'] }} me-1.5" style="color: {{ $s['color'] }};"></i> {{ $s['val'] }}</span>
+                                    </label>
+                                    <div class="sample-qty-inline ms-auto" id="qty-{{ $s['id'] }}" style="{{ $isSampleOn ? 'display: block;' : 'display: none;' }}">
+                                        <input type="text" name="quantite_echantillon[{{ $s['id'] }}]" class="labo-sample-qty-input" value="{{ $sampleQtyVal }}" placeholder="{{ $s['placeholder'] }}" oninput="ensureSampleChecked('check-sample-{{ $s['id'] }}', 'qty-{{ $s['id'] }}')">
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        @php
+                            $savedAutreSample = $laboMeta['echantillon_autre'] ?? '';
+                            $savedAutreQty = $savedQuantites['autre'] ?? ($savedQuantites['Autre'] ?? '');
+                            $hasAutre = !empty($savedAutreSample) || !empty($savedAutreQty);
+                        @endphp
+                        <div class="d-flex align-items-center gap-2 mt-2 pt-2 border-top flex-wrap">
+                            <div class="d-flex align-items-center gap-2 flex-grow-1">
+                                <span class="fs-12 fw-bold text-dark text-nowrap">Autre prélèvement :</span>
+                                <input type="text" name="echantillon_autre" id="input_echantillon_autre" class="labo-field-input" value="{{ $savedAutreSample }}" placeholder="Préciser tout autre type..." oninput="toggleAutreSampleQty(this)">
+                            </div>
+                            <div id="qty-autre-container" class="d-flex align-items-center gap-1" style="{{ $hasAutre ? 'display: flex;' : 'display: none;' }}">
+                                <span class="fs-12 text-muted fw-bold text-nowrap">Quantité :</span>
+                                <input type="text" name="quantite_echantillon[autre]" class="labo-inline-input" value="{{ $savedAutreQty }}" placeholder="ex: 10 ml" style="width: 140px;">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -288,26 +356,26 @@
                     <div class="labo-grid-2 mb-2">
                         <div>
                             <span class="labo-field-label mb-1 d-block">Traitement médicamenteux en cours :</span>
-                            <input type="text" name="traitement_medicamenteux" class="labo-field-input" placeholder="Antibiotiques, anticoagulants, etc.">
+                            <input type="text" name="traitement_medicamenteux" class="labo-field-input" value="{{ $laboMeta['traitement_medicamenteux'] ?? '' }}" placeholder="Antibiotiques, anticoagulants, etc.">
                         </div>
                         <div>
                             <span class="labo-field-label mb-1 d-block">Dernière prise / dose :</span>
                             <div class="d-flex align-items-center gap-2 flex-wrap">
-                                <input type="text" name="derniere_dose" class="labo-field-input flex-grow-1" placeholder="Dose (ex: 500mg)">
+                                <input type="text" name="derniere_dose" class="labo-field-input flex-grow-1" value="{{ $laboMeta['derniere_dose'] ?? '' }}" placeholder="Dose (ex: 500mg)">
                                 <div class="d-flex align-items-center gap-1">
                                     <span class="fs-12 text-muted">Date:</span>
-                                    <input type="date" name="derniere_dose_date" class="labo-inline-input">
+                                    <input type="date" name="derniere_dose_date" class="labo-inline-input" value="{{ $laboMeta['derniere_dose_date'] ?? '' }}">
                                 </div>
                                 <div class="d-flex align-items-center gap-1">
                                     <span class="fs-12 text-muted">Heure:</span>
-                                    <input type="time" name="derniere_dose_heure" class="labo-inline-input">
+                                    <input type="time" name="derniere_dose_heure" class="labo-inline-input" value="{{ $laboMeta['derniere_dose_heure'] ?? '' }}">
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="mt-2">
                         <span class="labo-field-label mb-1 d-block">Motif / Renseignements cliniques & Diagnostic présomptif :</span>
-                        <input type="text" name="autres_infos_cliniques" class="labo-field-input" value="{{ $consultation->motif_consultation ?? optional($consultation->admission)->motif_consultation ?? '' }}" placeholder="Indiquez les éléments cliniques utiles au biologiste...">
+                        <input type="text" name="autres_infos_cliniques" class="labo-field-input" value="{{ $laboMeta['motif_clinique'] ?? ($consultation->motif_consultation ?? optional($consultation->admission)->motif_consultation ?? '') }}" placeholder="Indiquez les éléments cliniques utiles au biologiste...">
                     </div>
                 </div>
             </div>
@@ -345,22 +413,22 @@
                                 <td class="align-top labo-td-col">
                                     <div class="labo-subgrid-2">
                                         <div class="labo-subcol pe-1">
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: G2000"><span>G2000</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: G 2000-X"><span>G 2000-X</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: GT9"><span>GT9</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: GTI"><span>GTI</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: NEO"><span>NEO</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: ES"><span>ES</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: HB3"><span>HB3</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: G2000" {{ $isExamChecked('Profil: G2000') ? 'checked' : '' }}><span>G2000</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: G 2000-X" {{ $isExamChecked('Profil: G 2000-X') ? 'checked' : '' }}><span>G 2000-X</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: GT9" {{ $isExamChecked('Profil: GT9') ? 'checked' : '' }}><span>GT9</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: GTI" {{ $isExamChecked('Profil: GTI') ? 'checked' : '' }}><span>GTI</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: NEO" {{ $isExamChecked('Profil: NEO') ? 'checked' : '' }}><span>NEO</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: ES" {{ $isExamChecked('Profil: ES') ? 'checked' : '' }}><span>ES</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: HB3" {{ $isExamChecked('Profil: HB3') ? 'checked' : '' }}><span>HB3</span></label>
                                         </div>
                                         <div class="labo-subcol ps-1 border-start">
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: DFS"><span>DFS</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: LFT"><span>LFT</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: RFT"><span>RFT</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: TFT"><span>TFT</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: MAC"><span>MAC</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: LGL"><span>LGL</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: LIP"><span>LIP</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: DFS" {{ $isExamChecked('Profil: DFS') ? 'checked' : '' }}><span>DFS</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: LFT" {{ $isExamChecked('Profil: LFT') ? 'checked' : '' }}><span>LFT</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: RFT" {{ $isExamChecked('Profil: RFT') ? 'checked' : '' }}><span>RFT</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: TFT" {{ $isExamChecked('Profil: TFT') ? 'checked' : '' }}><span>TFT</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: MAC" {{ $isExamChecked('Profil: MAC') ? 'checked' : '' }}><span>MAC</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: LGL" {{ $isExamChecked('Profil: LGL') ? 'checked' : '' }}><span>LGL</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Profil: LIP" {{ $isExamChecked('Profil: LIP') ? 'checked' : '' }}><span>LIP</span></label>
                                         </div>
                                     </div>
                                 </td>
@@ -369,21 +437,21 @@
                                 <td class="align-top labo-td-col">
                                     <div class="labo-subgrid-2">
                                         <div class="labo-subcol pe-1">
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: ACE"><span>ACE</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: CA 1"><span>CA 1</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: CA 5"><span>CA 5</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: CA 9"><span>CA 9</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: PSA"><span>PSA</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: AFP"><span>AFP</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: Glucose"><span>Glucose</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: ACE" {{ $isExamChecked('Biochimie: ACE') ? 'checked' : '' }}><span>ACE</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: CA 1" {{ $isExamChecked('Biochimie: CA 1') ? 'checked' : '' }}><span>CA 1</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: CA 5" {{ $isExamChecked('Biochimie: CA 5') ? 'checked' : '' }}><span>CA 5</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: CA 9" {{ $isExamChecked('Biochimie: CA 9') ? 'checked' : '' }}><span>CA 9</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: PSA" {{ $isExamChecked('Biochimie: PSA') ? 'checked' : '' }}><span>PSA</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: AFP" {{ $isExamChecked('Biochimie: AFP') ? 'checked' : '' }}><span>AFP</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: Glucose" {{ $isExamChecked('Biochimie: Glucose') ? 'checked' : '' }}><span>Glucose</span></label>
                                         </div>
                                         <div class="labo-subcol ps-1 border-start">
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: VIH 1 et 2"><span>VIH 1 et 2</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: HbA1c"><span>HbA1c</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: HBsAg"><span>HBsAg</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: H. pylori"><span>H. pylori</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: Ac. urique"><span>Ac. urique</span></label>
-                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: T4 libre"><span>T4 libre</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: VIH 1 et 2" {{ $isExamChecked('Biochimie: VIH 1 et 2') ? 'checked' : '' }}><span>VIH 1 et 2</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: HbA1c" {{ $isExamChecked('Biochimie: HbA1c') ? 'checked' : '' }}><span>HbA1c</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: HBsAg" {{ $isExamChecked('Biochimie: HBsAg') ? 'checked' : '' }}><span>HBsAg</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: H. pylori" {{ $isExamChecked('Biochimie: H. pylori') ? 'checked' : '' }}><span>H. pylori</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: Ac. urique" {{ $isExamChecked('Biochimie: Ac. urique') ? 'checked' : '' }}><span>Ac. urique</span></label>
+                                            <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Biochimie: T4 libre" {{ $isExamChecked('Biochimie: T4 libre') ? 'checked' : '' }}><span>T4 libre</span></label>
                                         </div>
                                     </div>
                                 </td>
@@ -391,36 +459,36 @@
                                 <!-- 3. Hématologie -->
                                 <td class="align-top labo-td-col">
                                     <div class="d-flex flex-column gap-1">
-                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Hématologie: bilan hématologique (avec VSG)"><span>Bilan hématologique (avec VSG)</span></label>
-                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Hématologie: NFS"><span>NFS</span></label>
-                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Hématologie: Hémoglobine"><span>Hémoglobine</span></label>
-                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Hématologie: Leucocytes totaux et différenciés"><span>Leucocytes totaux et différenciés</span></label>
-                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Hématologie: Plaquettes"><span>Plaquettes</span></label>
-                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Hématologie: ABO et Rh (D)"><span>ABO et Rh (D)</span></label>
-                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Hématologie: Parasites palustres"><span>Parasites palustres</span></label>
+                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Hématologie: bilan hématologique (avec VSG)" {{ $isExamChecked('Hématologie: bilan hématologique (avec VSG)') ? 'checked' : '' }}><span>Bilan hématologique (avec VSG)</span></label>
+                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Hématologie: NFS" {{ $isExamChecked('Hématologie: NFS') ? 'checked' : '' }}><span>NFS</span></label>
+                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Hématologie: Hémoglobine" {{ $isExamChecked('Hématologie: Hémoglobine') ? 'checked' : '' }}><span>Hémoglobine</span></label>
+                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Hématologie: Leucocytes totaux et différenciés" {{ $isExamChecked('Hématologie: Leucocytes totaux et différenciés') ? 'checked' : '' }}><span>Leucocytes totaux et différenciés</span></label>
+                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Hématologie: Plaquettes" {{ $isExamChecked('Hématologie: Plaquettes') ? 'checked' : '' }}><span>Plaquettes</span></label>
+                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Hématologie: ABO et Rh (D)" {{ $isExamChecked('Hématologie: ABO et Rh (D)') ? 'checked' : '' }}><span>ABO et Rh (D)</span></label>
+                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Hématologie: Parasites palustres" {{ $isExamChecked('Hématologie: Parasites palustres') ? 'checked' : '' }}><span>Parasites palustres</span></label>
                                     </div>
                                 </td>
 
                                 <!-- 4. Microbiologie -->
                                 <td class="align-top labo-td-col">
                                     <div class="d-flex flex-column gap-1">
-                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Microbiologie: Examen chimique et microscopique de l'urine"><span>Examen chimique et microscopique de l'urine</span></label>
-                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Microbiologie: RPR (VDRL)"><span>RPR (VDRL)</span></label>
-                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Microbiologie: Microscopie/Culture/Sensibilité"><span>Microscopie / Culture / Sensibilité</span></label>
-                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Microbiologie: BAAR (ZN) frottis uniquement"><span>BAAR (ZN) frottis uniquement</span></label>
-                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Microbiologie: BAAR frottis et culture"><span>BAAR frottis et culture</span></label>
+                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Microbiologie: Examen chimique et microscopique de l'urine" {{ $isExamChecked("Microbiologie: Examen chimique et microscopique de l'urine") ? 'checked' : '' }}><span>Examen chimique et microscopique de l'urine</span></label>
+                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Microbiologie: RPR (VDRL)" {{ $isExamChecked('Microbiologie: RPR (VDRL)') ? 'checked' : '' }}><span>RPR (VDRL)</span></label>
+                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Microbiologie: Microscopie/Culture/Sensibilité" {{ $isExamChecked('Microbiologie: Microscopie/Culture/Sensibilité') ? 'checked' : '' }}><span>Microscopie / Culture / Sensibilité</span></label>
+                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Microbiologie: BAAR (ZN) frottis uniquement" {{ $isExamChecked('Microbiologie: BAAR (ZN) frottis uniquement') ? 'checked' : '' }}><span>BAAR (ZN) frottis uniquement</span></label>
+                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Microbiologie: BAAR frottis et culture" {{ $isExamChecked('Microbiologie: BAAR frottis et culture') ? 'checked' : '' }}><span>BAAR frottis et culture</span></label>
                                     </div>
                                 </td>
 
                                 <!-- 5. Anatomo-pathologie -->
                                 <td class="align-top labo-td-col">
                                     <div class="d-flex flex-column gap-1 mb-3">
-                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Anatomo-pathologie: Histologie"><span>Histologie</span></label>
-                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Anatomo-pathologie: Non-gynécologique/PAF"><span>Non-gynécologique / PAF</span></label>
+                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Anatomo-pathologie: Histologie" {{ $isExamChecked('Anatomo-pathologie: Histologie') ? 'checked' : '' }}><span>Histologie</span></label>
+                                        <label class="labo-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Anatomo-pathologie: Non-gynécologique/PAF" {{ $isExamChecked('Anatomo-pathologie: Non-gynécologique/PAF') ? 'checked' : '' }}><span>Non-gynécologique / PAF</span></label>
                                     </div>
                                     <div class="pt-2 border-top">
                                         <span class="fs-12 fw-bold text-dark d-block mb-1">Site :</span>
-                                        <input type="text" name="anapath_site" class="labo-field-input" placeholder="Préciser le site...">
+                                        <input type="text" name="anapath_site" class="labo-field-input" value="{{ $laboMeta['anapath_site'] ?? '' }}" placeholder="Préciser le site...">
                                     </div>
                                 </td>
                             </tr>
@@ -429,260 +497,19 @@
                 </div>
             </div>
 
-            <!-- SECTION 5 : EXAMENS SUPPLEMENTAIRES & CYTOLOGIE CERVICALE (50% / 50%) -->
-            <div class="labo-grid-2 mb-4">
-                <!-- Examens supplémentaires -->
-                <div class="labo-box">
-                    <div class="labo-box-title">
-                        <i class="fa-solid fa-list-check me-1 text-primary"></i> Examens supplémentaires
-                    </div>
-                    <div class="labo-box-body">
-                        <textarea name="examens_supplementaires" class="labo-textarea" rows="8" placeholder="Saisir ici d'autres analyses ou examens spécifiques non listés ci-dessus (un par ligne)..."></textarea>
-                    </div>
-                </div>
+            <!-- CHAMP CACHE ISSUE DE CONSULTATION (SORTIE DIRECTE EN ARRIÈRE-PLAN) -->
+            <input type="hidden" name="mode_sortie" value="sortie">
 
-                <!-- Cytologie cervicale -->
-                <div class="labo-box">
-                    <div class="labo-box-title">
-                        <i class="fa-solid fa-dna me-1 text-primary"></i> Cytologie cervicale
-                    </div>
-                    <div class="labo-box-body">
-                        <div class="labo-sample-grid mb-2">
-                            <label class="labo-sample-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Cytologie: Frottis vaginal"><span>Frottis vaginal</span></label>
-                            <label class="labo-sample-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Cytologie: Normal"><span>Normal</span></label>
-                            <label class="labo-sample-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Cytologie: Sang après mononucléose"><span>Sang après mononucléose</span></label>
-                            <label class="labo-sample-item"><input type="checkbox" class="exam-ch-input" name="examens[]" value="Cytologie: Lésion suspectée"><span>Lésion suspectée</span></label>
-                        </div>
-
-                        <div class="d-flex align-items-center gap-2 mb-2">
-                            <span class="fs-12 fw-bold text-dark text-nowrap">Autre :</span>
-                            <input type="text" name="cytologie_autre" class="labo-field-input">
-                        </div>
-
-                        <div class="border-top pt-2 mb-2">
-                            <span class="fs-12 fw-bold text-dark mb-1 d-block">Site du prélèvement cytologique :</span>
-                            <div class="labo-sample-grid">
-                                <label class="labo-sample-item"><input type="checkbox" name="cytologie_site[]" value="Col de l'utérus"><span>Col de l'utérus</span></label>
-                                <label class="labo-sample-item"><input type="checkbox" name="cytologie_site[]" value="Endocol"><span>Endocol</span></label>
-                                <label class="labo-sample-item"><input type="checkbox" name="cytologie_site[]" value="Dôme vaginal"><span>Dôme vaginal</span></label>
-                                <label class="labo-sample-item"><input type="checkbox" name="cytologie_site[]" value="Paroi vaginale latérale"><span>Paroi latérale</span></label>
-                                <label class="labo-sample-item"><input type="checkbox" name="cytologie_site[]" value="Cul-de-sac postérieur du vagin"><span>Cul-de-sac postérieur</span></label>
-                            </div>
-                        </div>
-
-                        <div class="d-flex align-items-center justify-content-between pt-2 border-top flex-wrap gap-2">
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="fs-12 text-muted fw-bold">Date :</span>
-                                <input type="date" name="cytologie_date" class="labo-inline-input" value="{{ date('Y-m-d') }}">
-                            </div>
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="fs-12 fw-bold text-dark">Qualité frottis :</span>
-                                <label class="labo-sample-item mb-0"><input type="checkbox" name="cytologie_faible" value="1"><span>Faible</span></label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SECTION 6 : ISSUE DE CONSULTATION & AFFECTATION DU PATIENT -->
-            <div class="labo-box mb-4 labo-issue-box">
-                <div class="labo-box-title d-flex justify-content-between align-items-center">
-                    <span><i class="fa-solid fa-arrows-split-up-and-left me-1 text-primary"></i> Issue de Consultation &amp; Affectation du Patient</span>
-                    <span class="badge bg-primary text-white fs-11"><i class="fa-solid fa-route me-1"></i> Orientation de sortie</span>
+            <!-- SECTION 5 : EXAMENS SUPPLEMENTAIRES -->
+            <div class="labo-box mb-4">
+                <div class="labo-box-title">
+                    <i class="fa-solid fa-list-check me-1 text-primary"></i> Examens supplémentaires
                 </div>
                 <div class="labo-box-body">
-                    <p class="fs-12 text-muted mb-3">
-                        Veuillez préciser la suite de la prise en charge pour ce patient après l'émission des examens de laboratoire :
-                    </p>
-
-                    <!-- Tuiles de choix d'issue -->
-                    <div class="labo-issue-grid mb-3">
-                        <!-- Option 1 : Sortie normale -->
-                        <label class="labo-issue-card active" id="card-issue-sortie" onclick="switchLaboIssue('sortie')">
-                            <input type="radio" name="mode_sortie" id="radio-issue-sortie" value="sortie" checked class="d-none">
-                            <div class="issue-card-icon text-success">
-                                <i class="fa-solid fa-house-chimney-medical"></i>
-                            </div>
-                            <div class="issue-card-content">
-                                <div class="issue-card-title text-success">Sortie Domicile</div>
-                                <div class="issue-card-desc">Examen prescrit, sortie normale autorisée</div>
-                            </div>
-                            <div class="issue-card-check text-success">
-                                <i class="fa-solid fa-circle-check"></i>
-                            </div>
-                        </label>
-
-                        <!-- Option 2 : Affecter à une Infirmière -->
-                        <label class="labo-issue-card" id="card-issue-infirmier" onclick="switchLaboIssue('affecter-infirmier')">
-                            <input type="radio" name="mode_sortie" id="radio-issue-infirmier" value="affecter-infirmier" class="d-none">
-                            <div class="issue-card-icon text-info">
-                                <i class="fa-solid fa-user-nurse"></i>
-                            </div>
-                            <div class="issue-card-content">
-                                <div class="issue-card-title text-info">Affecter à une Infirmière</div>
-                                <div class="issue-card-desc">Prélèvements, injections, soins infirmiers</div>
-                            </div>
-                            <div class="issue-card-check text-info">
-                                <i class="fa-regular fa-circle"></i>
-                            </div>
-                        </label>
-
-                        <!-- Option 3 : Affecter à un Médecin -->
-                        <label class="labo-issue-card" id="card-issue-medecin" onclick="switchLaboIssue('affecter-medecin')">
-                            <input type="radio" name="mode_sortie" id="radio-issue-medecin" value="affecter-medecin" class="d-none">
-                            <div class="issue-card-icon text-primary">
-                                <i class="fa-solid fa-user-doctor"></i>
-                            </div>
-                            <div class="issue-card-content">
-                                <div class="issue-card-title text-primary">Affecter à un Médecin</div>
-                                <div class="issue-card-desc">Médecin traitant, spécialiste ou confrère</div>
-                            </div>
-                            <div class="issue-card-check text-primary">
-                                <i class="fa-regular fa-circle"></i>
-                            </div>
-                        </label>
-
-                        <!-- Option 4 : Hospitalisation / Observation -->
-                        <label class="labo-issue-card" id="card-issue-hospitalisation" onclick="switchLaboIssue('hospitalisation')">
-                            <input type="radio" name="mode_sortie" id="radio-issue-hospitalisation" value="hospitalisation" class="d-none">
-                            <div class="issue-card-icon text-warning">
-                                <i class="fa-solid fa-bed-pulse"></i>
-                            </div>
-                            <div class="issue-card-content">
-                                <div class="issue-card-title text-warning">Hospitalisation / Obs.</div>
-                                <div class="issue-card-desc">Mise en observation ou hospitalisation</div>
-                            </div>
-                            <div class="issue-card-check text-warning">
-                                <i class="fa-regular fa-circle"></i>
-                            </div>
-                        </label>
-                    </div>
-
-                    <!-- SOUS-PANNEAU 1 : SORTIE SIMPLE (MESSAGE CONFIRMATION) -->
-                    <div id="subpanel-sortie" class="labo-subpanel p-3 bg-light rounded border border-success-subtle">
-                        <div class="d-flex align-items-center gap-2 text-success">
-                            <i class="fa-solid fa-circle-check fs-18"></i>
-                            <span class="fw-bold fs-13">Clôture et sortie normale</span>
-                        </div>
-                        <div class="text-muted fs-12 mt-1">
-                            Le patient repart avec son bon de demande d'examen. La consultation de laboratoire sera marquée comme effectuée et enregistrée dans le registre médical.
-                        </div>
-                    </div>
-
-                    <!-- SOUS-PANNEAU 2 : AFFECTATION INFIRMIERE -->
-                    <div id="subpanel-affecter-infirmier" class="labo-subpanel p-3 bg-light rounded border border-info-subtle" style="display: none;">
-                        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-info-subtle">
-                            <div class="d-flex align-items-center gap-2 text-info">
-                                <i class="fa-solid fa-user-nurse fs-18"></i>
-                                <span class="fw-bold fs-14">Affectation à l'infirmerie (Sélection par service)</span>
-                            </div>
-                            <span class="badge bg-info-subtle text-info border border-info-subtle fs-11">Étape 1 : Service &rarr; Étape 2 : Infirmier(ère) &rarr; Instructions</span>
-                        </div>
-                        <div class="row g-3 align-items-end">
-                            <div class="col-lg-4 col-md-4 col-12">
-                                <label class="form-label fs-12 fw-bold text-dark">
-                                    <span class="badge bg-info text-white me-1">1</span> Service / Unité de soins <span class="text-danger">*</span>
-                                </label>
-                                <select id="select_service_infirmier" class="form-select form-select-sm labo-select-custom" onchange="filterInfirmiersByService(this.value)">
-                                    <option value="" selected>-- 1. Choisir le service --</option>
-                                    @foreach($servicesList as $serv)
-                                        <option value="{{ $serv->id }}">{{ optional($serv->service)->libelle ?? ('Service #' . $serv->id) }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-lg-4 col-md-4 col-12">
-                                <label class="form-label fs-12 fw-bold text-dark">
-                                    <span class="badge bg-info text-white me-1">2</span> Infirmier(ère) du service <span class="text-danger">*</span>
-                                </label>
-                                <select name="affectation_infirmier_id" id="select_affectation_infirmier" class="form-select form-select-sm labo-select-custom" disabled>
-                                    <option value="" disabled selected>-- 2. Choisir l'infirmier(ère) --</option>
-                                </select>
-                            </div>
-                            <div class="col-lg-4 col-md-4 col-12">
-                                <label class="form-label fs-12 fw-bold text-dark">
-                                    <span class="badge bg-info text-white me-1">3</span> Instructions de soins / Prélèvement
-                                </label>
-                                <input type="text" name="instructions_infirmier" id="input_instructions_infirmier" class="form-control form-control-sm" placeholder="Ex: Prélèvement sanguin urgent...">
-                            </div>
-                            <div class="col-12 mt-2">
-                                <div class="d-flex align-items-center gap-2 flex-wrap">
-                                    <span class="fs-11 text-muted fw-bold">Modèles rapides :</span>
-                                    <button type="button" class="btn btn-xs btn-outline-info rounded-pill fs-11 py-0 px-2" onclick="setInfirmierInstruction('Prélèvement sanguin et acheminement au laboratoire')">Prélèvement sanguin</button>
-                                    <button type="button" class="btn btn-xs btn-outline-info rounded-pill fs-11 py-0 px-2" onclick="setInfirmierInstruction('Prélèvement cytologique / écouvillon')">Prélèvement cytologique</button>
-                                    <button type="button" class="btn btn-xs btn-outline-info rounded-pill fs-11 py-0 px-2" onclick="setInfirmierInstruction('Administration traitement injectable et surveillance')">Injection / Traitement</button>
-                                    <button type="button" class="btn btn-xs btn-outline-info rounded-pill fs-11 py-0 px-2" onclick="setInfirmierInstruction('Prise des constantes et surveillance')">Surveillance constantes</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- SOUS-PANNEAU 3 : AFFECTATION MEDECIN -->
-                    <div id="subpanel-affecter-medecin" class="labo-subpanel p-3 bg-light rounded border border-primary-subtle" style="display: none;">
-                        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-primary-subtle">
-                            <div class="d-flex align-items-center gap-2 text-primary">
-                                <i class="fa-solid fa-user-doctor fs-18"></i>
-                                <span class="fw-bold fs-14">Affectation / Référence au médecin (Sélection par spécialité)</span>
-                            </div>
-                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-11">Étape 1 : Spécialité &rarr; Étape 2 : Médecin &rarr; Note</span>
-                        </div>
-                        <div class="row g-3 align-items-end">
-                            <div class="col-lg-4 col-md-4 col-12">
-                                <label class="form-label fs-12 fw-bold text-dark">
-                                    <span class="badge bg-primary text-white me-1">1</span> Spécialité / Service médical <span class="text-danger">*</span>
-                                </label>
-                                <select id="select_service_doctor" class="form-select form-select-sm labo-select-custom" onchange="filterDoctorsByService(this.value)">
-                                    <option value="" selected>-- 1. Choisir la spécialité --</option>
-                                    @foreach($servicesList as $serv)
-                                        <option value="{{ $serv->id }}">{{ optional($serv->service)->libelle ?? ('Service #' . $serv->id) }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-lg-4 col-md-4 col-12">
-                                <label class="form-label fs-12 fw-bold text-dark">
-                                    <span class="badge bg-primary text-white me-1">2</span> Médecin du service <span class="text-danger">*</span>
-                                </label>
-                                <select name="affectation_doctor_id" id="select_affectation_doctor" class="form-select form-select-sm labo-select-custom" disabled>
-                                    <option value="" disabled selected>-- 2. Choisir le médecin --</option>
-                                </select>
-                            </div>
-                            <div class="col-lg-4 col-md-4 col-12">
-                                <label class="form-label fs-12 fw-bold text-dark">
-                                    <span class="badge bg-primary text-white me-1">3</span> Note de transmission / Motif d'avis
-                                </label>
-                                <input type="text" name="note_transmission_medecin" id="input_note_medecin" class="form-control form-control-sm" placeholder="Ex: Retour vers médecin traitant...">
-                            </div>
-                            <div class="col-12 mt-2">
-                                <div class="d-flex align-items-center gap-2 flex-wrap">
-                                    <span class="fs-11 text-muted fw-bold">Modèles rapides :</span>
-                                    <button type="button" class="btn btn-xs btn-outline-primary rounded-pill fs-11 py-0 px-2" onclick="setMedecinNote('Retour consultation médecin traitant')">Retour médecin traitant</button>
-                                    <button type="button" class="btn btn-xs btn-outline-primary rounded-pill fs-11 py-0 px-2" onclick="setMedecinNote('Avis spécialisé post-résultats analyses')">Avis spécialisé</button>
-                                    <button type="button" class="btn btn-xs btn-outline-primary rounded-pill fs-11 py-0 px-2" onclick="setMedecinNote('Interprétation des résultats et adaptation thérapeutique')">Interprétation résultats</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- SOUS-PANNEAU 4 : HOSPITALISATION / OBSERVATION -->
-                    <div id="subpanel-hospitalisation" class="labo-subpanel p-3 bg-light rounded border border-warning-subtle" style="display: none;">
-                        <div class="d-flex align-items-center gap-2 text-warning-emphasis mb-3">
-                            <i class="fa-solid fa-bed-pulse fs-18 text-warning"></i>
-                            <span class="fw-bold fs-14">Orientation vers l'hospitalisation ou mise en observation</span>
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-md-5">
-                                <label class="form-label fs-12 fw-bold text-dark">Type de séjour</label>
-                                <div class="d-flex align-items-center gap-4 pt-1">
-                                    <label class="labo-item mb-0"><input type="radio" name="hospitalisation_sub_type" value="observation" checked onchange="updateHospMode(this.value)"><span>Mise en observation (M.O)</span></label>
-                                    <label class="labo-item mb-0"><input type="radio" name="hospitalisation_sub_type" value="hospitalisation" onchange="updateHospMode(this.value)"><span>Hospitalisation</span></label>
-                                </div>
-                            </div>
-                            <div class="col-md-7">
-                                <label class="form-label fs-12 fw-bold text-dark">Motif / Justification clinique</label>
-                                <input type="text" name="motif_hospitalisation" class="form-control form-control-sm" placeholder="Ex: Altération état général en attente bilans urgents...">
-                            </div>
-                        </div>
-                    </div>
-
+                    <label class="form-label fs-12 text-muted fw-semibold mb-2">
+                        <i class="fa-regular fa-pen-to-square me-1 text-primary"></i> Préciser d'autres examens ou bilans spécifiques :
+                    </label>
+                    <textarea name="examens_supplementaires" class="labo-textarea" rows="4" placeholder="Saisissez ici les analyses ou examens spécifiques non listés ci-dessus (un par ligne)...">{{ $laboMeta['examens_supplementaires'] ?? '' }}</textarea>
                 </div>
             </div>
 
@@ -947,17 +774,22 @@
 
     .labo-textarea {
         width: 100%;
-        border: 1.5px dashed #94a3b8;
-        border-radius: 4px;
-        padding: 10px 12px;
-        font-size: 13px;
+        min-height: 110px;
+        border: 1.5px solid #94a3b8;
+        border-radius: 6px;
+        padding: 12px 14px;
+        font-size: 13.5px;
+        line-height: 1.5;
         color: #0f172a;
-        background: #fafafa;
+        background: #ffffff;
         resize: vertical;
         outline: none;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.04);
+        transition: border-color 0.2s, box-shadow 0.2s;
     }
     .labo-textarea:focus {
         border-color: #0284c7;
+        box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15), inset 0 1px 3px rgba(0,0,0,0.02);
         background: #ffffff;
     }
 
@@ -1026,33 +858,85 @@
         border-radius: 4px;
     }
 
-    /* Grille des 8 types d'échantillons */
+    /* Grille des 8 types d'échantillons avec champ quantité sur la même ligne */
     .labo-sample-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        gap: 8px;
+        gap: 10px;
     }
-    @media (max-width: 768px) {
+    @media (max-width: 1200px) {
         .labo-sample-grid {
             grid-template-columns: repeat(2, 1fr);
         }
     }
-    .labo-sample-item {
+    @media (max-width: 576px) {
+        .labo-sample-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    .labo-sample-card {
+        background: #ffffff;
+        border: 1.5px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 6px 10px;
+        min-height: 42px;
+        transition: all 0.2s ease-in-out;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+    .labo-sample-card:hover {
+        border-color: #94a3b8;
+        background: #f8fafc;
+    }
+    .labo-sample-card.active {
+        border-color: #0284c7;
+        background: #f0f9ff;
+        box-shadow: 0 2px 8px rgba(2, 132, 199, 0.12);
+    }
+    .labo-sample-label {
         display: inline-flex !important;
         align-items: center !important;
-        padding: 5px 8px;
-        background: #ffffff;
-        border: 1px solid #cbd5e1;
-        border-radius: 4px;
         cursor: pointer !important;
-        font-size: 12.5px !important;
-        font-weight: 500 !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
         color: #1e293b !important;
         margin: 0 !important;
-        transition: background 0.15s;
+        user-select: none;
+        flex-shrink: 0;
     }
-    .labo-sample-item:hover {
-        background: #f1f5f9;
+    .sample-val-text {
+        font-size: 13px;
+        font-weight: 600;
+        color: #0f172a;
+    }
+    .sample-qty-inline {
+        flex-grow: 1;
+        min-width: 110px;
+        max-width: 170px;
+        animation: fadeInQtyInline 0.2s ease-out;
+    }
+    @keyframes fadeInQtyInline {
+        from { opacity: 0; transform: translateX(5px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+    .labo-sample-qty-input {
+        width: 100%;
+        border: 1.5px solid #0284c7;
+        border-radius: 4px;
+        background: #ffffff;
+        padding: 3px 8px;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #0f172a;
+        outline: none;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .labo-sample-qty-input:focus {
+        border-color: #0369a1;
+        box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.25);
     }
 
     /* 5. Tableau officiel 5 colonnes d'examens demandés */
@@ -1444,11 +1328,57 @@
         }
     }
 
-    // Mise à jour du mode hospitalisation / observation
-    function updateHospMode(val) {
-        const radio = document.getElementById('radio-issue-hospitalisation');
-        if (radio) {
-            radio.value = val;
+    // Gestion de l'affichage dynamique du champ de quantité d'échantillon
+    function toggleSampleQty(checkbox, containerId) {
+        const container = document.getElementById(containerId);
+        const card = checkbox.closest('.labo-sample-card');
+        if (checkbox.checked) {
+            if (container) {
+                container.style.display = 'block';
+                const input = container.querySelector('input');
+                if (input) {
+                    input.focus();
+                }
+            }
+            if (card) {
+                card.classList.add('active');
+            }
+        } else {
+            if (container) {
+                container.style.display = 'none';
+                const input = container.querySelector('input');
+                if (input) {
+                    input.value = '';
+                }
+            }
+            if (card) {
+                card.classList.remove('active');
+            }
+        }
+    }
+
+    // Assure que la case est cochée lorsque l'utilisateur saisit une quantité
+    function ensureSampleChecked(checkId, containerId) {
+        const checkbox = document.getElementById(checkId);
+        if (checkbox && !checkbox.checked) {
+            checkbox.checked = true;
+            const card = checkbox.closest('.labo-sample-card');
+            if (card) card.classList.add('active');
+        }
+    }
+
+    // Gestion du champ quantité pour autre prélèvement
+    function toggleAutreSampleQty(inputElem) {
+        const container = document.getElementById('qty-autre-container');
+        if (!container) return;
+        if (inputElem.value.trim().length > 0) {
+            container.style.display = 'flex';
+        } else {
+            container.style.display = 'none';
+            const qtyInput = container.querySelector('input');
+            if (qtyInput) {
+                qtyInput.value = '';
+            }
         }
     }
 

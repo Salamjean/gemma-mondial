@@ -121,29 +121,36 @@ class IssueRepository
         if ($admissionPatient == 'Oui' && $request->filled('prestation_service_id')) {
             $doctor = Doctor::where('user_id', auth()->user()->id)->first();
             $hospitalId = ($doctor && $doctor->hospital) ? $doctor->hospital->id : (auth()->user()->hospital_id ?? 1);
-            $doctorId = $doctor ? $doctor->id : null;
+            $targetDoctorId = $request->filled('doctor_id') ? $getScalar('doctor_id') : null;
+            $infirmierId = $getScalar('infirmier_id');
+            $serviceName = $getScalar('service_id', '');
+            $typeAdmission = $getScalar('type_admission_id', 'Soins Infirmier');
+            $prestationHopitalId = $getScalar('prestation_service_id');
+            $montant = floatval($getScalar('montant', 0));
 
             $admission = Admission::create([
                 'code_admission' => codeAdmission(),
                 'date_admission' => Carbon::now()->format('Y-m-d H:i:s'),
-                'doctor_id' => $doctorId,
+                'doctor_id' => $targetDoctorId ?? ($doctor ? $doctor->id : null),
                 'hospital_id' => $hospitalId,
                 'patient_id' => $getScalar('patient_id', $consultation->patient_id),
-                'infirmier_id' => $getScalar('infirmier_id'),
+                'infirmier_id' => $infirmierId,
                 'caissiere_id' => null,
-                'prestation_hopital_id' => $getScalar('prestation_service_id'),
-                'type_admission' => $getScalar('type_admission_id', 'Soins Infirmier'),
-                'montant' => $getScalar('montant', 0),
-                'montant_normal' => $getScalar('montant', 0),
+                'prestation_hopital_id' => $prestationHopitalId,
+                'type_admission' => $typeAdmission,
+                'montant' => $montant,
+                'montant_normal' => $montant,
                 'motif_consultation' => $justification,
             ]);
 
             $payment = new Payment();
             $payment->date = Carbon::now()->format('Y-m-d');
             $payment->type = 'admission';
-            $payment->prix = $getScalar('montant', 0);
+            $payment->prix = $montant;
+            $payment->prix_normal = $montant;
             $payment->hospital_id = $hospitalId;
             $payment->admission_id = $admission->id;
+            $payment->status = 'pending';
             $payment->save();
         }
 
@@ -276,3 +283,4 @@ class IssueRepository
         return ['status' => 'success', 'message' => 'Patient mise en observation'];
     }
 }
+

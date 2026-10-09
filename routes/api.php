@@ -33,6 +33,8 @@ Route::prefix('v1/patient')->group(
         // guest admin
         Route::post('/login', [AuthController::class, 'login']);
         Route::post('/confirm', [AuthController::class, 'confirmLogin']);
+        Route::post('/forgot-dm', [AuthController::class, 'forgotDm']);
+        Route::post('/recover-dm', [AuthController::class, 'forgotDm']);
         //Liste des patients 
         Route::get('list', [PatientController::class, 'allPatients']);
 

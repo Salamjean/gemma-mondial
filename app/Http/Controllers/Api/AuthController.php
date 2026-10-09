@@ -198,7 +198,7 @@ class AuthController extends Controller
         // Envoyer l'OTP par SMS
         if ($patient->telephone) {
             try {
-                $message = "GEMMA : Votre code de connexion sécurisé est {$otpCode}. Valable 10 min. Pour votre sécurité, ne le partagez jamais.";
+                $message = "GEMMA : Votre code de connexion est {$otpCode}.";
                 // Instancier le SmsRepository avec le numéro et le message
                 // Attention : SmsRepository ajoute déjà +225, assurez-vous que $patient->telephone est au bon format (sans indicatif ou adapté)
                 $sms = new SmsRepository($patient->telephone, $message);
@@ -492,6 +492,115 @@ class AuthController extends Controller
 
         return response([
             'message' => 'deconnexion...',
+        ], 200);
+    }
+
+    /**
+     * Récupération du numéro de Dossier Médical (DM) par numéro de téléphone
+     */
+    public function forgotDm(Request $request)
+    {
+        Log::info('Demande de récupération de DM par téléphone', ['data' => $request->all()]);
+
+        $request->validate([
+            'telephone' => 'required',
+        ], [
+            'telephone.required' => 'Le numéro de téléphone est obligatoire.',
+        ]);
+
+        $rawPhone = $request->telephone ?? $request->phone;
+        $cleanPhone = preg_replace('/[^0-9]/', '', (string)$rawPhone);
+
+        if (empty($cleanPhone)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Format de numéro de téléphone invalide.'
+            ], 422);
+        }
+
+        // Générer les variantes courantes du numéro pour la recherche en base
+        $variants = [$cleanPhone, $rawPhone];
+
+        if (str_starts_with($cleanPhone, '00225') && strlen($cleanPhone) > 5) {
+            $withoutPrefix = substr($cleanPhone, 5);
+            $variants[] = $withoutPrefix;
+            $variants[] = '225' . $withoutPrefix;
+            $variants[] = '+225' . $withoutPrefix;
+        } elseif (str_starts_with($cleanPhone, '225') && strlen($cleanPhone) > 3) {
+            $withoutPrefix = substr($cleanPhone, 3);
+            $variants[] = $withoutPrefix;
+            $variants[] = '+225' . $withoutPrefix;
+        } else {
+            $variants[] = '225' . $cleanPhone;
+            $variants[] = '+225' . $cleanPhone;
+            $variants[] = '00225' . $cleanPhone;
+        }
+
+        $variants = array_values(array_unique(array_filter($variants)));
+
+        // Recherche des patients avec ce numéro de téléphone
+        $patients = Patient::with('user')
+            ->where(function ($q) use ($variants, $rawPhone) {
+                $q->whereIn('telephone', $variants)
+                  ->orWhereIn('contact2', $variants)
+                  ->orWhere('telephone', $rawPhone)
+                  ->orWhere('contact2', $rawPhone);
+            })
+            ->get();
+
+        // Si non trouvé et numéro de test, vérifier s'il s'agit du compte de test statique
+        if ($patients->isEmpty() && (in_array($cleanPhone, ['0102030405', '2250102030405']) || $rawPhone === '0102030405')) {
+            $testPatient = $this->getOrCreateTestPatient('0102030405');
+            if ($testPatient) {
+                $patients = collect([$testPatient]);
+            }
+        }
+
+        if ($patients->isEmpty()) {
+            Log::warning('Aucun patient trouvé pour le numéro de téléphone fourni', [
+                'telephone' => $rawPhone,
+                'variants' => $variants
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucun dossier médical n\'est associé à ce numéro de téléphone.'
+            ], 404);
+        }
+
+        // Construction du message SMS
+        if ($patients->count() === 1) {
+            $patient = $patients->first();
+            $dm = $patient->code_patient;
+            $message = "GEMMA : Votre code DM est {$dm}.";
+        } else {
+            // Plusieurs dossiers rattachés au même contact
+            $dms = $patients->map(function ($p) {
+                $prenom = trim(($p->user->name ?? '') . ' ' . ($p->user->prenom ?? ''));
+                $label = !empty($prenom) ? $prenom : 'Patient';
+                return "{$label} : {$p->code_patient}";
+            })->implode(', ');
+            $message = "GEMMA : Vos codes DM : {$dms}.";
+        }
+
+        // Numéro pour l'envoi SMS
+        $destPhone = $patients->first()->telephone ?: $cleanPhone;
+
+        // Envoi SMS via SmsRepository
+        try {
+            $sms = new SmsRepository($destPhone, $message);
+            $smsResponse = $sms->send();
+            Log::info('Envoi DM par SMS réussi', [
+                'telephone' => $destPhone,
+                'response' => $smsResponse
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de l\'envoi du SMS pour récupération DM: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Votre numéro de dossier médical (DM) a été envoyé par SMS.',
+            'telephone' => $destPhone
         ], 200);
     }
 }

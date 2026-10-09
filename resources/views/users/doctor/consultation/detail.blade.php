@@ -107,8 +107,11 @@
                     <i class="fa-solid fa-folder-open me-1"></i> Dossier Médical
                 </a>
             @endif
+            <a href="{{ route('doctor.consultation.documents', $consultation->id) }}" class="btn btn-primary btn-sm px-3 fw-bold">
+                <i class="fa-solid fa-file-medical me-1"></i> Documents Médicaux (PDF)
+            </a>
             @if($bulletin)
-                <a href="{{ route('doctor.consultation.laboratoire.pdf', $consultation->id) }}" target="_blank" class="btn btn-primary btn-sm px-3 fw-bold">
+                <a href="{{ route('doctor.consultation.laboratoire.pdf', $consultation->id) }}" target="_blank" class="btn btn-purple btn-sm px-3 fw-bold text-white" style="background-color: #7c3aed;">
                     <i class="fa-solid fa-file-pdf me-1"></i> Fiche Laboratoire PDF
                 </a>
             @endif

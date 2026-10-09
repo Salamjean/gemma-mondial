@@ -1581,6 +1581,7 @@ class DataController extends Controller
                 'ordonnances.prescriptions.drug',
                 'ordonnances.prescriptions.drugHospital.drug',
                 'examen.examens',
+                'bulletinExamen.examens',
                 'arret',
                 'declaration',
                 'hospitalisation'

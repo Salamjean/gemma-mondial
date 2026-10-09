@@ -19,7 +19,7 @@ class ConsultationController extends Controller
         $infirmierId = optional(auth()->user()->infirmier)->id;
         $consultations = Consultation::where(function ($q) use ($infirmierId) {
             if ($infirmierId) {
-                $q->where('infirmier_id', $infirmierId);
+                $q->where('infirmier_id', $infirmierId)->orWhereNull('infirmier_id');
             }
         })->withCount('ordonnances', 'arret', 'examen')->where('date_consultation', date('Y-m-d'))->get();
 

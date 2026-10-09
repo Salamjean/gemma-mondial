@@ -28,11 +28,15 @@ class DeclarationRepository
 
     public function indexDeces($search = null)
     {
+        $doctorId = Auth::user()->doctor->id ?? null;
         $hospitalId = Auth::user()->doctor->hospital_id ?? Auth::user()->hospital_id;
         $query = Declaration::with(['patient.user', 'deces', 'doctor.user'])
             ->where('type', 'death')
-            ->where('hospital_id', $hospitalId)
-            ->latest();
+            ->where('hospital_id', $hospitalId);
+
+        if ($doctorId) {
+            $query->where('doctor_id', $doctorId);
+        }
 
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {
@@ -318,7 +322,15 @@ class DeclarationRepository
     //naissance
     public function indexNaissance()
     {
-        return Declaration::with('patient.user')->with('naissance')->where('type', 'birth')->where('hospital_id', Auth::user()->doctor->hospital_id)->get();
+        $doctorId = Auth::user()->doctor->id ?? null;
+        $hospitalId = Auth::user()->doctor->hospital_id ?? Auth::user()->hospital_id;
+        $query = Declaration::with('patient.user')->with('naissance')->where('type', 'birth')->where('hospital_id', $hospitalId);
+
+        if ($doctorId) {
+            $query->where('doctor_id', $doctorId);
+        }
+
+        return $query->get();
     }
 
     public function showNaissance($id)

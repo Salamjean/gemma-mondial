@@ -101,12 +101,15 @@ class AdmissionController extends Controller
         // dd($res);
         //type admission
         if ($res['type'] == 'admission') {
+            $prestationLibelle = strtolower($res['prestation']['libelle'] ?? '');
+            $isSoins = ($res['prestation']['service_id'] == 5) || preg_match('/soin|infirm|pansement/i', $prestationLibelle);
 
             //verification si soins infirmier ou prise de constante
-            if ($res['prestation']['service_id'] == 5) {
+            if ($isSoins) {
                 $careRequest = new CareRequested();
-                $careRequest->type = $res['prestation']['libelle'];
+                $careRequest->type = $res['prestation']['libelle'] ?? 'Soins infirmiers';
                 $careRequest->admission_id = $res['data']['id'];
+                $careRequest->status = 'pending';
                 $careRequest->save();
             } else {
                 $this->consultation()->store($res['data']);
