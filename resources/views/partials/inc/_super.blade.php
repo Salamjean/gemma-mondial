@@ -87,6 +87,29 @@
         </li>
     </ul>
 </li>
+<li class="treeview {{ request()->routeIs('super.ucpfm.*') ? 'active' : '' }}">
+    <a href="#">
+        <i class="fa-solid fa-building-flag">
+            <span class="path1"></span><span class="path2"></span><span class="path3"></span>
+        </i>
+        <span>UCP-FM</span>
+        <span class="pull-right-container">
+            <i class="fa-solid fa-angle-right"></i>
+        </span>
+    </a>
+    <ul class="treeview-menu">
+        <li class="{{ request()->routeIs('super.ucpfm.index') ? 'active' : '' }}">
+            <a href="{{ route('super.ucpfm.index') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Liste des admins
+            </a>
+        </li>
+        <li class="{{ request()->routeIs('super.ucpfm.add') ? 'active' : '' }}">
+            <a href="{{ route('super.ucpfm.add') }}">
+                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Ajouter un admin
+            </a>
+        </li>
+    </ul>
+</li>
 <li class="treeview {{ request()->routeIs('super.logs.*') ? 'active' : '' }}">
     <a href="#">
         <i class="fa fa-shield-alt">

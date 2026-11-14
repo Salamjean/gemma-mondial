@@ -83,6 +83,7 @@ class HospitalController extends Controller
         $hospital -> district_sanitaire = $request -> district;
         $hospital -> nom_direction_generale = $request -> direction_generale ?? null;
         $hospital -> is_teleconsultation_active = $request->has('is_teleconsultation_active') ? (bool)$request->is_teleconsultation_active : false;
+        $hospital -> is_ucp_fm = $request->boolean('is_ucp_fm');
         $hospital -> save();
 
         // Envoyer l'email de confirmation
@@ -117,6 +118,7 @@ class HospitalController extends Controller
         $hospital -> district_sanitaire = $request -> district;
         $hospital -> nom_direction_generale = $request -> direction_generale ?? $hospital -> nom_direction_general;
         $hospital -> is_teleconsultation_active = $request->has('is_teleconsultation_active');
+        $hospital -> is_ucp_fm = $request->boolean('is_ucp_fm');
 
         if($request -> hasFile('image'))
         {

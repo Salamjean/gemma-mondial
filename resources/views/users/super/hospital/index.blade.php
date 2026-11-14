@@ -9,12 +9,50 @@
                         <div class="">
                             <h4 class="box-title">Hopital</h4>
                         </div>
-                        <div class="">
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-primary btn-md shadow" data-bs-toggle="modal" data-bs-target="#importHospitalsModal">
+                                <i class="fa-solid fa-file-excel me-1"></i> Importer un fichier Excel
+                            </button>
                             <a href="{{ route('super.hospital.add') }}" class="btn btn-success btn-md shadow">Ajouter un hopital</a>
                         </div>
                     </div>
                 </div>
                 <div class="box-body">
+                    @if (session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fa-solid fa-circle-exclamation me-1"></i> {{ session('error') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+                    @if ($errors->any())
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <ul class="mb-0">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+                    @if (session('import_report'))
+                        @php($report = session('import_report'))
+                        <div class="alert {{ $report['created'] > 0 ? 'alert-success' : 'alert-warning' }} alert-dismissible fade show" role="alert">
+                            <strong><i class="fa-solid fa-file-excel me-1"></i> Import terminé :</strong>
+                            {{ $report['created'] }} hôpital(aux) enregistré(s).
+                            @if ($report['created'] > 0)
+                                Mot de passe par défaut : <code>{{ \App\Http\Controllers\Super\HospitalImportController::DEFAULT_PASSWORD }}</code>
+                            @endif
+                            @if (count($report['messages']))
+                                <div class="mt-2 fw-bold">Lignes à vérifier ({{ count($report['messages']) }}) :</div>
+                                <ul class="mb-0 small">
+                                    @foreach ($report['messages'] as $message)
+                                        <li>{{ $message }}</li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
                     <div class="table-responsive">
                         <table id="example" class="table table-striped table-hover display nowrap margin-top-10 w-p100">
                             <thead>
@@ -44,6 +82,9 @@
                                     <td>{{ $item->reference }}</td>
                                     <td>
                                         {{ $item->label }}
+                                        @if($item->is_ucp_fm)
+                                            <span class="badge bg-primary ms-1" title="Établissement appartenant au UCP-FM"><i class="fa-solid fa-building-flag me-1"></i>UCP-FM</span>
+                                        @endif
                                     </td>
                                     <td>
                                         {{ $item->contact }}
@@ -100,6 +141,97 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal d'import Excel des hôpitaux -->
+    <div class="modal fade" id="importHospitalsModal" tabindex="-1" aria-labelledby="importHospitalsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <form class="modal-content" action="{{ route('super.hospital.import') }}" method="POST" enctype="multipart/form-data" id="importHospitalsForm">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="importHospitalsModalLabel"><i class="fa-solid fa-file-excel text-success me-2"></i>Importer des hôpitaux</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">Ces deux réglages s'appliqueront à tous les établissements du fichier.</p>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold d-block">1. La téléconsultation sera-t-elle active ? <span class="text-danger">*</span></label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input import-choice" type="radio" name="is_teleconsultation_active" id="import_tc_yes" value="1" required>
+                            <label class="form-check-label" for="import_tc_yes">Oui</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input import-choice" type="radio" name="is_teleconsultation_active" id="import_tc_no" value="0">
+                            <label class="form-check-label" for="import_tc_no">Non</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold d-block">2. Ces établissements appartiennent-ils au UCP-FM ? <span class="text-danger">*</span></label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input import-choice" type="radio" name="is_ucp_fm" id="import_ucp_yes" value="1" required>
+                            <label class="form-check-label" for="import_ucp_yes">Oui</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input import-choice" type="radio" name="is_ucp_fm" id="import_ucp_no" value="0">
+                            <label class="form-check-label" for="import_ucp_no">Non</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="import_file" class="form-label fw-bold">3. Fichier Excel (.xlsx, .xls, .csv) <span class="text-danger">*</span></label>
+                        <input class="form-control" type="file" id="import_file" name="file" accept=".xlsx,.xls,.csv" required disabled>
+                        <div class="form-text" id="import_file_hint">Répondez d'abord aux deux questions ci-dessus.</div>
+                    </div>
+
+                    <div class="border rounded p-2 bg-light small">
+                        <div class="fw-bold mb-1">Colonnes attendues, dans cet ordre :</div>
+                        <ol class="mb-1">
+                            <li>Nom de l'hôpital</li>
+                            <li>Code</li>
+                            <li>Contact</li>
+                            <li>Localité</li>
+                            <li>District Sanitaire</li>
+                            <li>Direction générale (régionale)</li>
+                            <li>Email</li>
+                        </ol>
+                        <div>La première ligne peut contenir les titres des colonnes. Mot de passe par défaut de chaque compte : <code>{{ \App\Http\Controllers\Super\HospitalImportController::DEFAULT_PASSWORD }}</code>.</div>
+                        <a href="{{ route('super.hospital.import.template') }}" class="d-inline-block mt-1"><i class="fa-solid fa-download me-1"></i>Télécharger le modèle Excel</a>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary" id="importHospitalsSubmit" disabled>
+                        <i class="fa-solid fa-upload me-1"></i> Importer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var form = document.getElementById('importHospitalsForm');
+            var fileInput = document.getElementById('import_file');
+            var submitBtn = document.getElementById('importHospitalsSubmit');
+            var hint = document.getElementById('import_file_hint');
+
+            function refresh() {
+                var answered = form.querySelector('input[name="is_teleconsultation_active"]:checked')
+                    && form.querySelector('input[name="is_ucp_fm"]:checked');
+                fileInput.disabled = !answered;
+                hint.textContent = answered ? 'Sélectionnez le fichier à importer.' : "Répondez d'abord aux deux questions ci-dessus.";
+                submitBtn.disabled = !(answered && fileInput.files.length);
+            }
+
+            form.querySelectorAll('.import-choice').forEach(function (el) { el.addEventListener('change', refresh); });
+            fileInput.addEventListener('change', refresh);
+            form.addEventListener('submit', function () {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Import en cours...';
+            });
+        })();
+    </script>
 
     <!-- SweetAlert2 Script pour la confirmation de l'activation/désactivation de la téléconsultation -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

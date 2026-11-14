@@ -143,6 +143,17 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <div class="form-check form-switch d-flex align-items-center gap-3 p-10 bg-light rounded-10 border">
+                                        <input class="form-check-input ms-0" type="checkbox" role="switch" id="is_ucp_fm" name="is_ucp_fm" value="1" {{ old('is_ucp_fm') == '1' ? 'checked' : '' }} style="width: 2.5em; height: 1.3em; cursor: pointer;">
+                                        <label class="form-check-label fw-bold text-dark mb-0 ms-2" for="is_ucp_fm" style="cursor: pointer;">
+                                            <i class="fa-solid fa-building-flag text-primary me-1"></i> Établissement appartenant au UCP-FM
+                                            <span class="text-muted fw-normal ms-2">- Cochez si ce compte hôpital fait partie du UCP-FM.</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <h4 class="box-title text-success mb-0 mt-20"><i class="ti-lock  me-15"></i> Infos de connexion
                         </h4>

@@ -16,7 +16,13 @@ class Hospital extends Model
 
     protected $casts = [
         'is_teleconsultation_active' => 'boolean',
+        'is_ucp_fm' => 'boolean',
     ];
+
+    public function isUcpFm(): bool
+    {
+        return (bool) $this->is_ucp_fm;
+    }
 
     public function hasTeleconsultation(): bool
     {

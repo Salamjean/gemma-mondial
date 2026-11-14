@@ -21,6 +21,8 @@ Route::middleware(['auth'])->group(function() {
                 Route::get('report/{id}', 'HospitalController@HospReport')->name('report');
                 Route::get('activation/{id}', 'HospitalController@statusSce')->name('statusSce');
                 Route::get('toggle-teleconsultation/{id}', 'HospitalController@toggleTeleconsultation')->name('toggle_teleconsultation');
+                Route::post('import', 'HospitalImportController@import')->name('import');
+                Route::get('import/modele', 'HospitalImportController@template')->name('import.template');
 
 
 
@@ -71,6 +73,16 @@ Route::middleware(['auth'])->group(function() {
                 Route::put('update/{id}', 'MinistereController@update')->name('update');
                 Route::get('status/{id}', 'MinistereController@toggleStatus')->name('status');
                 Route::delete('delete/{id}', 'MinistereController@destroy')->name('destroy');
+            });
+
+            Route::prefix('ucp-fm')->name('ucpfm.')->group(function () {
+                Route::get('/', 'UcpFmAdminController@index')->name('index');
+                Route::get('add', 'UcpFmAdminController@add')->name('add');
+                Route::post('store', 'UcpFmAdminController@store')->name('store');
+                Route::get('edit/{id}', 'UcpFmAdminController@edit')->name('edit');
+                Route::put('update/{id}', 'UcpFmAdminController@update')->name('update');
+                Route::get('status/{id}', 'UcpFmAdminController@toggleStatus')->name('status');
+                Route::delete('delete/{id}', 'UcpFmAdminController@destroy')->name('destroy');
             });
 
             Route::prefix('notifications')->name('notifications.')->group(function () {

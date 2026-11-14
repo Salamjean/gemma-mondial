@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Admin;
+use App\Models\Service;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -69,8 +70,30 @@ class SuperAdminSeeder extends Seeder
             ]
         );
 
+        // 3. Services (repris du DatabaseSeeder, sans les prestations)
+        $this->seedServices();
+
         if (isset($this->command)) {
-            $this->command->info("Super Admin et données SQL initialisés avec succès ! (Email: {$superAdminEmail})");
+            $this->command->info("Super Admin, données SQL et services initialisés avec succès ! (Email: {$superAdminEmail})");
+        }
+    }
+
+    /**
+     * Crée les services sans doublon,
+     * pour que le seeder puisse être relancé sans risque.
+     */
+    private function seedServices(): void
+    {
+        $services = [
+            'Urgence',
+            'Gynécologie-Obstétrique',
+            'Consultation Générale',
+            'Consultation pediatrique',
+            'Soins infirmier',
+        ];
+
+        foreach ($services as $libelle) {
+            Service::firstOrCreate(['libelle' => $libelle]);
         }
     }
 }
