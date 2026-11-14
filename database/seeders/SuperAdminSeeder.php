@@ -90,6 +90,7 @@ class SuperAdminSeeder extends Seeder
             'Consultation Générale',
             'Consultation pediatrique',
             'Soins infirmier',
+            'Laboratoire',
         ];
 
         foreach ($services as $libelle) {
