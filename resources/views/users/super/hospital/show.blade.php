@@ -65,9 +65,9 @@
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="form-label">
-                                        <strong>UCP-FM :</strong>
+                                        <strong>DMHP :</strong>
                                         @if($hospital->is_ucp_fm)
-                                            <span class="badge bg-primary fw-bold px-2 py-1"><i class="fa-solid fa-building-flag me-1"></i> Appartient au UCP-FM</span>
+                                            <span class="badge bg-primary fw-bold px-2 py-1"><i class="fa-solid fa-building-flag me-1"></i> Appartient au DMHP</span>
                                         @else
                                             <span class="badge bg-secondary fw-bold px-2 py-1">Non</span>
                                         @endif
@@ -178,11 +178,11 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group">
-                                            <label class="form-label">Appartenance UCP-FM</label>
+                                            <label class="form-label">Appartenance DMHP</label>
                                             <div class="form-check form-switch d-flex align-items-center gap-3 p-10 bg-light rounded-10 border">
                                                 <input class="form-check-input ms-0" type="checkbox" role="switch" id="is_ucp_fm_edit" name="is_ucp_fm" value="1" {{ old('is_ucp_fm', $hospital->is_ucp_fm) ? 'checked' : '' }} style="width: 2.5em; height: 1.3em; cursor: pointer;">
                                                 <label class="form-check-label fw-bold text-dark mb-0 ms-2" for="is_ucp_fm_edit" style="cursor: pointer;">
-                                                    <i class="fa-solid fa-building-flag text-primary me-1"></i> Appartient au UCP-FM
+                                                    <i class="fa-solid fa-building-flag text-primary me-1"></i> Appartient au DMHP
                                                 </label>
                                             </div>
                                         </div>

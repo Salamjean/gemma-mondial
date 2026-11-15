@@ -83,7 +83,7 @@
                                     <td>
                                         {{ $item->label }}
                                         @if($item->is_ucp_fm)
-                                            <span class="badge bg-primary ms-1" title="Établissement appartenant au UCP-FM"><i class="fa-solid fa-building-flag me-1"></i>UCP-FM</span>
+                                            <span class="badge bg-primary ms-1" title="Établissement appartenant au DMHP"><i class="fa-solid fa-building-flag me-1"></i>DMHP</span>
                                         @endif
                                     </td>
                                     <td>
@@ -167,7 +167,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold d-block">2. Ces établissements appartiennent-ils au UCP-FM ? <span class="text-danger">*</span></label>
+                        <label class="form-label fw-bold d-block">2. Ces établissements appartiennent-ils au DMHP ? <span class="text-danger">*</span></label>
                         <div class="form-check form-check-inline">
                             <input class="form-check-input import-choice" type="radio" name="is_ucp_fm" id="import_ucp_yes" value="1" required>
                             <label class="form-check-label" for="import_ucp_yes">Oui</label>

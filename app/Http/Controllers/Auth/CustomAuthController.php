@@ -146,6 +146,10 @@ class CustomAuthController extends Controller
     private function roleResponse($email) : array
     {
         if ($user = User::where('email', $email)->with('hospital', 'doctor', 'accountant', 'cashier', 'infirmier', 'pharmacy', 'secretariat', 'admin', 'patient', 'ministere')->first()) {
+            if ($user->isBlockedByDmhpHospital()) {
+                return ['status' => 'error', 'message' => 'Accès non autorisé : votre établissement appartient au DMHP.'];
+            }
+
             switch ($user->role_as) {
                 case 'super':
                     

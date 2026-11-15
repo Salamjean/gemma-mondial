@@ -6,8 +6,8 @@
         <div class="box">
             <div class="box-header with-border d-flex justify-content-between align-items-center">
                 <div>
-                    <h3 class="box-title fw-bold text-dark"><i class="fa fa-user-plus text-primary me-2"></i> Ajouter un administrateur UCP-FM</h3>
-                    <p class="text-muted mb-0 small">Créez un compte utilisateur avec le rôle admin pour le compte UCP-FM</p>
+                    <h3 class="box-title fw-bold text-dark"><i class="fa fa-user-plus text-primary me-2"></i> Ajouter un administrateur DMHP</h3>
+                    <p class="text-muted mb-0 small">Créez un compte utilisateur avec le rôle admin pour le compte DMHP</p>
                 </div>
                 <div>
                     <a href="{{ route('super.ucpfm.index') }}" class="btn btn-secondary btn-sm shadow-sm">

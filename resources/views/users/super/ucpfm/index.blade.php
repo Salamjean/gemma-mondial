@@ -6,8 +6,8 @@
         <div class="box">
             <div class="box-header with-border d-flex justify-content-between align-items-center">
                 <div>
-                    <h3 class="box-title fw-bold text-dark"><i class="fa-solid fa-building-flag text-primary me-2"></i> Administrateurs UCP-FM</h3>
-                    <p class="text-muted mb-0 small">Utilisateurs ayant le rôle admin pour le compte UCP-FM</p>
+                    <h3 class="box-title fw-bold text-dark"><i class="fa-solid fa-building-flag text-primary me-2"></i> Administrateurs DMHP</h3>
+                    <p class="text-muted mb-0 small">Utilisateurs ayant le rôle admin pour le compte DMHP</p>
                 </div>
                 <div>
                     <a href="{{ route('super.ucpfm.add') }}" class="btn btn-primary btn-md shadow">
@@ -68,7 +68,7 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <span class="badge bg-primary"><i class="fa-solid fa-building-flag me-1"></i>Admin UCP-FM</span>
+                                        <span class="badge bg-primary"><i class="fa-solid fa-building-flag me-1"></i>Admin DMHP</span>
                                     </td>
                                     <td><span class="text-dark fw-medium">{{ $item->fonction ?: 'Non précisé' }}</span></td>
                                     <td><span class="text-muted"><i class="fa fa-phone me-1"></i>{{ $item->contact ?: '-' }}</span></td>
@@ -88,7 +88,7 @@
                                             <a href="{{ route('super.ucpfm.edit', $item->id) }}" class="btn btn-sm btn-info text-white" title="Modifier">
                                                 <i class="fa fa-edit"></i>
                                             </a>
-                                            <form action="{{ route('super.ucpfm.destroy', $item->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet administrateur UCP-FM ?');">
+                                            <form action="{{ route('super.ucpfm.destroy', $item->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet administrateur DMHP ?');">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="btn btn-sm btn-danger" title="Supprimer">
@@ -102,7 +102,7 @@
                                 <tr>
                                     <td colspan="8" class="text-center py-4 text-muted">
                                         <i class="fa-solid fa-building-flag fa-3x mb-2 text-secondary opacity-50"></i>
-                                        <p class="mb-0">Aucun administrateur UCP-FM enregistré.</p>
+                                        <p class="mb-0">Aucun administrateur DMHP enregistré.</p>
                                         <a href="{{ route('super.ucpfm.add') }}" class="btn btn-sm btn-primary mt-2">Ajouter le premier administrateur</a>
                                     </td>
                                 </tr>

@@ -13,7 +13,7 @@
 
 <div class="alert alert-info py-2 small">
     <i class="fa-solid fa-building-flag me-1"></i>
-    Ce compte aura le rôle <strong>admin</strong> rattaché à l'organisation <strong>UCP-FM</strong>.
+    Ce compte aura le rôle <strong>admin</strong> rattaché à l'organisation <strong>DMHP</strong>.
 </div>
 
 <h5 class="text-primary border-bottom pb-2 mb-3"><i class="fa fa-id-card me-1"></i> Informations Personnelles & Professionnelles</h5>

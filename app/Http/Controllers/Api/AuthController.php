@@ -148,11 +148,11 @@ class AuthController extends Controller
             return response(['message' => 'Utilisateur introuvable!'], 403);
         }
 
-        // Vérifier si l'utilisateur a un email
-        if (!$user->email) {
-            Log::warning('Patient sans email', ['patient_id' => $patient->id]);
+        // Il faut au moins un moyen de recevoir le code : SMS (téléphone) ou email
+        if (!$user->email && !$patient->telephone) {
+            Log::warning('Patient sans email ni téléphone', ['patient_id' => $patient->id]);
             return response([
-                'message' => 'Veuillez contacter l\'administration pour ajouter votre adresse email.'
+                'message' => 'Veuillez contacter l\'administration pour ajouter votre numéro de téléphone ou votre adresse email.'
             ], 403);
         }
 
@@ -179,20 +179,24 @@ class AuthController extends Controller
             ], 200);
         }
 
-        // Envoyer l'OTP par email
-        try {
-            $user->notify(new SendPatientOtpNotification($otpCode, $user->name . ' ' . $user->prenom));
-            Log::info('OTP envoyé par email', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'otp_code' => $otpCode
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de l\'envoi de l\'OTP par email', [
-                'user_id' => $user->id,
-                'error' => $e->getMessage()
-            ]);
-            // On ne retourne pas d'erreur ici pour laisser une chance au SMS
+        $canaux = [];
+
+        // Envoyer l'OTP par email (seulement si le patient en a un)
+        if ($user->email) {
+            try {
+                $user->notify(new SendPatientOtpNotification($otpCode, $user->name . ' ' . $user->prenom));
+                $canaux[] = 'email';
+                Log::info('OTP envoyé par email', [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Erreur lors de l\'envoi de l\'OTP par email', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage()
+                ]);
+                // On ne retourne pas d'erreur ici pour laisser une chance au SMS
+            }
         }
 
         // Envoyer l'OTP par SMS
@@ -203,6 +207,9 @@ class AuthController extends Controller
                 // Attention : SmsRepository ajoute déjà +225, assurez-vous que $patient->telephone est au bon format (sans indicatif ou adapté)
                 $sms = new SmsRepository($patient->telephone, $message);
                 $response = $sms->send();
+                if (!empty($response['success'])) {
+                    $canaux[] = 'SMS';
+                }
 
                 Log::info('Tentative d\'envoi OTP par SMS', [
                     'patient_id' => $patient->id,
@@ -219,8 +226,14 @@ class AuthController extends Controller
             Log::warning('Pas de numéro de téléphone pour envoyer le SMS', ['patient_id' => $patient->id]);
         }
 
+        if (empty($canaux)) {
+            return response([
+                'message' => 'Impossible d\'envoyer le code pour le moment. Veuillez réessayer dans quelques instants.'
+            ], 500);
+        }
+
         return response([
-            'message' => 'Code OTP envoyé avec succès par SMS et email.',
+            'message' => 'Code OTP envoyé par ' . implode(' et ', $canaux) . '.',
             'code' => $request->code // Retourner l'identifiant pour la confirmation
         ], 200);
     }

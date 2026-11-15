@@ -62,6 +62,40 @@ class User extends Authenticatable
         return $this->hasOne(Admin::class);
     }
 
+    /**
+     * Rôles rattachés à un hôpital => relation vers leur profil.
+     */
+    private const HOSPITAL_STAFF_RELATIONS = [
+        'doctor' => 'doctor',
+        'accountant' => 'accountant',
+        'cashier' => 'cashier',
+        'infirmier' => 'infirmier',
+        'pharmacy' => 'pharmacy',
+        'secretariat' => 'secretariat',
+    ];
+
+    /**
+     * Hôpital auquel l'utilisateur est rattaché (compte hôpital ou personnel), ou null.
+     */
+    public function linkedHospital(): ?Hospital
+    {
+        if ($this->role_as === 'hospital') {
+            return $this->hospital;
+        }
+
+        $relation = self::HOSPITAL_STAFF_RELATIONS[$this->role_as] ?? null;
+
+        return $relation ? $this->{$relation}?->hospital : null;
+    }
+
+    /**
+     * Les comptes d'un hôpital DMHP (compte hôpital et personnel) n'ont pas accès à la plateforme.
+     */
+    public function isBlockedByDmhpHospital(): bool
+    {
+        return (bool) $this->linkedHospital()?->is_ucp_fm;
+    }
+
     public function hospital()
     {
         return $this->hasOne(Hospital::class);

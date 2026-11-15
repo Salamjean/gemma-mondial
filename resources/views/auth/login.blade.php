@@ -6,7 +6,9 @@
             <div class="col-lg-5 col-md-5 col-12">
                 <div class="bg-white rounded10 shadow-lg">
                     <div class="content-top-agile p-20 pb-0">
-                        <img src="{{ asset(iconsLoad()['logo']) }}" alt="">
+                        <a href="{{ route('accueil') }}" title="Retour à l'accueil">
+                            <img src="{{ asset(iconsLoad()['logo']) }}" alt="GEMMA - Accueil">
+                        </a>
                         <p class="mb-0">Connectez-vous pour continuer</p>
                     </div>
                     <div class="p-40">
